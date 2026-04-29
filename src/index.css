@@ -1,0 +1,41 @@
+@font-face {
+  font-family: 'Rubik';
+  src: url('./assets/fonts/Rubik/static/Rubik-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Rubik';
+  src: url('./assets/fonts/Rubik/static/Rubik-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --color-primary-dark: #060e0b;
+  --color-secondary-dark: #40534c;
+  --color-accent: #b1cb4f;
+  --color-light: #e5e9e8;
+
+  --font-size-lg: 24px;
+  --font-size-md: 16px;
+  --font-size-sm: 12px;
+}
+
+body {
+  margin: 0;
+  background: #fff;
+  color: var(--color-primary-dark);
+  font-family: 'Rubik', sans-serif;
+  font-size: var(--font-size-md);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
