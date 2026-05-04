@@ -1,0 +1,59 @@
+.page-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px 20px;
+  background: #fff;
+  border-radius: 0 0 20px 20px;
+  box-shadow: 0 4px 18px rgba(6, 14, 11, 0.06);
+}
+
+.page-header__brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-header__logo {
+  display: block;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: conic-gradient(from 200deg, #f4a261 0deg 90deg, #2ecc71 90deg 200deg, #95a5a6 200deg 320deg, #f4a261 320deg 360deg);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.85);
+}
+
+.page-header__greeting {
+  margin: 0;
+  font-size: 16px;
+  color: #060e0b;
+  line-height: 1.3;
+}
+
+.page-header__greeting strong {
+  font-weight: 700;
+}
+
+.page-header__menu {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: #40534c;
+  cursor: pointer;
+}
+
+.page-header__menu:hover {
+  background: #f3f5f4;
+}
+
+.page-header__menu-icon {
+  width: 26px;
+  height: 26px;
+}

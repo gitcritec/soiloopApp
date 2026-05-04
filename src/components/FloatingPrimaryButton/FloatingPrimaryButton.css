@@ -1,0 +1,50 @@
+.floating-primary-button-wrap {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 72px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 20;
+  padding: 0 16px;
+}
+
+.floating-primary-button {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: min(360px, calc(100vw - 32px));
+  padding: 14px 28px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #34d889 0%, #2ecc71 55%, #27ae60 100%);
+  color: #fff;
+  font-family: 'Rubik', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(46, 204, 113, 0.35);
+}
+
+.floating-primary-button:hover {
+  filter: brightness(1.03);
+}
+
+.floating-primary-button:active {
+  transform: translateY(1px);
+}
+
+.floating-primary-button__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.floating-primary-button__icon svg {
+  width: 24px;
+  height: 24px;
+}

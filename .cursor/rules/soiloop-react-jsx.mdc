@@ -1,0 +1,21 @@
+---
+description: Convenções React/JSX do Soiloop (imports, acessibilidade, handlers)
+globs: "**/*.jsx"
+alwaysApply: false
+---
+
+# React / JSX (Soiloop)
+
+## Imports e ficheiros
+
+- Preferir extensão **`.jsx`** nos imports (ex.: `./Login.jsx`), alinhado ao projeto.
+- CSS do componente: **`import './Nome.css'`** no mesmo nível que o `.jsx`.
+
+## Componentes
+
+- Componentes de apresentação: receber dados e callbacks por **props**; evitar estado local desnecessário.
+- Botões com só ícone: sempre **`aria-label`** descritivo em português.
+
+## Dados e integração futura
+
+- Mocks e cópias estáticas para layout: junto da página em `pages/...` ou, se forem partilhados por várias páginas, num módulo claro (ex. `src/data/`) — **não** misturar com `src/components/` salvo ser um hook/store acordado pela equipa.

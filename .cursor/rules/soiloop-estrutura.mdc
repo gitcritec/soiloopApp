@@ -1,0 +1,34 @@
+---
+description: Estrutura do projeto Soiloop — pastas, páginas e reutilização de componentes
+alwaysApply: true
+---
+
+# Soiloop — estrutura e fluxo de trabalho
+
+## Antes de criar um componente novo
+
+1. **Procurar primeiro** em `src/components/` (listar pastas ou usar pesquisa no projeto) por algo equivalente: `PageHeader`, `BottomNav`, `CollectionCard`, `FloatingPrimaryButton`, `SectionTitleWithIcon`, ícones em `src/components/icons/`.
+2. Se existir algo **igual ou quase igual**, **reutilizar** (props) ou **estender** o componente existente em vez de duplicar ficheiros.
+3. Ícones SVG partilhados: acrescentar em `src/components/icons/icons.jsx` (ou ficheiro dedicado na mesma pasta) e importar onde for preciso.
+
+## Organização de páginas
+
+- Cada ecrã fica em **`src/pages/<NomeDaPasta>/`** (ex.: `Login/`, `Dashboard/`).
+- Dentro da pasta: ficheiro principal **`Nome.jsx`** (ou alinhado ao nome da pasta), **`Nome.css`** ao lado, e **`mockData.js`** (ou similar) **só** se forem dados/mock específicos dessa página.
+- **`App.jsx`** mantém-se enxuto: composição de alto nível (auth, router quando existir), sem lógica de UI de páginas.
+
+## Componentes reutilizáveis
+
+- Caminho: **`src/components/<Nome>/Nome.jsx`** + **`Nome.css`** (um componente por pasta).
+- Evitar acoplar texto de negócio irreutilizável dentro de componentes genéricos: passar **`label`**, **`items`**, **`icon`**, **`children`**, callbacks (`onClick`, `onSelect`), etc.
+
+## Estilo e consistência
+
+- Tipografia e tokens globais: respeitar `src/index.css` (`:root`, fonte Rubik).
+- Textos da interface em **português**.
+- Alterações PWA/manifest/service worker: ficheiros em **`public/`** e registo em `src/main.jsx` quando aplicável.
+
+## Alterações no código
+
+- Mudanças **mínimas** ao pedido: não refatorar ficheiros não relacionados.
+- Não criar documentação **`.md`** no repositório salvo pedido explícito da equipa.

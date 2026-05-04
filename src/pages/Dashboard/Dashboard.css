@@ -1,0 +1,25 @@
+.operator-dashboard {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: #f0f2f5;
+  color: #060e0b;
+}
+
+.operator-dashboard__main {
+  padding: 16px 16px 168px;
+  box-sizing: border-box;
+}
+
+.operator-dashboard__section {
+  margin-bottom: 28px;
+}
+
+.operator-dashboard__section:last-of-type {
+  margin-bottom: 0;
+}
+
+.operator-dashboard__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}

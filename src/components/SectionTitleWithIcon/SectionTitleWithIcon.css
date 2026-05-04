@@ -1,0 +1,22 @@
+.section-title-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f7a4d;
+  letter-spacing: -0.02em;
+}
+
+.section-title-with-icon__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1f7a4d;
+}
+
+.section-title-with-icon__icon svg {
+  width: 26px;
+  height: 26px;
+}

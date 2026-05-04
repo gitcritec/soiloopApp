@@ -1,8 +1,8 @@
 import './Login.css'
-import logoImg from '../assets/logo.png'
-import loginImage from '../assets/imagem-login.png'
+import logoImg from '../../assets/logo.png'
+import loginImage from '../../assets/imagem-login.png'
 
-export default function Login() {
+export default function Login({ onEnter }) {
   return (
     <main className="login-page">
       <section className="login-card">
@@ -21,7 +21,13 @@ export default function Login() {
           alt="Ilustração de reciclagem e regeneração dos solos"
         />
 
-        <form className="login-form" onSubmit={(event) => event.preventDefault()}>
+        <form
+          className="login-form"
+          onSubmit={(event) => {
+            event.preventDefault()
+            onEnter?.()
+          }}
+        >
           <label className="sr-only" htmlFor="username">
             Utilizador
           </label>
@@ -46,7 +52,7 @@ export default function Login() {
             Esqueceu a Palavra-passe? <a href="#recuperar">Recuperar Password</a>
           </p>
 
-          <button type="submit" className="submit-button" disabled>
+          <button type="submit" className="submit-button">
             Entrar
           </button>
 
