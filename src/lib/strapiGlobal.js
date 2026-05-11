@@ -46,3 +46,27 @@ export async function fetchStrapiGlobalLogoUrl() {
     return null
   }
 }
+
+/**
+ * URL pública do campo `logo_small` do Global (api::global.global).
+ * @returns {Promise<string|null>}
+ */
+export async function fetchStrapiGlobalLogoSmallUrl() {
+  const base = strapiBaseUrl()
+  if (!base) return null
+
+  const endpoint = `${base}/api/global?populate=logo_small`
+
+  try {
+    const res = await fetch(endpoint)
+    if (!res.ok) return null
+    const json = await res.json()
+    const row = json.data
+    if (!row) return null
+    const attrs = row.attributes ?? row
+    const path = pickMediaUrl(attrs.logo_small)
+    return absoluteMediaUrl(base, path)
+  } catch {
+    return null
+  }
+}

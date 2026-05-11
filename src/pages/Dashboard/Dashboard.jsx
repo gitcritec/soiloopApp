@@ -1,7 +1,13 @@
-import { useState } from 'react'
-import { faRecycle } from '@fortawesome/free-solid-svg-icons'
+import { useEffect, useState } from 'react'
+import { faRecycle } from '@fortawesome/pro-light-svg-icons'
 import logoSoiloop from '../../assets/figma-operador/logo-soiloop.png'
 import './Dashboard.css'
+import {
+  fetchStrapiCurrentUser,
+  getStoredStrapiUsername,
+  persistStrapiUsername,
+} from '../../lib/strapiAuth.js'
+import { fetchStrapiGlobalLogoSmallUrl } from '../../lib/strapiGlobal.js'
 import PageHeader from '../../components/PageHeader/PageHeader.jsx'
 import SectionTitleWithIcon from '../../components/SectionTitleWithIcon/SectionTitleWithIcon.jsx'
 import CollectionCard from '../../components/CollectionCard/CollectionCard.jsx'
@@ -24,14 +30,43 @@ const OPERATOR_BOTTOM_NAV_ITEMS = [
 
 export default function Dashboard() {
   const [navActiveId, setNavActiveId] = useState('dashboard')
+  const [headerLogoSrc, setHeaderLogoSrc] = useState(null)
+  const [userName, setUserName] = useState(
+    () => getStoredStrapiUsername() ?? MOCK_OPERATOR_NAME,
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    fetchStrapiGlobalLogoSmallUrl().then((url) => {
+      if (!cancelled && url) setHeaderLogoSrc(url)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (getStoredStrapiUsername()) return
+    let cancelled = false
+    fetchStrapiCurrentUser().then((u) => {
+      const name = u?.username?.trim() || u?.email?.trim()
+      if (!cancelled && name) {
+        persistStrapiUsername(name)
+        setUserName(name)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   return (
     <div className="operator-dashboard">
       <div className="operator-dashboard__header-slot">
         <PageHeader
           variant="floating"
-          logoSrc={logoSoiloop}
-          userName={MOCK_OPERATOR_NAME}
+          logoSrc={headerLogoSrc ?? logoSoiloop}
+          userName={userName}
           onMenuClick={() => {}}
         />
       </div>

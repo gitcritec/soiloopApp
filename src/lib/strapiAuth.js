@@ -37,7 +37,7 @@ export async function loginStrapi(identifier, password) {
     }),
   })
 
-  let data = {}
+  let data
   try {
     data = await res.json()
   } catch {
@@ -60,3 +60,62 @@ export async function loginStrapi(identifier, password) {
 }
 
 export const STRAPI_JWT_STORAGE_KEY = 'soiloop_strapi_jwt'
+export const STRAPI_USER_STORAGE_KEY = 'soiloop_strapi_user'
+
+/**
+ * Guarda JWT e nome de utilizador (plugin::users-permissions.user) após login.
+ * @param {{ jwt: string, user?: object }} session
+ */
+export function persistStrapiSession(session) {
+  if (session?.jwt) {
+    localStorage.setItem(STRAPI_JWT_STORAGE_KEY, session.jwt)
+  }
+  const u = session?.user
+  const username = typeof u?.username === 'string' && u.username.trim() ? u.username.trim() : ''
+  if (username) {
+    localStorage.setItem(STRAPI_USER_STORAGE_KEY, JSON.stringify({ username }))
+  }
+}
+
+/** @returns {string|null} */
+export function getStoredStrapiUsername() {
+  try {
+    const raw = localStorage.getItem(STRAPI_USER_STORAGE_KEY)
+    if (!raw) return null
+    const j = JSON.parse(raw)
+    return typeof j.username === 'string' && j.username ? j.username : null
+  } catch {
+    return null
+  }
+}
+
+/** Atualiza só o nome guardado (ex. após /api/users/me). */
+export function persistStrapiUsername(username) {
+  const u = typeof username === 'string' ? username.trim() : ''
+  if (u) localStorage.setItem(STRAPI_USER_STORAGE_KEY, JSON.stringify({ username: u }))
+}
+
+/**
+ * Utilizador autenticado (ex.: após refresh, se ainda existir JWT).
+ * @returns {Promise<{ username?: string, email?: string } | null>}
+ */
+export async function fetchStrapiCurrentUser() {
+  const base = strapiBaseUrl()
+  const jwt = localStorage.getItem(STRAPI_JWT_STORAGE_KEY)
+  if (!base || !jwt) return null
+
+  try {
+    const res = await fetch(`${base}/api/users/me`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    })
+    if (!res.ok) return null
+    const json = await res.json()
+    if (json?.username !== undefined) return json
+    if (json?.data?.username !== undefined) return json.data
+    const attrs = json?.data?.attributes
+    if (attrs?.username) return { username: attrs.username, email: attrs.email }
+    return null
+  } catch {
+    return null
+  }
+}

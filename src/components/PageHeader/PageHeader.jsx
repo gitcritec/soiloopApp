@@ -8,7 +8,7 @@ export default function PageHeader({ userName, onMenuClick, variant = 'default',
     <header className={`page-header${isFloating ? ' page-header--floating' : ''}`}>
       <div className="page-header__brand" aria-hidden="true">
         {logoSrc ? (
-          <img src={logoSrc} alt="" className="page-header__logo-img" width={40} height={40} />
+          <img src={logoSrc} alt="Logo" className="page-header__logo-img" width={40} height={40} />
         ) : (
           <span className="page-header__logo" />
         )}
