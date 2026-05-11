@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { faRecycle } from '@fortawesome/pro-light-svg-icons'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faBarcodeRead, faRecycle } from '@fortawesome/pro-light-svg-icons'
 import logoSoiloop from '../../assets/figma-operador/logo-soiloop.png'
 import './Dashboard.css'
 import {
@@ -14,7 +15,7 @@ import CollectionCard from '../../components/CollectionCard/CollectionCard.jsx'
 import FloatingPrimaryButton from '../../components/FloatingPrimaryButton/FloatingPrimaryButton.jsx'
 import BottomNav from '../../components/BottomNav/BottomNav.jsx'
 import OperadorStatsSummary from '../../components/OperadorStatsSummary/OperadorStatsSummary.jsx'
-import { IconBarcodeScan, IconHistorico, IconHome, IconMovimentos } from '../../components/icons/icons.jsx'
+import { IconHistorico, IconHome, IconMovimentos } from '../../components/icons/icons.jsx'
 import {
   MOCK_DAY_COLLECTIONS,
   MOCK_OPERATOR_NAME,
@@ -135,7 +136,7 @@ export default function Dashboard() {
         variant="operador"
         label="Processar"
         onClick={() => {}}
-        icon={<IconBarcodeScan />}
+        icon={<FontAwesomeIcon icon={faBarcodeRead} aria-hidden />}
       />
       <BottomNav
         variant="operador"
