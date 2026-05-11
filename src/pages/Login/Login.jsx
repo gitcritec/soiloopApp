@@ -1,8 +1,9 @@
+import { faLock, faUser } from '@fortawesome/pro-light-svg-icons'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useEffect, useState } from 'react'
 import './Login.css'
 import logoImg from '../../assets/logo.png'
 import loginImage from '../../assets/imagem-login.png'
-import { IconLockOutline, IconUserOutline } from '../../components/icons/icons.jsx'
 import { useAppLoading } from '../../context/AppLoadingContext.jsx'
 import { loginStrapi } from '../../lib/strapiAuth.js'
 import { fetchStrapiGlobalLogoUrl } from '../../lib/strapiGlobal.js'
@@ -75,7 +76,7 @@ export default function Login({ onAuthSuccess }) {
           </label>
           <div className="input-wrap">
             <span className="input-icon" aria-hidden="true">
-              <IconUserOutline className="input-icon__svg" />
+              <FontAwesomeIcon icon={faUser} className="input-icon__svg" />
             </span>
             <input
               id="username"
@@ -95,7 +96,7 @@ export default function Login({ onAuthSuccess }) {
           </label>
           <div className="input-wrap">
             <span className="input-icon" aria-hidden="true">
-              <IconLockOutline className="input-icon__svg" />
+              <FontAwesomeIcon icon={faLock} className="input-icon__svg" />
             </span>
             <input
               id="password"
