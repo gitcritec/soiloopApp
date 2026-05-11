@@ -1,17 +1,12 @@
 import { useState } from 'react'
+import { faRecycle } from '@fortawesome/free-solid-svg-icons'
 import './Dashboard.css'
 import PageHeader from '../../components/PageHeader/PageHeader.jsx'
 import SectionTitleWithIcon from '../../components/SectionTitleWithIcon/SectionTitleWithIcon.jsx'
 import CollectionCard from '../../components/CollectionCard/CollectionCard.jsx'
 import FloatingPrimaryButton from '../../components/FloatingPrimaryButton/FloatingPrimaryButton.jsx'
 import BottomNav from '../../components/BottomNav/BottomNav.jsx'
-import {
-  IconBarcodeScan,
-  IconHistorico,
-  IconHome,
-  IconMovimentos,
-  IconRecycle,
-} from '../../components/icons/icons.jsx'
+import { IconBarcodeScan, IconHistorico, IconHome, IconMovimentos } from '../../components/icons/icons.jsx'
 import {
   MOCK_DAY_COLLECTIONS,
   MOCK_OPERATOR_NAME,
@@ -33,11 +28,7 @@ export default function Dashboard() {
 
       <main className="operator-dashboard__main">
         <section className="operator-dashboard__section" aria-labelledby="sec-day">
-          <SectionTitleWithIcon
-            id="sec-day"
-            title="Recolhas do Dia"
-            icon={<IconRecycle />}
-          />
+          <SectionTitleWithIcon id="sec-day" title="Recolhas do Dia" icon={faRecycle} />
           <div className="operator-dashboard__cards">
             {MOCK_DAY_COLLECTIONS.map((item) => (
               <CollectionCard
@@ -55,11 +46,7 @@ export default function Dashboard() {
         </section>
 
         <section className="operator-dashboard__section" aria-labelledby="sec-upcoming">
-          <SectionTitleWithIcon
-            id="sec-upcoming"
-            title="Próximas Recolhas"
-            icon={<IconRecycle />}
-          />
+          <SectionTitleWithIcon id="sec-upcoming" title="Próximas Recolhas" icon={faRecycle} />
           <div className="operator-dashboard__cards">
             {MOCK_UPCOMING_COLLECTIONS.map((item) => (
               <CollectionCard
