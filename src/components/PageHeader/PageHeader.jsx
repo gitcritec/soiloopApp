@@ -1,7 +1,13 @@
 import './PageHeader.css'
 import { IconMenu } from '../icons/icons.jsx'
 
-export default function PageHeader({ userName, onMenuClick, variant = 'default', logoSrc }) {
+export default function PageHeader({
+  userName,
+  onMenuClick,
+  variant = 'default',
+  logoSrc,
+  menuOpen = false,
+}) {
   const isFloating = variant === 'floating'
 
   return (
@@ -20,6 +26,8 @@ export default function PageHeader({ userName, onMenuClick, variant = 'default',
         type="button"
         className="page-header__menu"
         aria-label="Abrir menu"
+        aria-expanded={menuOpen}
+        aria-controls="operator-drawer-panel"
         onClick={onMenuClick}
       >
         <IconMenu className="page-header__menu-icon" />

@@ -4,10 +4,13 @@ import logoSoiloop from '../../assets/figma-operador/logo-soiloop.png'
 import './Dashboard.css'
 import {
   fetchStrapiCurrentUser,
+  getStoredStrapiRoleLabel,
   getStoredStrapiUsername,
-  persistStrapiUsername,
+  normalizeStrapiUserRole,
+  persistStrapiUserCache,
 } from '../../lib/strapiAuth.js'
 import { fetchStrapiGlobalLogoSmallUrl } from '../../lib/strapiGlobal.js'
+import OperatorDrawerMenu from '../../components/OperatorDrawerMenu/OperatorDrawerMenu.jsx'
 import PageHeader from '../../components/PageHeader/PageHeader.jsx'
 import SectionTitleWithIcon from '../../components/SectionTitleWithIcon/SectionTitleWithIcon.jsx'
 import CollectionCard from '../../components/CollectionCard/CollectionCard.jsx'
@@ -28,12 +31,14 @@ const OPERATOR_BOTTOM_NAV_ITEMS = [
   { id: 'historico', label: 'Histórico', Icon: IconHistorico },
 ]
 
-export default function Dashboard() {
+export default function Dashboard({ onLogout }) {
+  const [menuOpen, setMenuOpen] = useState(false)
   const [navActiveId, setNavActiveId] = useState('dashboard')
   const [headerLogoSrc, setHeaderLogoSrc] = useState(null)
   const [userName, setUserName] = useState(
     () => getStoredStrapiUsername() ?? MOCK_OPERATOR_NAME,
   )
+  const [userRole, setUserRole] = useState(() => getStoredStrapiRoleLabel() ?? 'Operador')
 
   useEffect(() => {
     let cancelled = false
@@ -46,28 +51,46 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => {
-    if (getStoredStrapiUsername()) return
     let cancelled = false
     fetchStrapiCurrentUser().then((u) => {
-      const name = u?.username?.trim() || u?.email?.trim()
-      if (!cancelled && name) {
-        persistStrapiUsername(name)
-        setUserName(name)
-      }
+      if (cancelled || !u) return
+      persistStrapiUserCache(u)
+      const name = u.username?.trim() || u.email?.trim()
+      if (name) setUserName(name)
+      const label =
+        normalizeStrapiUserRole(u.role) ?? getStoredStrapiRoleLabel() ?? 'Operador'
+      setUserRole(label)
     })
     return () => {
       cancelled = true
     }
   }, [])
 
+  function handleDrawerNavigate(actionId) {
+    if (actionId === 'movimentos') setNavActiveId('movimentos')
+    else if (actionId === 'historico') setNavActiveId('historico')
+    else if (actionId === 'recolhas') setNavActiveId('dashboard')
+  }
+
   return (
     <div className="operator-dashboard">
+      <OperatorDrawerMenu
+        isOpen={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        userName={userName}
+        userRole={userRole}
+        avatarSrc={headerLogoSrc ?? logoSoiloop}
+        onLogout={onLogout ?? (() => {})}
+        onNavigate={handleDrawerNavigate}
+      />
+
       <div className="operator-dashboard__header-slot">
         <PageHeader
           variant="floating"
           logoSrc={headerLogoSrc ?? logoSoiloop}
           userName={userName}
-          onMenuClick={() => {}}
+          menuOpen={menuOpen}
+          onMenuClick={() => setMenuOpen((o) => !o)}
         />
       </div>
 

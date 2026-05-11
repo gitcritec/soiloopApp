@@ -1,0 +1,180 @@
+/* Drawer operador — à direita, sombra Figma (-2px 0 12px), sem escurecimento do fundo */
+.operator-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  visibility: hidden;
+  transition: visibility 0.28s step-end;
+}
+
+.operator-drawer--open {
+  pointer-events: auto;
+  visibility: visible;
+  transition: visibility 0s step-start;
+}
+
+/* Área transparente: fecha ao tocar fora do painel, sem overlay escuro */
+.operator-drawer__backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.operator-drawer__panel {
+  position: absolute;
+  right: 0;
+  left: auto;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 263px;
+  max-width: min(263px, 88vw);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 28px 21px 32px;
+  background: #f9f8f9;
+  box-shadow: -2px 0 12px rgba(0, 0, 0, 0.2);
+  transform: translateX(100%);
+  transition: transform 0.28s ease;
+}
+
+.operator-drawer--open .operator-drawer__panel {
+  transform: translateX(0);
+}
+
+.operator-drawer__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 48px;
+}
+
+.operator-drawer__user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.operator-drawer__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.operator-drawer__avatar--placeholder {
+  display: block;
+  background: #c7e8bf;
+}
+
+.operator-drawer__user-text {
+  min-width: 0;
+}
+
+.operator-drawer__name {
+  margin: 0 0 2px;
+  font-size: 16px;
+  line-height: 15px;
+  font-weight: 700;
+  color: #060e0b;
+}
+
+.operator-drawer__role {
+  margin: 0;
+  font-size: 12px;
+  line-height: 15px;
+  font-weight: 400;
+  color: #060e0b;
+}
+
+.operator-drawer__close {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  margin: -4px 0 0 -8px;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #060e0b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.operator-drawer__close:hover {
+  background: rgba(6, 14, 11, 0.06);
+}
+
+.operator-drawer__close-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.operator-drawer__nav {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 32px;
+}
+
+.operator-drawer__nav--primary {
+  flex: 1;
+}
+
+.operator-drawer__nav--secondary {
+  margin-top: auto;
+  padding-top: 24px;
+}
+
+.operator-drawer__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 176px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: 'Rubik', sans-serif;
+  color: #40534c;
+}
+
+.operator-drawer__item:hover {
+  color: #060e0b;
+}
+
+.operator-drawer__item-icon {
+  flex-shrink: 0;
+  width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.operator-drawer__item-icon svg {
+  width: 1em;
+  height: 1em;
+}
+
+.operator-drawer__item-label {
+  font-size: 16px;
+  line-height: 15px;
+  font-weight: 400;
+}
