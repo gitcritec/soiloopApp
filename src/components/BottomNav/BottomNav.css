@@ -55,3 +55,39 @@
   width: 24px;
   height: 24px;
 }
+
+.bottom-nav--operador {
+  min-height: 80px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0));
+  background: #f9f8f9;
+  border-top: none;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+}
+
+.bottom-nav--operador .bottom-nav__list {
+  justify-content: center;
+  gap: 40px;
+}
+
+.bottom-nav--operador .bottom-nav__item {
+  flex: 0 0 auto;
+  max-width: none;
+}
+
+.bottom-nav--operador .bottom-nav__btn {
+  gap: 4px;
+  padding: 4px 2px;
+  font-size: 10px;
+  line-height: 15px;
+  font-weight: 400;
+  color: #40534c;
+}
+
+.bottom-nav--operador .bottom-nav__btn--active {
+  color: #1e8f2b;
+}
+
+.bottom-nav--operador .bottom-nav__icon {
+  width: 20px;
+  height: 20px;
+}

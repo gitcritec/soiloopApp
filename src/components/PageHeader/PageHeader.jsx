@@ -1,11 +1,17 @@
 import './PageHeader.css'
 import { IconMenu } from '../icons/icons.jsx'
 
-export default function PageHeader({ userName, onMenuClick }) {
+export default function PageHeader({ userName, onMenuClick, variant = 'default', logoSrc }) {
+  const isFloating = variant === 'floating'
+
   return (
-    <header className="page-header">
+    <header className={`page-header${isFloating ? ' page-header--floating' : ''}`}>
       <div className="page-header__brand" aria-hidden="true">
-        <span className="page-header__logo" />
+        {logoSrc ? (
+          <img src={logoSrc} alt="" className="page-header__logo-img" width={40} height={40} />
+        ) : (
+          <span className="page-header__logo" />
+        )}
       </div>
       <p className="page-header__greeting">
         Olá <strong>{userName}</strong>

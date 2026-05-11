@@ -7,9 +7,21 @@ const STATUS_LABEL = {
   agendada: 'Agendada',
 }
 
+function splitScheduledAt(scheduledAt) {
+  const t = (scheduledAt ?? '').trim()
+  if (!t) return { date: '', time: '' }
+  const parts = t.split(/\s+/)
+  if (parts.length < 2) return { date: t, time: '' }
+  const time = parts[parts.length - 1]
+  const date = parts.slice(0, -1).join(' ')
+  return { date, time }
+}
+
 export default function CollectionCard({
   collectionId,
   location,
+  locationPrefix,
+  locationDetail,
   status,
   scheduledAt,
   binNumber,
@@ -17,6 +29,9 @@ export default function CollectionCard({
   onScanClick,
 }) {
   const statusLabel = STATUS_LABEL[status] ?? status
+  const { date: datePart, time: timePart } = splitScheduledAt(scheduledAt)
+
+  const hasSplitLocation = Boolean(locationPrefix && locationDetail)
 
   return (
     <article className={`collection-card collection-card--status-${status}`}>
@@ -27,13 +42,21 @@ export default function CollectionCard({
 
       <div className="collection-card__body">
         <p className="collection-card__id">{collectionId}</p>
-        <p className="collection-card__location">{location}</p>
-        <div className="collection-card__meta">
+        {hasSplitLocation ? (
+          <p className="collection-card__location collection-card__location--split">
+            <span className="collection-card__location-muted">{locationPrefix}</span>
+            <span className="collection-card__location-strong">{locationDetail}</span>
+          </p>
+        ) : (
+          <p className="collection-card__location">{location}</p>
+        )}
+        <div className={`collection-card__meta collection-card__meta--status-${status}`}>
           <span className="collection-card__badge">
+            <span className="collection-card__badge-text">{statusLabel}</span>
             <IconCalendarSmall className="collection-card__badge-icon" aria-hidden="true" />
-            {statusLabel}
           </span>
-          <span className="collection-card__datetime">{scheduledAt}</span>
+          {datePart ? <span className="collection-card__date">{datePart}</span> : null}
+          {timePart ? <span className="collection-card__time">{timePart}</span> : null}
         </div>
       </div>
 

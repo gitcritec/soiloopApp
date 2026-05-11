@@ -13,14 +13,40 @@ function splitHeadingTitle(title) {
   }
 }
 
-export default function SectionTitleWithIcon({ title, id, icon }) {
+function isFaIconDefinition(icon) {
+  return (
+    icon &&
+    typeof icon === 'object' &&
+    typeof icon.iconName === 'string' &&
+    Array.isArray(icon.icon)
+  )
+}
+
+export default function SectionTitleWithIcon({
+  title,
+  id,
+  icon,
+  titleTone = 'default',
+  iconSize = 'default',
+}) {
   const { firstWord, rest } = splitHeadingTitle(title)
+  const rootClass = [
+    'section-title-with-icon',
+    iconSize === 'large' ? 'section-title-with-icon--icon-lg' : '',
+    titleTone === 'swapped' ? 'section-title-with-icon--tone-swapped' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   return (
-    <h2 id={id} className="section-title-with-icon">
+    <h2 id={id} className={rootClass}>
       {icon ? (
         <span className="section-title-with-icon__icon" aria-hidden="true">
-          <FontAwesomeIcon icon={icon} className="section-title-with-icon__fa" />
+          {isFaIconDefinition(icon) ? (
+            <FontAwesomeIcon icon={icon} className="section-title-with-icon__fa" />
+          ) : (
+            icon
+          )}
         </span>
       ) : null}
       <span className="section-title-with-icon__text">

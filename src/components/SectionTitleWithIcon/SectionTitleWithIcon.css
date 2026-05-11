@@ -37,3 +37,32 @@
 .section-title-with-icon__rest {
   color: #1c8767;
 }
+
+.section-title-with-icon--tone-swapped .section-title-with-icon__first {
+  color: #1c8767;
+}
+
+.section-title-with-icon--tone-swapped .section-title-with-icon__rest {
+  color: #0a3125;
+}
+
+.section-title-with-icon--icon-lg .section-title-with-icon__icon {
+  width: 60px;
+  min-height: 48px;
+  padding-top: 0;
+  justify-content: center;
+  color: #11b068;
+}
+
+.section-title-with-icon--icon-lg .section-title-with-icon__fa {
+  width: 48px;
+  height: 48px;
+}
+
+.section-title-with-icon--icon-lg .section-title-with-icon__icon img {
+  max-width: 48px;
+  max-height: 48px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}

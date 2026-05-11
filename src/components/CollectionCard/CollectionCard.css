@@ -1,12 +1,15 @@
 .collection-card {
   display: grid;
-  grid-template-columns: 52px 1fr auto;
+  grid-template-columns: 28px 1fr 114px;
   align-items: center;
-  gap: 14px;
-  padding: 14px 14px 14px 12px;
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 2px 12px rgba(6, 14, 11, 0.06);
+  gap: 12px;
+  width: 100%;
+  max-width: 353px;
+  margin: 0 auto;
+  padding: 8px 8px 8px 16px;
+  box-sizing: border-box;
+  background: #f9f8f9;
+  border-radius: 10px;
 }
 
 .collection-card__bin {
@@ -15,18 +18,18 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  min-height: 64px;
+  width: 28px;
 }
 
 .collection-card__bin-icon {
-  width: 28px;
-  height: 28px;
+  width: 20px;
+  height: 24px;
 }
 
 .collection-card__bin-number {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
-  line-height: 1;
+  line-height: 15px;
 }
 
 .collection-card__body {
@@ -34,113 +37,148 @@
 }
 
 .collection-card__id {
-  margin: 0 0 4px;
-  font-size: 15px;
+  margin: 0 0 0;
+  font-size: 16px;
   font-weight: 700;
+  line-height: 15px;
   color: #060e0b;
 }
 
 .collection-card__location {
-  margin: 0 0 8px;
-  font-size: 13px;
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 15px;
   color: #40534c;
-  line-height: 1.35;
+}
+
+.collection-card__location--split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  color: inherit;
+}
+
+.collection-card__location-muted {
+  color: #40534c;
+}
+
+.collection-card__location-strong {
+  color: #060e0b;
 }
 
 .collection-card__meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 400;
+  line-height: 15px;
 }
 
 .collection-card__badge {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
+  min-width: 80px;
+  height: 20px;
+  padding: 0 8px 2px;
+  box-sizing: border-box;
+  border-radius: 5px;
+}
+
+.collection-card__badge-text {
+  font-size: 9px;
+  line-height: 15px;
 }
 
 .collection-card__badge-icon {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
 }
 
-.collection-card__datetime {
-  font-size: 12px;
-  color: #5c6d66;
+.collection-card__date,
+.collection-card__time {
+  font-size: 9px;
+  line-height: 15px;
 }
 
 .collection-card__actions {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .collection-card__btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  padding: 0;
+  width: 53px;
+  height: 54px;
+  padding: 12px 16px;
   border: none;
-  border-radius: 10px;
+  border-radius: 5px;
   cursor: pointer;
 }
 
 .collection-card__btn-icon {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
 }
 
 .collection-card__btn--location {
-  background: #eef1f0;
+  background: #e5e9e8;
   color: #40534c;
 }
 
 .collection-card__btn--location:hover {
-  background: #e2e8e6;
+  filter: brightness(0.97);
 }
 
 .collection-card__btn--scan {
-  background: #2ecc71;
-  color: #fff;
+  background: #15d67f;
+  color: #f9f8f9;
 }
 
 .collection-card__btn--scan:hover {
-  filter: brightness(0.95);
+  filter: brightness(1.03);
 }
 
 .collection-card--status-hoje .collection-card__bin-icon,
-.collection-card--status-hoje .collection-card__bin-number {
-  color: #e53935;
+.collection-card--status-hoje .collection-card__bin-number,
+.collection-card--status-hoje .collection-card__meta {
+  color: #e6193c;
 }
 
 .collection-card--status-hoje .collection-card__badge {
-  background: #ffebee;
-  color: #c62828;
+  background: #fbdae0;
+  color: #e6193c;
 }
 
 .collection-card--status-amanha .collection-card__bin-icon,
-.collection-card--status-amanha .collection-card__bin-number {
-  color: #f9a825;
+.collection-card--status-amanha .collection-card__bin-number,
+.collection-card--status-amanha .collection-card__meta {
+  color: #f1ba00;
 }
 
 .collection-card--status-amanha .collection-card__badge {
-  background: #fff8e1;
-  color: #f57f17;
+  background: #fff6d6;
+  color: #f1ba00;
 }
 
 .collection-card--status-agendada .collection-card__bin-icon,
-.collection-card--status-agendada .collection-card__bin-number {
-  color: #43a047;
+.collection-card--status-agendada .collection-card__bin-number,
+.collection-card--status-agendada .collection-card__meta {
+  color: #1e8f2b;
 }
 
 .collection-card--status-agendada .collection-card__badge {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: #eeffce;
+  color: #1e8f2b;
 }

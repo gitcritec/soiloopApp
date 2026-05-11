@@ -1,8 +1,17 @@
 import './BottomNav.css'
 
-export default function BottomNav({ items, activeId, onSelect, ariaLabel = 'Navegação principal' }) {
+export default function BottomNav({
+  items,
+  activeId,
+  onSelect,
+  ariaLabel = 'Navegação principal',
+  variant = 'default',
+}) {
+  const navClass =
+    variant === 'operador' ? 'bottom-nav bottom-nav--operador' : 'bottom-nav'
+
   return (
-    <nav className="bottom-nav" aria-label={ariaLabel}>
+    <nav className={navClass} aria-label={ariaLabel}>
       <ul className="bottom-nav__list">
         {items.map(({ id, label, Icon }) => {
           const isActive = id === activeId
