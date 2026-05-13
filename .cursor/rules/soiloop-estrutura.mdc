@@ -14,6 +14,7 @@ alwaysApply: true
 ## Organização de páginas
 
 - Cada ecrã fica em **`src/pages/<NomeDaPasta>/`** (ex.: `Login/`, `Dashboard/`).
+- Pastas com variantes por perfil: **`src/pages/Dashboard/Operador/`** (ecrã operador), no futuro **`Dashboard/Cliente/`**; **`Dashboard/Dashboard.jsx`** reexporta ou compõe a variante certa.
 - Dentro da pasta: ficheiro principal **`Nome.jsx`** (ou alinhado ao nome da pasta), **`Nome.css`** ao lado, e **`mockData.js`** (ou similar) **só** se forem dados/mock específicos dessa página.
 - **`App.jsx`** mantém-se enxuto: composição de alto nível (auth, router quando existir), sem lógica de UI de páginas.
 

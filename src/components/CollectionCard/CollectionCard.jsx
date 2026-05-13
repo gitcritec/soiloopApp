@@ -1,10 +1,22 @@
 import './CollectionCard.css'
-import { IconTrash, IconLocationPin, IconBarcodeScan, IconCalendarSmall } from '../icons/icons.jsx'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faLocationDot as faLocationDotSharp } from '@fortawesome/sharp-light-svg-icons'
+import { faBarcodeRead } from '@fortawesome/pro-light-svg-icons'
+import containerGreen from '../../assets/container-green.svg'
+import containerRed from '../../assets/container-red.svg'
+import containerYellow from '../../assets/container-yellow.svg'
+import { IconCalendarSmall } from '../icons/icons.jsx'
 
 const STATUS_LABEL = {
   hoje: 'Hoje',
   amanha: 'Amanhã',
   agendada: 'Agendada',
+}
+
+const STATUS_BIN_ART = {
+  hoje: containerRed,
+  amanha: containerYellow,
+  agendada: containerGreen,
 }
 
 function splitScheduledAt(scheduledAt) {
@@ -32,11 +44,12 @@ export default function CollectionCard({
   const { date: datePart, time: timePart } = splitScheduledAt(scheduledAt)
 
   const hasSplitLocation = Boolean(locationPrefix && locationDetail)
+  const binArtSrc = STATUS_BIN_ART[status] ?? containerGreen
 
   return (
     <article className={`collection-card collection-card--status-${status}`}>
       <div className="collection-card__bin">
-        <IconTrash className="collection-card__bin-icon" aria-hidden="true" />
+        <img src={binArtSrc} alt="" className="collection-card__bin-icon" width={20} height={24} />
         <span className="collection-card__bin-number">{binNumber}</span>
       </div>
 
@@ -67,7 +80,7 @@ export default function CollectionCard({
           aria-label="Ver localização"
           onClick={onLocationClick}
         >
-          <IconLocationPin className="collection-card__btn-icon" />
+          <FontAwesomeIcon icon={faLocationDotSharp} className="collection-card__btn-icon" aria-hidden />
         </button>
         <button
           type="button"
@@ -75,7 +88,7 @@ export default function CollectionCard({
           aria-label="Digitalizar"
           onClick={onScanClick}
         >
-          <IconBarcodeScan className="collection-card__btn-icon" />
+          <FontAwesomeIcon icon={faBarcodeRead} className="collection-card__btn-icon" aria-hidden />
         </button>
       </div>
     </article>

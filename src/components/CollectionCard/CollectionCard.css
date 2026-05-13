@@ -22,8 +22,11 @@
 }
 
 .collection-card__bin-icon {
+  display: block;
   width: 20px;
   height: 24px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .collection-card__bin-number {
@@ -83,7 +86,7 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  min-width: 80px;
+  min-width: 75px;
   height: 20px;
   padding: 0 8px 2px;
   box-sizing: border-box;
@@ -128,8 +131,11 @@
 }
 
 .collection-card__btn-icon {
+  display: block;
   width: 16px;
   height: 16px;
+  font-size: 16px;
+  line-height: 1;
 }
 
 .collection-card__btn--location {
@@ -150,7 +156,6 @@
   filter: brightness(1.03);
 }
 
-.collection-card--status-hoje .collection-card__bin-icon,
 .collection-card--status-hoje .collection-card__bin-number,
 .collection-card--status-hoje .collection-card__meta {
   color: #e6193c;
@@ -161,7 +166,6 @@
   color: #e6193c;
 }
 
-.collection-card--status-amanha .collection-card__bin-icon,
 .collection-card--status-amanha .collection-card__bin-number,
 .collection-card--status-amanha .collection-card__meta {
   color: #f1ba00;
@@ -172,7 +176,6 @@
   color: #f1ba00;
 }
 
-.collection-card--status-agendada .collection-card__bin-icon,
 .collection-card--status-agendada .collection-card__bin-number,
 .collection-card--status-agendada .collection-card__meta {
   color: #1e8f2b;
