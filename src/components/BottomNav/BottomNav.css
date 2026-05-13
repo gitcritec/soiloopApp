@@ -52,8 +52,11 @@
 }
 
 .bottom-nav__icon {
+  display: block;
   width: 24px;
   height: 24px;
+  font-size: 24px;
+  line-height: 1;
 }
 
 .bottom-nav--operador {
@@ -89,6 +92,7 @@
 .bottom-nav--operador .bottom-nav__icon {
   width: 20px;
   height: 20px;
+  font-size: 20px;
 }
 
 /* Navegação inferior admin: 5 itens (Recolhas, Contentores, Dashboard, Clientes, Tickets). */

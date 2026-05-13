@@ -1,10 +1,6 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import {
-  faHandHoldingHeart,
-  faLeaf,
-  faRecycle,
-  faRoad,
-} from '@fortawesome/free-solid-svg-icons'
+import { faCarSideBolt, faLeaf, faRecycle } from '@fortawesome/pro-light-svg-icons'
+import { faEarthEurope } from '@fortawesome/sharp-light-svg-icons'
 import './OperadorStatsSummary.css'
 
 export default function OperadorStatsSummary({
@@ -17,7 +13,7 @@ export default function OperadorStatsSummary({
     <section className="operador-stats-summary" aria-labelledby="operador-stats-heading">
       <div className="operador-stats-summary__heading">
         <span className="operador-stats-summary__heading-icon" aria-hidden="true">
-          <FontAwesomeIcon icon={faHandHoldingHeart} />
+          <FontAwesomeIcon icon={faEarthEurope} />
         </span>
         <h2 id="operador-stats-heading" className="operador-stats-summary__heading-text">
           <span className="operador-stats-summary__heading-line1">O planeta agradece</span>
@@ -51,7 +47,7 @@ export default function OperadorStatsSummary({
             </div>
           </div>
           <div className="operador-stats-summary__tile operador-stats-summary__tile--yellow">
-            <FontAwesomeIcon icon={faRoad} className="operador-stats-summary__tile-fa" aria-hidden />
+            <FontAwesomeIcon icon={faCarSideBolt} className="operador-stats-summary__tile-fa" aria-hidden />
             <p className="operador-stats-summary__tile-value">
               {kmPercorridos} <span className="operador-stats-summary__tile-value-suffix">Km</span>
             </p>
