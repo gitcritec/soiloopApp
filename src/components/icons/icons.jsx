@@ -112,6 +112,74 @@ export function IconHistorico({ className, ...props }) {
   )
 }
 
+/** Equipa / utilizadores (navegação admin). */
+export function IconUsersGroup({ className, ...props }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M16 11a3.25 3.25 0 1 0-6.5 0 3.25 3.25 0 0 0 6.5 0ZM8.25 11a2.25 2.25 0 1 0-4.5 0 2.25 2.25 0 0 0 4.5 0Z"
+        stroke="currentColor"
+        strokeWidth="1.65"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M3.75 18.5c.35-2.1 2.15-3.5 4.5-3.5h.5M12.25 15h1.5c2.35 0 4.15 1.4 4.5 3.5"
+        stroke="currentColor"
+        strokeWidth="1.65"
+        strokeLinecap="round"
+      />
+      <path
+        d="M20.25 10.25a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM17.5 15.5h.25c1.65 0 2.9.95 3.35 2.35"
+        stroke="currentColor"
+        strokeWidth="1.65"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+/** Tickets / mensagens (navegação admin). */
+export function IconTickets({ className, ...props }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M7 9.5h6a2 2 0 0 1 2 2V18H7a2 2 0 0 1-2-2v-4.5a2 2 0 0 1 2-2Z"
+        stroke="currentColor"
+        strokeWidth="1.65"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M11 18h6a2 2 0 0 0 2-2v-4.5a2 2 0 0 0-2-2h-1.5"
+        stroke="currentColor"
+        strokeWidth="1.65"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9.5 12.5h.01M12 12.5h.01M14.5 12.5h.01"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+export function IconChevronRight({ className, ...props }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M10 7l5 5-5 5"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 export function IconCalendarSmall({ className, ...props }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>

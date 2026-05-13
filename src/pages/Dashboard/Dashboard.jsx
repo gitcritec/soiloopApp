@@ -6,6 +6,7 @@ import {
   fetchStrapiCurrentUser,
   getStoredStrapiRoleLabel,
   getStoredStrapiUsername,
+  isStrapiAdminRoleLabel,
   normalizeStrapiUserRole,
   persistStrapiUserCache,
 } from '../../lib/strapiAuth.js'
@@ -17,6 +18,7 @@ import CollectionCard from '../../components/CollectionCard/CollectionCard.jsx'
 import FloatingPrimaryButton from '../../components/FloatingPrimaryButton/FloatingPrimaryButton.jsx'
 import BottomNav from '../../components/BottomNav/BottomNav.jsx'
 import OperadorStatsSummary from '../../components/OperadorStatsSummary/OperadorStatsSummary.jsx'
+import AdminDashboard from '../AdminDashboard/AdminDashboard.jsx'
 import { IconBarcodeScan, IconHistorico, IconHome, IconMovimentos } from '../../components/icons/icons.jsx'
 import {
   MOCK_DAY_COLLECTIONS,
@@ -38,7 +40,7 @@ export default function Dashboard({ onLogout }) {
   const [userName, setUserName] = useState(
     () => getStoredStrapiUsername() ?? MOCK_OPERATOR_NAME,
   )
-  const [userRole, setUserRole] = useState(() => getStoredStrapiRoleLabel() ?? 'Operador')
+  const [userRole, setUserRole] = useState(() => getStoredStrapiRoleLabel() ?? '')
 
   useEffect(() => {
     let cancelled = false
@@ -57,8 +59,7 @@ export default function Dashboard({ onLogout }) {
       persistStrapiUserCache(u)
       const name = u.username?.trim() || u.email?.trim()
       if (name) setUserName(name)
-      const label =
-        normalizeStrapiUserRole(u.role) ?? getStoredStrapiRoleLabel() ?? 'Operador'
+      const label = normalizeStrapiUserRole(u.role) ?? getStoredStrapiRoleLabel() ?? ''
       setUserRole(label)
     })
     return () => {
@@ -72,13 +73,27 @@ export default function Dashboard({ onLogout }) {
     else if (actionId === 'recolhas') setNavActiveId('dashboard')
   }
 
+  const roleLabelForMenu =
+    (typeof userRole === 'string' && userRole.trim()) || 'A sincronizar…'
+
+  if (isStrapiAdminRoleLabel(userRole)) {
+    return (
+      <AdminDashboard
+        onLogout={onLogout}
+        userName={userName}
+        userRole={userRole}
+        headerLogoSrc={headerLogoSrc}
+      />
+    )
+  }
+
   return (
     <div className="operator-dashboard">
       <OperatorDrawerMenu
         isOpen={menuOpen}
         onClose={() => setMenuOpen(false)}
         userName={userName}
-        userRole={userRole}
+        userRole={roleLabelForMenu}
         avatarSrc={headerLogoSrc ?? logoSoiloop}
         onLogout={onLogout ?? (() => {})}
         onNavigate={handleDrawerNavigate}

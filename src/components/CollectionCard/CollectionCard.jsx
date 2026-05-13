@@ -1,3 +1,5 @@
+import { faPen } from '@fortawesome/pro-light-svg-icons'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import './CollectionCard.css'
 import { IconTrash, IconLocationPin, IconBarcodeScan, IconCalendarSmall } from '../icons/icons.jsx'
 
@@ -27,6 +29,9 @@ export default function CollectionCard({
   binNumber,
   onLocationClick,
   onScanClick,
+  /** @type {'location' | 'edit'} */
+  primaryAction = 'location',
+  onEditClick,
 }) {
   const statusLabel = STATUS_LABEL[status] ?? status
   const { date: datePart, time: timePart } = splitScheduledAt(scheduledAt)
@@ -61,14 +66,25 @@ export default function CollectionCard({
       </div>
 
       <div className="collection-card__actions">
-        <button
-          type="button"
-          className="collection-card__btn collection-card__btn--location"
-          aria-label="Ver localização"
-          onClick={onLocationClick}
-        >
-          <IconLocationPin className="collection-card__btn-icon" />
-        </button>
+        {primaryAction === 'edit' ? (
+          <button
+            type="button"
+            className="collection-card__btn collection-card__btn--edit"
+            aria-label="Editar pedido"
+            onClick={onEditClick}
+          >
+            <FontAwesomeIcon icon={faPen} className="collection-card__btn-fa" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="collection-card__btn collection-card__btn--location"
+            aria-label="Ver localização"
+            onClick={onLocationClick}
+          >
+            <IconLocationPin className="collection-card__btn-icon" />
+          </button>
+        )}
         <button
           type="button"
           className="collection-card__btn collection-card__btn--scan"

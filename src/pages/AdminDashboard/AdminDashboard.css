@@ -1,0 +1,185 @@
+.admin-dashboard {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: #f0eeec;
+  color: #060e0b;
+}
+
+.admin-dashboard__header-slot {
+  position: fixed;
+  top: 20px;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: center;
+  padding: 0 20px;
+  pointer-events: none;
+}
+
+.admin-dashboard__header-slot > * {
+  pointer-events: auto;
+  width: 100%;
+  max-width: 353px;
+}
+
+.admin-dashboard__main {
+  max-width: 393px;
+  margin: 0 auto;
+  padding: 108px 20px 200px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.admin-dashboard__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.admin-dashboard__section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  max-width: 353px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.admin-dashboard__section-head .section-title-with-icon {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.admin-dashboard__see-all {
+  flex-shrink: 0;
+  margin-top: 8px;
+  padding: 4px 0;
+  border: none;
+  background: none;
+  font-family: 'Rubik', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1c8767;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.admin-dashboard__see-all:hover {
+  color: #0d4a32;
+}
+
+.admin-dashboard__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.admin-dashboard__ticket-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.admin-ticket-card {
+  display: grid;
+  grid-template-columns: 1fr auto 40px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 353px;
+  margin: 0 auto;
+  padding: 12px 10px 12px 14px;
+  box-sizing: border-box;
+  background: #f9f8f9;
+  border-radius: 10px;
+}
+
+.admin-ticket-card__main {
+  min-width: 0;
+}
+
+.admin-ticket-card__title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #060e0b;
+}
+
+.admin-ticket-card__client {
+  margin: 0 0 4px;
+  font-size: 12px;
+  line-height: 1.3;
+  color: #40534c;
+}
+
+.admin-ticket-card__ref {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.35;
+  color: #5c6d66;
+}
+
+.admin-ticket-card__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  padding: 4px 8px;
+  border-radius: 5px;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.admin-ticket-card__badge--aberto-hoje {
+  background: #fbdae0;
+  color: #e6193c;
+}
+
+.admin-ticket-card__badge--aberto-amanha {
+  background: #fff6d6;
+  color: #c9a100;
+}
+
+.admin-ticket-card__badge--respondido {
+  background: #e8f5e9;
+  color: #1e8f2b;
+}
+
+.admin-ticket-card__chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: #e5e9e8;
+  color: #40534c;
+  cursor: pointer;
+}
+
+.admin-ticket-card__chevron:hover {
+  filter: brightness(0.97);
+}
+
+.admin-ticket-card__chevron-icon {
+  width: 18px;
+  height: 18px;
+}

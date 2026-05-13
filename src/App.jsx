@@ -6,7 +6,7 @@ import Dashboard from './pages/Dashboard/Dashboard.jsx'
 import {
   STRAPI_JWT_STORAGE_KEY,
   clearStrapiSession,
-  persistStrapiSession,
+  persistStrapiSessionAndHydrateUser,
 } from './lib/strapiAuth.js'
 
 function AppShell() {
@@ -14,8 +14,8 @@ function AppShell() {
     () => Boolean(localStorage.getItem(STRAPI_JWT_STORAGE_KEY)),
   )
 
-  function handleAuthSuccess(session) {
-    persistStrapiSession(session)
+  async function handleAuthSuccess(session) {
+    await persistStrapiSessionAndHydrateUser(session)
     setIsAuthenticated(true)
   }
 

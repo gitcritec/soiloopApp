@@ -8,7 +8,11 @@ export default function BottomNav({
   variant = 'default',
 }) {
   const navClass =
-    variant === 'operador' ? 'bottom-nav bottom-nav--operador' : 'bottom-nav'
+    variant === 'operador'
+      ? 'bottom-nav bottom-nav--operador'
+      : variant === 'admin'
+        ? 'bottom-nav bottom-nav--admin'
+        : 'bottom-nav'
 
   return (
     <nav className={navClass} aria-label={ariaLabel}>

@@ -132,6 +132,20 @@
   height: 16px;
 }
 
+.collection-card__btn-fa {
+  width: 16px;
+  height: 16px;
+}
+
+.collection-card__btn--edit {
+  background: #5c6d66;
+  color: #f9f8f9;
+}
+
+.collection-card__btn--edit:hover {
+  filter: brightness(1.08);
+}
+
 .collection-card__btn--location {
   background: #e5e9e8;
   color: #40534c;

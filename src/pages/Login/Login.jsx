@@ -33,7 +33,7 @@ export default function Login({ onAuthSuccess }) {
     beginLoading()
     try {
       const session = await loginStrapi(identifier, password)
-      onAuthSuccess?.(session)
+      await onAuthSuccess?.(session)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido.')
     } finally {

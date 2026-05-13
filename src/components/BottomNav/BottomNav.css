@@ -90,3 +90,49 @@
   width: 20px;
   height: 20px;
 }
+
+/* Navegação inferior admin: 5 itens (Recolhas, Contentores, Dashboard, Clientes, Tickets). */
+.bottom-nav--admin {
+  padding: 10px 6px calc(10px + env(safe-area-inset-bottom, 0));
+  background: #fff;
+  border-top: 1px solid rgba(13, 74, 50, 0.1);
+  box-shadow: 0 -4px 18px rgba(6, 14, 11, 0.06);
+}
+
+.bottom-nav--admin .bottom-nav__list {
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 2px;
+  width: 100%;
+  max-width: 393px;
+  margin: 0 auto;
+}
+
+.bottom-nav--admin .bottom-nav__item {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: none;
+}
+
+.bottom-nav--admin .bottom-nav__btn {
+  gap: 2px;
+  padding: 4px 2px 2px;
+  font-size: 8px;
+  line-height: 1.15;
+  font-weight: 500;
+  color: #40534c;
+  hyphens: auto;
+}
+
+.bottom-nav--admin .bottom-nav__btn--active {
+  color: #1e8f2b;
+}
+
+.bottom-nav--admin .bottom-nav__btn--active .bottom-nav__icon {
+  color: #1e8f2b;
+}
+
+.bottom-nav--admin .bottom-nav__icon {
+  width: 20px;
+  height: 20px;
+}

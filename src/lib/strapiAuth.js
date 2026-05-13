@@ -100,6 +100,7 @@ export function normalizeStrapiUserRole(role) {
     const tryStr = (v) => (typeof v === 'string' && v.trim() ? v.trim() : null)
     const direct =
       tryStr(role.name) ??
+      tryStr(role.slug) ??
       tryStr(role.label) ??
       tryStr(role.title) ??
       tryStr(role.displayName) ??
@@ -112,6 +113,7 @@ export function normalizeStrapiUserRole(role) {
     if (attrs && typeof attrs === 'object') {
       const fromAttrs =
         tryStr(attrs.name) ??
+        tryStr(attrs.slug) ??
         tryStr(attrs.label) ??
         tryStr(attrs.title) ??
         tryStr(attrs.value)
@@ -120,11 +122,32 @@ export function normalizeStrapiUserRole(role) {
     const dataFlat = role.data
     if (dataFlat && typeof dataFlat === 'object' && !dataFlat.attributes) {
       const fromData =
-        tryStr(dataFlat.name) ?? tryStr(dataFlat.label) ?? tryStr(dataFlat.title)
+        tryStr(dataFlat.name) ??
+        tryStr(dataFlat.slug) ??
+        tryStr(dataFlat.label) ??
+        tryStr(dataFlat.title)
       if (fromData) return fromData
     }
   }
   return null
+}
+
+/**
+ * Indica se o texto da função corresponde a administrador (Strapi Users & Permissions, `role.name`).
+ * @param {string|null|undefined} label
+ * @returns {boolean}
+ */
+export function isStrapiAdminRoleLabel(label) {
+  if (label == null) return false
+  const s = String(label).trim().toLowerCase()
+  if (!s) return false
+  return (
+    s === 'admin' ||
+    s === 'administrator' ||
+    s === 'administrador' ||
+    s === 'super admin' ||
+    s === 'strapi super admin'
+  )
 }
 
 /**
@@ -160,6 +183,7 @@ function coerceStrapiUserPayload(raw) {
 
 /**
  * Guarda JWT, nome e função (`role`) após login.
+ * O Strapi costuma **não** incluir `role` no JSON de `/api/auth/local` — usa `persistStrapiSessionAndHydrateUser`.
  * @param {{ jwt: string, user?: object }} session
  */
 export function persistStrapiSession(session) {
@@ -168,13 +192,27 @@ export function persistStrapiSession(session) {
   }
   const rawUser = session?.user
   const u = coerceStrapiUserPayload(rawUser) ?? rawUser ?? {}
-  const username = typeof u?.username === 'string' && u.username.trim() ? u.username.trim() : ''
+  const username =
+    (typeof u?.username === 'string' && u.username.trim()) ||
+    (typeof u?.email === 'string' && u.email.trim()) ||
+    ''
   const roleLabel = normalizeStrapiUserRole(u?.role)
   const existing = readStoredUserJson()
   const next = { ...existing }
   if (username) next.username = username
   if (roleLabel) next.roleLabel = roleLabel
   writeStoredUserJson(next)
+}
+
+/**
+ * Grava a sessão do login e preenche `role` via `/api/users/me` (populate), porque o `user` do auth/local vem sem role.
+ * @param {{ jwt: string, user?: object }} session
+ * @returns {Promise<void>}
+ */
+export async function persistStrapiSessionAndHydrateUser(session) {
+  persistStrapiSession(session)
+  const u = await fetchStrapiCurrentUser()
+  if (u) persistStrapiUserCache(u)
 }
 
 /** @returns {string|null} */
@@ -238,15 +276,36 @@ export async function fetchStrapiCurrentUser() {
     }
   }
 
-  try {
-    /** Sem populate primeiro: campo `role` texto no user não é relação e `populate=role` pode falhar. */
-    let json = await fetchMe('')
-    if (!json) {
-      json = await fetchMe('?populate%5Brole%5D=true')
-    }
-    if (!json) return null
+  /** Várias formas de populate (Strapi v4 / v5 REST). */
+  const ROLE_POPULATE_QUERIES = [
+    '',
+    '?populate=role',
+    '?populate%5Brole%5D=true',
+    `?${new URLSearchParams({
+      'populate[role][fields][0]': 'name',
+      'populate[role][fields][1]': 'slug',
+      'populate[role][fields][2]': 'type',
+    }).toString()}`,
+  ]
 
-    let user = coerceStrapiUserPayload(json) ?? coerceStrapiUserPayload(json?.data)
+  function userFromJson(json) {
+    return coerceStrapiUserPayload(json) ?? coerceStrapiUserPayload(json?.data)
+  }
+
+  try {
+    let bestUser = null
+
+    for (const q of ROLE_POPULATE_QUERIES) {
+      const json = await fetchMe(q)
+      if (!json) continue
+      const user = userFromJson(json)
+      if (!user) continue
+      const label = normalizeStrapiUserRole(user.role)
+      if (label) return user
+      if (!bestUser) bestUser = user
+    }
+
+    let user = bestUser
     if (!user) return null
 
     let label = normalizeStrapiUserRole(user.role)
@@ -255,15 +314,18 @@ export async function fetchStrapiCurrentUser() {
       typeof user.role === 'object' &&
       typeof user.role.id === 'number' &&
       !label &&
-      Object.keys(user.role).length <= 4
+      Object.keys(user.role).length <= 6
 
     if (roleOnlyId) {
-      const jsonPop = await fetchMe('?populate%5Brole%5D=true')
-      if (jsonPop) {
-        const u2 = coerceStrapiUserPayload(jsonPop) ?? coerceStrapiUserPayload(jsonPop?.data)
+      for (const q of ROLE_POPULATE_QUERIES) {
+        if (!q) continue
+        const jsonPop = await fetchMe(q)
+        if (!jsonPop) continue
+        const u2 = userFromJson(jsonPop)
         if (u2?.role) {
           user = { ...user, role: u2.role }
           label = normalizeStrapiUserRole(u2.role)
+          if (label) break
         }
       }
     }
