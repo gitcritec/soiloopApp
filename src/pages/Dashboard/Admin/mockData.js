@@ -1,4 +1,4 @@
-/** Dados estáticos — dashboard admin (pedidos + tickets). */
+/** Dados estáticos — layout do painel admin (pedidos + tickets). */
 
 export const MOCK_ADMIN_PEDIDOS = [
   {

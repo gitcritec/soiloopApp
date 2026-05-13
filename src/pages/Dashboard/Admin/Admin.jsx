@@ -1,30 +1,28 @@
 import { useState } from 'react'
-import { faComments, faRecycle } from '@fortawesome/pro-light-svg-icons'
-import logoSoiloop from '../../assets/figma-operador/logo-soiloop.png'
-import './AdminDashboard.css'
-import OperatorDrawerMenu from '../../components/OperatorDrawerMenu/OperatorDrawerMenu.jsx'
-import PageHeader from '../../components/PageHeader/PageHeader.jsx'
-import SectionTitleWithIcon from '../../components/SectionTitleWithIcon/SectionTitleWithIcon.jsx'
-import CollectionCard from '../../components/CollectionCard/CollectionCard.jsx'
-import FloatingPrimaryButton from '../../components/FloatingPrimaryButton/FloatingPrimaryButton.jsx'
-import BottomNav from '../../components/BottomNav/BottomNav.jsx'
 import {
-  IconBarcodeScan,
-  IconHome,
-  IconRecycle,
-  IconTickets,
-  IconTrash,
-  IconUsersGroup,
-  IconChevronRight,
-} from '../../components/icons/icons.jsx'
+  faComments,
+  faHouseChimney,
+  faRecycle,
+  faTrash,
+  faUsers,
+} from '@fortawesome/pro-light-svg-icons'
+import logoSoiloop from '../../../assets/figma-operador/logo-soiloop.png'
+import './Admin.css'
+import OperatorDrawerMenu from '../../../components/OperatorDrawerMenu/OperatorDrawerMenu.jsx'
+import PageHeader from '../../../components/PageHeader/PageHeader.jsx'
+import SectionTitleWithIcon from '../../../components/SectionTitleWithIcon/SectionTitleWithIcon.jsx'
+import CollectionCard from '../../../components/CollectionCard/CollectionCard.jsx'
+import FloatingPrimaryButton from '../../../components/FloatingPrimaryButton/FloatingPrimaryButton.jsx'
+import BottomNav from '../../../components/BottomNav/BottomNav.jsx'
+import { IconBarcodeScan, IconChevronRight } from '../../../components/icons/icons.jsx'
 import { MOCK_ADMIN_PEDIDOS, MOCK_ADMIN_TICKETS } from './mockData.js'
 
 const ADMIN_BOTTOM_NAV_ITEMS = [
-  { id: 'recolhas', label: 'Recolhas', Icon: IconRecycle },
-  { id: 'contentores', label: 'Contentores', Icon: IconTrash },
-  { id: 'dashboard', label: 'Dashboard', Icon: IconHome },
-  { id: 'clientes', label: 'Clientes', Icon: IconUsersGroup },
-  { id: 'tickets', label: 'Tickets', Icon: IconTickets },
+  { id: 'recolhas', label: 'Recolhas', icon: faRecycle },
+  { id: 'contentores', label: 'Contentores', icon: faTrash },
+  { id: 'dashboard', label: 'Dashboard', icon: faHouseChimney },
+  { id: 'clientes', label: 'Clientes', icon: faUsers },
+  { id: 'tickets', label: 'Tickets', icon: faComments },
 ]
 
 const TICKET_STATUS_LABEL = {
@@ -41,7 +39,7 @@ const TICKET_STATUS_LABEL = {
  * @param {string|null|undefined} props.userRole
  * @param {string|null} [props.headerLogoSrc]
  */
-export default function AdminDashboard({ onLogout, userName, userRole, headerLogoSrc }) {
+export default function Admin({ onLogout, userName, userRole, headerLogoSrc }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [navActiveId, setNavActiveId] = useState('dashboard')
 
