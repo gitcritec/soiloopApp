@@ -1,0 +1,170 @@
+/* Ecrã Processar — slide da direita (mesmo timing do menu operador), largura total */
+.processar-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  pointer-events: none;
+  visibility: hidden;
+  transition: visibility 0.28s step-end;
+}
+
+.processar-screen--open {
+  pointer-events: auto;
+  visibility: visible;
+  transition: visibility 0s step-start;
+}
+
+.processar-screen__panel {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  color: #f9f8f9;
+  transform: translateX(100%);
+  transition: transform 0.28s ease;
+}
+
+.processar-screen--open .processar-screen__panel {
+  transform: translateX(0);
+}
+
+.processar-screen__bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.processar-screen__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 14, 11, 0.8);
+  pointer-events: none;
+}
+
+.processar-screen__close {
+  position: absolute;
+  top: 42px;
+  right: 20px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #f9f8f9;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.processar-screen__close:hover {
+  opacity: 0.85;
+}
+
+.processar-screen__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  max-width: 353px;
+  margin: 0 auto;
+  padding: 200px 20px 120px;
+  box-sizing: border-box;
+  min-height: 100%;
+}
+
+.processar-screen__title {
+  margin: 0;
+  width: 100%;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.processar-screen__intro {
+  margin: 0;
+  width: 100%;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.processar-screen__illustration {
+  display: block;
+  width: 266px;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.processar-screen__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.processar-screen__action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  height: 54px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 5px;
+  font-family: 'Rubik', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 15px;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.processar-screen__action-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.processar-screen__action--recolha {
+  background: #11b068;
+  color: #f9f8f9;
+}
+
+.processar-screen__action--recolha:hover {
+  filter: brightness(1.03);
+}
+
+.processar-screen__action--entrega {
+  background: #b1cb4f;
+  color: #f9f8f9;
+}
+
+.processar-screen__action--entrega:hover {
+  filter: brightness(1.03);
+}
+
+.processar-screen__action--formulario {
+  background: #e5e9e8;
+  color: #40534c;
+}
+
+.processar-screen__action--formulario:hover {
+  filter: brightness(0.98);
+}

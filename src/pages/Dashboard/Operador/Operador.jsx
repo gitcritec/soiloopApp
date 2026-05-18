@@ -27,6 +27,8 @@ import OperadorStatsSummary from '../../../components/OperadorStatsSummary/Opera
 import OperatorDrawerMenu from '../../../components/OperatorDrawerMenu/OperatorDrawerMenu.jsx'
 import LocationMapModal from '../../../components/LocationMapModal/LocationMapModal.jsx'
 import { formatLocationQuery } from '../../../lib/locationQuery.js'
+import Processar from './Processar/Processar.jsx'
+import QrScanner from './QrScanner/QrScanner.jsx'
 import {
   MOCK_DAY_COLLECTIONS,
   MOCK_OPERATOR_NAME,
@@ -49,6 +51,20 @@ export default function Operador({ onLogout }) {
   )
   const [userRole, setUserRole] = useState(() => getStoredStrapiRoleLabel() ?? '')
   const [locationMap, setLocationMap] = useState(null)
+  const [screen, setScreen] = useState('dashboard')
+  const [qrMode, setQrMode] = useState(null)
+
+  function openQrScanner(mode) {
+    setQrMode(mode)
+    setScreen('qr-scan')
+  }
+
+  function handleQrDetected({ mode, value }) {
+    // Próximo passo: enviar mode + value à API Strapi
+    console.info('[QR]', mode, value)
+    setQrMode(null)
+    setScreen('dashboard')
+  }
 
   function openCollectionLocation(item) {
     const query = formatLocationQuery(item)
@@ -190,7 +206,7 @@ export default function Operador({ onLogout }) {
       <FloatingPrimaryButton
         variant="operador"
         label="Processar"
-        onClick={() => {}}
+        onClick={() => setScreen('processar')}
         icon={<FontAwesomeIcon icon={faBarcodeRead} aria-hidden />}
       />
       <BottomNav
@@ -198,6 +214,21 @@ export default function Operador({ onLogout }) {
         items={OPERATOR_BOTTOM_NAV_ITEMS}
         activeId={navActiveId}
         onSelect={setNavActiveId}
+      />
+
+      <Processar
+        isOpen={screen === 'processar'}
+        onClose={() => setScreen('dashboard')}
+        onSelectRecolha={() => openQrScanner('recolher')}
+        onSelectEntrega={() => openQrScanner('entregar')}
+        onSelectFormulario={() => setScreen('dashboard')}
+      />
+
+      <QrScanner
+        isOpen={screen === 'qr-scan' && Boolean(qrMode)}
+        mode={qrMode ?? 'recolher'}
+        onClose={() => setScreen('processar')}
+        onDetected={handleQrDetected}
       />
     </div>
   )

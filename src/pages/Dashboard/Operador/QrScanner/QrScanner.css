@@ -1,0 +1,233 @@
+.qr-scanner {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  pointer-events: none;
+  visibility: hidden;
+  transition: visibility 0.28s step-end;
+}
+
+.qr-scanner--open {
+  pointer-events: auto;
+  visibility: visible;
+  transition: visibility 0s step-start;
+}
+
+.qr-scanner__panel {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: #060e0b;
+  transform: translateX(100%);
+  transition: transform 0.28s ease;
+}
+
+.qr-scanner--open .qr-scanner__panel {
+  transform: translateX(0);
+}
+
+.qr-scanner__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #060e0b;
+}
+
+.qr-scanner__video--hidden {
+  visibility: hidden;
+}
+
+.qr-scanner__ui {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.qr-scanner__close {
+  position: absolute;
+  top: 42px;
+  right: 20px;
+  z-index: 2;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #f9f8f9;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.qr-scanner__close:hover {
+  opacity: 0.85;
+}
+
+.qr-scanner__frame {
+  position: relative;
+  width: min(72vw, 280px);
+  aspect-ratio: 1;
+  flex-shrink: 0;
+}
+
+.qr-scanner__corner {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border-color: #f9f8f9;
+  border-style: solid;
+}
+
+.qr-scanner__corner--tl {
+  top: 0;
+  left: 0;
+  border-width: 4px 0 0 4px;
+  border-radius: 8px 0 0 0;
+}
+
+.qr-scanner__corner--tr {
+  top: 0;
+  right: 0;
+  border-width: 4px 4px 0 0;
+  border-radius: 0 8px 0 0;
+}
+
+.qr-scanner__corner--bl {
+  bottom: 0;
+  left: 0;
+  border-width: 0 0 4px 4px;
+  border-radius: 0 0 0 8px;
+}
+
+.qr-scanner__corner--br {
+  right: 0;
+  bottom: 0;
+  border-width: 0 4px 4px 0;
+  border-radius: 0 0 8px 0;
+}
+
+.qr-scanner__hint {
+  margin: 32px 0 0;
+  max-width: 280px;
+  font-family: 'Rubik', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.35;
+  text-align: center;
+  color: #f9f8f9;
+  text-shadow: 0 1px 8px rgba(6, 14, 11, 0.65);
+}
+
+.qr-scanner__mode {
+  position: absolute;
+  top: 48px;
+  left: 20px;
+  z-index: 2;
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 5px;
+  background: rgba(6, 14, 11, 0.55);
+  font-family: 'Rubik', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 15px;
+  color: #f9f8f9;
+  pointer-events: none;
+}
+
+.qr-scanner__mode--recolher {
+  color: #eeffce;
+}
+
+.qr-scanner__mode--entregar {
+  color: #fff6d6;
+}
+
+.qr-scanner__permission {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px 20px;
+  box-sizing: border-box;
+  background: #060e0b;
+}
+
+.qr-scanner__permission-title {
+  margin: 0;
+  max-width: 300px;
+  font-family: 'Rubik', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  color: #f9f8f9;
+}
+
+.qr-scanner__permission-text {
+  margin: 0;
+  max-width: 300px;
+  font-family: 'Rubik', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+  text-align: center;
+  color: #e5e9e8;
+}
+
+.qr-scanner__permission-error {
+  margin: 0;
+  max-width: 300px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(230, 25, 60, 0.2);
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: center;
+  color: #fbdae0;
+}
+
+.qr-scanner__permission-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 200px;
+  height: 54px;
+  padding: 0 24px;
+  border: none;
+  border-radius: 8px;
+  background: #11b068;
+  color: #f9f8f9;
+  font-family: 'Rubik', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.qr-scanner__permission-btn:hover {
+  filter: brightness(1.03);
+}
+
+.qr-scanner__permission-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
