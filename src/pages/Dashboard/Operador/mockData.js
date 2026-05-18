@@ -17,6 +17,7 @@ export const MOCK_DAY_COLLECTIONS = [
     status: 'hoje',
     scheduledAt: '04/05/2026 09:00',
     binNumber: '02',
+    taskType: 'recolher',
   },
   {
     id: 'COL-002',
@@ -25,6 +26,7 @@ export const MOCK_DAY_COLLECTIONS = [
     status: 'hoje',
     scheduledAt: '04/05/2026 09:30',
     binNumber: '03',
+    taskType: 'entregar',
   },
   {
     id: 'COL-003',
@@ -33,6 +35,7 @@ export const MOCK_DAY_COLLECTIONS = [
     status: 'hoje',
     scheduledAt: '04/05/2026 10:30',
     binNumber: '01',
+    taskType: 'recolher',
   },
 ]
 
@@ -44,6 +47,7 @@ export const MOCK_UPCOMING_COLLECTIONS = [
     status: 'amanha',
     scheduledAt: '05/05/2026 09:00',
     binNumber: '02',
+    taskType: 'entregar',
   },
   {
     id: 'COL-005',
@@ -52,6 +56,7 @@ export const MOCK_UPCOMING_COLLECTIONS = [
     status: 'amanha',
     scheduledAt: '05/05/2026 09:45',
     binNumber: '06',
+    taskType: 'recolher',
   },
   {
     id: 'COL-006',
@@ -60,6 +65,7 @@ export const MOCK_UPCOMING_COLLECTIONS = [
     status: 'agendada',
     scheduledAt: '06/05/2026 09:00',
     binNumber: '01',
+    taskType: 'recolher',
   },
   {
     id: 'COL-007',
@@ -68,6 +74,7 @@ export const MOCK_UPCOMING_COLLECTIONS = [
     status: 'agendada',
     scheduledAt: '06/05/2026 09:30',
     binNumber: '03',
+    taskType: 'entregar',
   },
   {
     id: 'COL-008',
@@ -76,6 +83,7 @@ export const MOCK_UPCOMING_COLLECTIONS = [
     status: 'agendada',
     scheduledAt: '06/05/2026 10:15',
     binNumber: '02',
+    taskType: 'recolher',
   },
   {
     id: 'COL-009',
@@ -84,6 +92,7 @@ export const MOCK_UPCOMING_COLLECTIONS = [
     status: 'agendada',
     scheduledAt: '07/05/2026 09:00',
     binNumber: '03',
+    taskType: 'entregar',
   },
   {
     id: 'COL-010',
@@ -92,5 +101,6 @@ export const MOCK_UPCOMING_COLLECTIONS = [
     status: 'agendada',
     scheduledAt: '07/05/2026 09:45',
     binNumber: '04',
+    taskType: 'recolher',
   },
 ]

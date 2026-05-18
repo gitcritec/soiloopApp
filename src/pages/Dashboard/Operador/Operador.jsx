@@ -25,6 +25,8 @@ import FloatingPrimaryButton from '../../../components/FloatingPrimaryButton/Flo
 import BottomNav from '../../../components/BottomNav/BottomNav.jsx'
 import OperadorStatsSummary from '../../../components/OperadorStatsSummary/OperadorStatsSummary.jsx'
 import OperatorDrawerMenu from '../../../components/OperatorDrawerMenu/OperatorDrawerMenu.jsx'
+import LocationMapModal from '../../../components/LocationMapModal/LocationMapModal.jsx'
+import { formatLocationQuery } from '../../../lib/locationQuery.js'
 import {
   MOCK_DAY_COLLECTIONS,
   MOCK_OPERATOR_NAME,
@@ -46,6 +48,17 @@ export default function Operador({ onLogout }) {
     () => getStoredStrapiUsername() ?? MOCK_OPERATOR_NAME,
   )
   const [userRole, setUserRole] = useState(() => getStoredStrapiRoleLabel() ?? '')
+  const [locationMap, setLocationMap] = useState(null)
+
+  function openCollectionLocation(item) {
+    const query = formatLocationQuery(item)
+    if (!query) return
+    setLocationMap({
+      query,
+      title: item.id,
+      subtitle: query,
+    })
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -86,6 +99,14 @@ export default function Operador({ onLogout }) {
 
   return (
     <div className="operator-dashboard">
+      <LocationMapModal
+        isOpen={Boolean(locationMap)}
+        onClose={() => setLocationMap(null)}
+        query={locationMap?.query ?? ''}
+        title={locationMap?.title}
+        subtitle={locationMap?.subtitle}
+      />
+
       <OperatorDrawerMenu
         isOpen={menuOpen}
         onClose={() => setMenuOpen(false)}
@@ -110,7 +131,7 @@ export default function Operador({ onLogout }) {
         <section className="operator-dashboard__section" aria-labelledby="sec-day">
           <SectionTitleWithIcon
             id="sec-day"
-            title="Recolhas do Dia"
+            title="Tarefas do Dia"
             icon={faRecycle}
             iconSize="large"
             titleTone="swapped"
@@ -126,8 +147,8 @@ export default function Operador({ onLogout }) {
                 status={item.status}
                 scheduledAt={item.scheduledAt}
                 binNumber={item.binNumber}
-                onLocationClick={() => {}}
-                onScanClick={() => {}}
+                taskType={item.taskType}
+                onLocationClick={() => openCollectionLocation(item)}
               />
             ))}
           </div>
@@ -136,7 +157,7 @@ export default function Operador({ onLogout }) {
         <section className="operator-dashboard__section" aria-labelledby="sec-upcoming">
           <SectionTitleWithIcon
             id="sec-upcoming"
-            title="Próximas Recolhas"
+            title="Próximas Tarefas"
             icon={faRecycle}
             iconSize="large"
           />
@@ -151,8 +172,8 @@ export default function Operador({ onLogout }) {
                 status={item.status}
                 scheduledAt={item.scheduledAt}
                 binNumber={item.binNumber}
-                onLocationClick={() => {}}
-                onScanClick={() => {}}
+                taskType={item.taskType}
+                onLocationClick={() => openCollectionLocation(item)}
               />
             ))}
           </div>

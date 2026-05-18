@@ -97,9 +97,9 @@ export default function Admin({ onLogout, userName, userRole, headerLogoSrc }) {
                 status={item.status}
                 scheduledAt={item.scheduledAt}
                 binNumber={item.binNumber}
+                taskType={item.taskType}
                 primaryAction="edit"
                 onEditClick={() => {}}
-                onScanClick={() => {}}
               />
             ))}
           </div>

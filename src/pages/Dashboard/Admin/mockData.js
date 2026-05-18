@@ -7,6 +7,7 @@ export const MOCK_ADMIN_PEDIDOS = [
     status: 'hoje',
     scheduledAt: '06/06/2026 10:00',
     binNumber: '20',
+    taskType: 'recolher',
   },
   {
     id: 'COL-002',
@@ -14,6 +15,7 @@ export const MOCK_ADMIN_PEDIDOS = [
     status: 'hoje',
     scheduledAt: '06/06/2026 10:00',
     binNumber: '20',
+    taskType: 'entregar',
   },
   {
     id: 'COL-003',
@@ -21,6 +23,7 @@ export const MOCK_ADMIN_PEDIDOS = [
     status: 'amanha',
     scheduledAt: '06/06/2026 10:00',
     binNumber: '20',
+    taskType: 'recolher',
   },
   {
     id: 'COL-004',
@@ -28,6 +31,7 @@ export const MOCK_ADMIN_PEDIDOS = [
     status: 'amanha',
     scheduledAt: '06/06/2026 10:00',
     binNumber: '20',
+    taskType: 'entregar',
   },
 ]
 

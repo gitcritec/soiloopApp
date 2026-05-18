@@ -1,4 +1,3 @@
-import { faBarcodeRead, faPen } from '@fortawesome/pro-light-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import './CollectionCard.css'
 import { faLocationDot as faLocationDotSharp } from '@fortawesome/sharp-light-svg-icons'
@@ -19,6 +18,11 @@ const STATUS_BIN_ART = {
   agendada: containerGreen,
 }
 
+const TASK_TYPE_LABEL = {
+  recolher: 'Recolher',
+  entregar: 'Entregar',
+}
+
 function splitScheduledAt(scheduledAt) {
   const t = (scheduledAt ?? '').trim()
   if (!t) return { date: '', time: '' }
@@ -37,13 +41,12 @@ export default function CollectionCard({
   status,
   scheduledAt,
   binNumber,
+  /** @type {'recolher' | 'entregar'} */
+  taskType = 'recolher',
   onLocationClick,
-  onScanClick,
-  /** @type {'location' | 'edit'} */
-  primaryAction = 'location',
-  onEditClick,
 }) {
   const statusLabel = STATUS_LABEL[status] ?? status
+  const taskTypeLabel = TASK_TYPE_LABEL[taskType] ?? taskType
   const { date: datePart, time: timePart } = splitScheduledAt(scheduledAt)
 
   const hasSplitLocation = Boolean(locationPrefix && locationDetail)
@@ -71,6 +74,13 @@ export default function CollectionCard({
             <span className="collection-card__badge-text">{statusLabel}</span>
             <IconCalendarSmall className="collection-card__badge-icon" aria-hidden="true" />
           </span>
+          {taskType ? (
+            <span
+              className={`collection-card__task-type collection-card__task-type--${taskType}`}
+            >
+              {taskTypeLabel}
+            </span>
+          ) : null}
           {datePart ? <span className="collection-card__date">{datePart}</span> : null}
           {timePart ? <span className="collection-card__time">{timePart}</span> : null}
         </div>
@@ -84,14 +94,6 @@ export default function CollectionCard({
           onClick={onLocationClick}
         >
           <FontAwesomeIcon icon={faLocationDotSharp} className="collection-card__btn-icon" aria-hidden />
-        </button>
-        <button
-          type="button"
-          className="collection-card__btn collection-card__btn--scan"
-          aria-label="Digitalizar"
-          onClick={onScanClick}
-        >
-          <FontAwesomeIcon icon={faBarcodeRead} className="collection-card__btn-icon" aria-hidden />
         </button>
       </div>
     </article>

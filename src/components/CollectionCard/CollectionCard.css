@@ -1,6 +1,6 @@
 .collection-card {
   display: grid;
-  grid-template-columns: 28px 1fr 114px;
+  grid-template-columns: 28px 1fr 53px;
   align-items: center;
   gap: 12px;
   width: 100%;
@@ -104,6 +104,18 @@
   flex-shrink: 0;
 }
 
+.collection-card__task-type {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border-radius: 5px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 15px;
+}
+
 .collection-card__date,
 .collection-card__time {
   font-size: 9px;
@@ -161,15 +173,6 @@
   filter: brightness(0.97);
 }
 
-.collection-card__btn--scan {
-  background: #15d67f;
-  color: #f9f8f9;
-}
-
-.collection-card__btn--scan:hover {
-  filter: brightness(1.03);
-}
-
 .collection-card--status-hoje .collection-card__bin-number,
 .collection-card--status-hoje .collection-card__meta {
   color: #e6193c;
@@ -198,4 +201,14 @@
 .collection-card--status-agendada .collection-card__badge {
   background: #eeffce;
   color: #1e8f2b;
+}
+
+.collection-card__meta .collection-card__task-type--recolher {
+  color: #1e8f2b;
+  background: #eeffce;
+}
+
+.collection-card__meta .collection-card__task-type--entregar {
+  color: #ed6f1f;
+  background: #ffe7d8;
 }
