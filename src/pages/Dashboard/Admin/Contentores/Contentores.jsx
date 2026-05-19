@@ -1,0 +1,198 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  faArrowDownToBracket,
+  faArrowUpFromBracket,
+  faMagnifyingGlass,
+  faPlus,
+  faShuffle,
+  faSliders,
+} from '@fortawesome/pro-light-svg-icons'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import contentoresHero from '../../../../assets/figma-cliente/contentores-hero.png'
+import ContentorCard from '../../../../components/ContentorCard/ContentorCard.jsx'
+import ContentorQrModal from '../../../../components/ContentorQrModal/ContentorQrModal.jsx'
+import { readAdminContentoresView, setAppHash } from '../../../../lib/appRoute.js'
+import { fetchStrapiContentores } from '../../../../lib/strapiContentores.js'
+import ContentorRegisto from './ContentorRegisto.jsx'
+import './Contentores.css'
+
+/** Lista e registo de contentores (admin) — Figma 16:793. */
+export default function Contentores() {
+  const [view, setView] = useState(() => readAdminContentoresView())
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [search, setSearch] = useState('')
+  const [qrPreview, setQrPreview] = useState(null)
+
+  const loadList = useCallback(() => {
+    setLoading(true)
+    setLoadError(false)
+    return fetchStrapiContentores()
+      .then((rows) => {
+        setItems(rows)
+      })
+      .catch(() => {
+        setLoadError(true)
+      })
+      .finally(() => {
+        setLoading(false)
+      })
+  }, [])
+
+  useEffect(() => {
+    loadList()
+  }, [loadList])
+
+  useEffect(() => {
+    function syncViewFromHash() {
+      setView(readAdminContentoresView())
+    }
+    window.addEventListener('hashchange', syncViewFromHash)
+    return () => window.removeEventListener('hashchange', syncViewFromHash)
+  }, [])
+
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return items
+    return items.filter((item) => {
+      const haystack = [item.cid, item.localizacao, item.estadoLabel, item.litrosLabel]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      return haystack.includes(q)
+    })
+  }, [items, search])
+
+  function goToList() {
+    setView('list')
+    setAppHash('admin', 'contentores')
+  }
+
+  function openCreate() {
+    setView('create')
+    setAppHash('admin', 'contentores', 'criar')
+  }
+
+  function handleRegistoSuccess() {
+    goToList()
+    loadList()
+  }
+
+  if (view === 'create') {
+    return (
+      <ContentorRegisto
+        onCancel={goToList}
+        onSuccess={handleRegistoSuccess}
+      />
+    )
+  }
+
+  return (
+    <>
+      <div className="admin-contentores">
+        <div className="admin-contentores__hero-wrap">
+          <img
+            src={contentoresHero}
+            alt=""
+            className="admin-contentores__hero"
+            width={353}
+            height={130}
+          />
+        </div>
+
+        <div className="admin-contentores__flow-actions">
+          <button type="button" className="admin-contentores__flow-btn admin-contentores__flow-btn--entrada">
+            <FontAwesomeIcon icon={faArrowDownToBracket} className="admin-contentores__flow-icon" aria-hidden />
+            <span>Entrada</span>
+          </button>
+          <button type="button" className="admin-contentores__flow-btn admin-contentores__flow-btn--saida">
+            <FontAwesomeIcon icon={faArrowUpFromBracket} className="admin-contentores__flow-icon" aria-hidden />
+            <span>Saída</span>
+          </button>
+          <button
+            type="button"
+            className="admin-contentores__add"
+            aria-label="Adicionar contentor"
+            onClick={openCreate}
+          >
+            <FontAwesomeIcon icon={faPlus} className="admin-contentores__add-icon" aria-hidden />
+          </button>
+        </div>
+
+        <div className="admin-contentores__toolbar">
+          <label className="admin-contentores__search">
+            <FontAwesomeIcon icon={faMagnifyingGlass} className="admin-contentores__search-icon" aria-hidden />
+            <input
+              type="search"
+              className="admin-contentores__search-input"
+              placeholder="Pesquisar"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Pesquisar contentores"
+            />
+          </label>
+          <button type="button" className="admin-contentores__tool-btn" aria-label="Ordenar">
+            <FontAwesomeIcon icon={faShuffle} className="admin-contentores__tool-icon" aria-hidden />
+          </button>
+          <button type="button" className="admin-contentores__tool-btn" aria-label="Filtrar">
+            <FontAwesomeIcon icon={faSliders} className="admin-contentores__tool-icon" aria-hidden />
+          </button>
+        </div>
+
+        {loading ? (
+          <p className="admin-contentores__status" role="status">
+            A carregar contentores…
+          </p>
+        ) : null}
+
+        {!loading && loadError && items.length === 0 ? (
+          <p className="admin-contentores__status admin-contentores__status--muted">
+            Não foi possível carregar os contentores. Verifica as permissões da role no Strapi
+            (Contentor — find) e a ligação à API.
+          </p>
+        ) : null}
+
+        {!loading && !loadError && items.length === 0 ? (
+          <p className="admin-contentores__status admin-contentores__status--muted">
+            Ainda não existem contentores registados.
+          </p>
+        ) : null}
+
+        {!loading && items.length > 0 && filteredItems.length === 0 ? (
+          <p className="admin-contentores__status admin-contentores__status--muted">
+            Nenhum contentor corresponde à pesquisa.
+          </p>
+        ) : null}
+
+        {!loading && filteredItems.length > 0 ? (
+          <ul className="admin-contentores__list">
+            {filteredItems.map((item) => (
+              <li key={item.id}>
+                <ContentorCard
+                  cid={item.cid}
+                  litros={item.litros}
+                  localizacao={item.localizacao}
+                  cliente={item.numeroEgar || ''}
+                  estado={item.estado}
+                  estadoLabel={item.estadoLabel}
+                  onLocationClick={() => {}}
+                  onScanClick={() =>
+                    setQrPreview({ cid: item.cid, qrcodeImageUrl: item.qrcodeUrl })
+                  }
+                />
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+
+      <ContentorQrModal
+        isOpen={Boolean(qrPreview)}
+        cid={qrPreview?.cid ?? ''}
+        qrcodeImageUrl={qrPreview?.qrcodeImageUrl ?? ''}
+        onClose={() => setQrPreview(null)}
+      />
+    </>
+  )
+}

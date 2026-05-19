@@ -7,6 +7,7 @@ export default function PageHeader({
   variant = 'default',
   logoSrc,
   menuOpen = false,
+  menuAriaControls = 'operator-drawer-panel',
 }) {
   const isFloating = variant === 'floating'
 
@@ -27,7 +28,7 @@ export default function PageHeader({
         className="page-header__menu"
         aria-label="Abrir menu"
         aria-expanded={menuOpen}
-        aria-controls="operator-drawer-panel"
+        aria-controls={menuAriaControls}
         onClick={onMenuClick}
       >
         <IconMenu className="page-header__menu-icon" />

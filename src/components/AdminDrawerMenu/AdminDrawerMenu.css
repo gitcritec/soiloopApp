@@ -1,0 +1,184 @@
+/* Drawer admin — Figma Admin - Menu (nó 10:447), alinhado ao operador */
+.admin-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  visibility: hidden;
+  transition: visibility 0.28s step-end;
+}
+
+.admin-drawer--open {
+  pointer-events: auto;
+  visibility: visible;
+  transition: visibility 0s step-start;
+}
+
+.admin-drawer__backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.admin-drawer__panel {
+  position: absolute;
+  right: 0;
+  left: auto;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 263px;
+  max-width: min(263px, 88vw);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 28px 21px 32px;
+  background: #f9f8f9;
+  box-shadow: -2px 0 12px rgba(0, 0, 0, 0.2);
+  transform: translateX(100%);
+  transition: transform 0.28s ease;
+}
+
+.admin-drawer--open .admin-drawer__panel {
+  transform: translateX(0);
+}
+
+.admin-drawer__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 48px;
+}
+
+.admin-drawer__user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.admin-drawer__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.admin-drawer__avatar--placeholder {
+  display: block;
+  background: #c7e8bf;
+}
+
+.admin-drawer__user-text {
+  min-width: 0;
+}
+
+.admin-drawer__name {
+  margin: 0 0 2px;
+  font-size: 16px;
+  line-height: 15px;
+  font-weight: 700;
+  color: #060e0b;
+}
+
+.admin-drawer__role {
+  margin: 0;
+  font-size: 12px;
+  line-height: 15px;
+  font-weight: 400;
+  color: #060e0b;
+}
+
+.admin-drawer__close {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  margin: -4px 0 0 -8px;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #060e0b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-drawer__close:hover {
+  background: rgba(6, 14, 11, 0.06);
+}
+
+.admin-drawer__close-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.admin-drawer__nav {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 32px;
+}
+
+.admin-drawer__nav--primary {
+  flex: 1;
+}
+
+.admin-drawer__nav--secondary {
+  margin-top: auto;
+  padding-top: 24px;
+}
+
+.admin-drawer__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 176px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: 'Rubik', sans-serif;
+  color: #40534c;
+}
+
+.admin-drawer__item:hover {
+  color: #060e0b;
+}
+
+.admin-drawer__item-icon {
+  flex-shrink: 0;
+  width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.admin-drawer__item-icon svg {
+  width: 1em;
+  height: 1em;
+}
+
+.admin-drawer__icon-contentor {
+  width: 16px;
+  height: 22px;
+}
+
+.admin-drawer__item-label {
+  font-size: 16px;
+  line-height: 15px;
+  font-weight: 400;
+}

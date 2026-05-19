@@ -26,11 +26,26 @@
 .admin-dashboard__main {
   max-width: 393px;
   margin: 0 auto;
-  padding: 108px 20px 200px;
+  padding: 108px 20px 220px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+/* Formulário de registo: altura fixa entre header e bottom nav; scroll só no cartão */
+.admin-dashboard__main:has(.contentor-registo) {
+  overflow: hidden;
+  height: 100dvh;
+  max-height: 100dvh;
+  padding-top: 108px;
+  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  padding-left: 20px;
+  padding-right: 20px;
+  gap: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
 .admin-dashboard__section {
@@ -182,4 +197,17 @@
 .admin-ticket-card__chevron-icon {
   width: 18px;
   height: 18px;
+}
+
+.admin-dashboard__placeholder {
+  margin: 24px 0 0;
+  padding: 0 2px;
+  font-size: 15px;
+  line-height: 1.45;
+  color: #40534c;
+  text-align: center;
+}
+
+.admin-dashboard__placeholder strong {
+  color: #060e0b;
 }

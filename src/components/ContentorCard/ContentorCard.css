@@ -1,0 +1,173 @@
+.contentor-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 32px 1fr 114px;
+  align-items: start;
+  gap: 10px 12px;
+  width: 100%;
+  max-width: 353px;
+  margin: 0 auto;
+  padding: 10px 8px 10px 12px;
+  box-sizing: border-box;
+  background: #f9f8f9;
+  border-radius: 10px;
+}
+
+.contentor-card__icon-col {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 2px;
+}
+
+.contentor-card__icon {
+  display: block;
+  width: 16px;
+  height: 22px;
+  flex-shrink: 0;
+  color: #40534c;
+}
+
+.contentor-card__main {
+  min-width: 0;
+}
+
+.contentor-card__cid {
+  margin: 0 0 2px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 15px;
+  color: #060e0b;
+}
+
+.contentor-card__specs {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 15px;
+  color: #40534c;
+}
+
+.contentor-card__qrcode {
+  color: #40534c;
+}
+
+.contentor-card__litros {
+  font-weight: 700;
+  color: #060e0b;
+}
+
+.contentor-card__field {
+  margin: 0 0 2px;
+  font-size: 11px;
+  line-height: 14px;
+  color: #40534c;
+}
+
+.contentor-card__field-label {
+  margin-right: 4px;
+}
+
+.contentor-card__field-value {
+  color: #5c6d66;
+}
+
+.contentor-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.contentor-card__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  padding: 2px 8px;
+  box-sizing: border-box;
+  border-radius: 5px;
+  font-size: 9px;
+  font-weight: 400;
+  line-height: 15px;
+}
+
+.contentor-card__badge--secondary {
+  background: #e5e9e8;
+  color: #40534c;
+}
+
+.contentor-card__badge--em-transito {
+  background: #fff6d6;
+  color: #c9a100;
+}
+
+.contentor-card__badge--danificado {
+  background: #fbdae0;
+  color: #e6193c;
+}
+
+.contentor-card__badge--cliente,
+.contentor-card__badge--novo,
+.contentor-card__badge--reutilizavel {
+  background: #eeffce;
+  color: #1e8f2b;
+}
+
+.contentor-card__badge--infetado,
+.contentor-card__badge--usado {
+  background: #fff0d6;
+  color: #c47a00;
+}
+
+.contentor-card__badge--armazem,
+.contentor-card__badge--default {
+  background: #e5e9e8;
+  color: #5c6d66;
+}
+
+.contentor-card__actions {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.contentor-card__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 53px;
+  height: 54px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.contentor-card__btn-icon {
+  display: block;
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.contentor-card__btn--location {
+  background: #e5e9e8;
+  color: #40534c;
+}
+
+.contentor-card__btn--location:hover {
+  filter: brightness(0.97);
+}
+
+.contentor-card__btn--scan {
+  background: #15d67f;
+  color: #f9f8f9;
+}
+
+.contentor-card__btn--scan:hover {
+  filter: brightness(1.03);
+}

@@ -19,6 +19,42 @@ export function IconRecycle({ className, ...props }) {
   )
 }
 
+/** Ícone contentor (Figma) — usar onde o Font Awesome não tem equivalente. */
+export function IconContentor({ className, ...props }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 16 22"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      {...props}
+    >
+      <path
+        d="M11.5608 20.424C11.3446 20.5361 11.0964 20.6002 10.8322 20.6002H3.25015C2.39346 20.6002 1.6889 19.9276 1.64887 19.079L1.00035 6.34882C0.960322 5.43609 1.6889 4.66748 2.60163 4.66748H11.4807C12.3934 4.66748 13.122 5.42809 13.082 6.34882L12.6096 15.5722"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeMiterlimit="10"
+        strokeLinecap="round"
+      />
+      <path
+        d="M11.8811 0.600098H2.20137C1.31701 0.600098 0.600098 1.31701 0.600098 2.20137V3.06606C0.600098 3.95042 1.31701 4.66734 2.20137 4.66734H11.8811C12.7654 4.66734 13.4824 3.95042 13.4824 3.06606V2.20137C13.4824 1.31701 12.7654 0.600098 11.8811 0.600098Z"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeMiterlimit="10"
+        strokeLinecap="round"
+      />
+      <path
+        d="M12.4896 20.6C13.878 20.6 15.0036 19.4745 15.0036 18.086C15.0036 16.6976 13.878 15.572 12.4896 15.572C11.1011 15.572 9.97559 16.6976 9.97559 18.086C9.97559 19.4745 11.1011 20.6 12.4896 20.6Z"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeMiterlimit="10"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
 export function IconTrash({ className, ...props }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>

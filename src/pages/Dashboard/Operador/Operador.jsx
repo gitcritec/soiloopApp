@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faArrowsRotate,
@@ -25,6 +25,7 @@ import FloatingPrimaryButton from '../../../components/FloatingPrimaryButton/Flo
 import BottomNav from '../../../components/BottomNav/BottomNav.jsx'
 import OperadorStatsSummary from '../../../components/OperadorStatsSummary/OperadorStatsSummary.jsx'
 import OperatorDrawerMenu from '../../../components/OperatorDrawerMenu/OperatorDrawerMenu.jsx'
+import { readOperadorNavId, setAppHash } from '../../../lib/appRoute.js'
 import {
   MOCK_DAY_COLLECTIONS,
   MOCK_OPERATOR_NAME,
@@ -40,7 +41,21 @@ const OPERATOR_BOTTOM_NAV_ITEMS = [
 
 export default function Operador({ onLogout }) {
   const [menuOpen, setMenuOpen] = useState(false)
-  const [navActiveId, setNavActiveId] = useState('dashboard')
+  const [navActiveId, setNavActiveId] = useState(() => readOperadorNavId())
+
+  useEffect(() => {
+    function syncFromHash() {
+      setNavActiveId(readOperadorNavId())
+    }
+    window.addEventListener('hashchange', syncFromHash)
+    return () => window.removeEventListener('hashchange', syncFromHash)
+  }, [])
+
+  const selectNav = useCallback((id) => {
+    setNavActiveId(id)
+    setAppHash('operador', id)
+  }, [])
+
   const [headerLogoSrc, setHeaderLogoSrc] = useState(null)
   const [userName, setUserName] = useState(
     () => getStoredStrapiUsername() ?? MOCK_OPERATOR_NAME,
@@ -76,9 +91,9 @@ export default function Operador({ onLogout }) {
   }, [])
 
   function handleDrawerNavigate(actionId) {
-    if (actionId === 'movimentos') setNavActiveId('movimentos')
-    else if (actionId === 'historico') setNavActiveId('historico')
-    else if (actionId === 'recolhas') setNavActiveId('dashboard')
+    if (actionId === 'movimentos') selectNav('movimentos')
+    else if (actionId === 'historico') selectNav('historico')
+    else if (actionId === 'recolhas') selectNav('dashboard')
   }
 
   const drawerRoleLabel =
@@ -176,7 +191,7 @@ export default function Operador({ onLogout }) {
         variant="operador"
         items={OPERATOR_BOTTOM_NAV_ITEMS}
         activeId={navActiveId}
-        onSelect={setNavActiveId}
+        onSelect={selectNav}
       />
     </div>
   )
