@@ -11,6 +11,8 @@ import './Processar.css'
  */
 export default function Processar({
   isOpen,
+  qrError,
+  onDismissQrError,
   onClose,
   onSelectRecolha,
   onSelectEntrega,
@@ -72,6 +74,19 @@ export default function Processar({
             width={266}
             height={120}
           />
+
+          {qrError ? (
+            <p className="processar-screen__qr-error" role="alert">
+              {qrError}
+              <button
+                type="button"
+                className="processar-screen__qr-error-dismiss"
+                onClick={onDismissQrError}
+              >
+                Fechar
+              </button>
+            </p>
+          ) : null}
 
           <div className="processar-screen__actions">
             <button

@@ -27,6 +27,8 @@ import OperadorStatsSummary from '../../../components/OperadorStatsSummary/Opera
 import OperatorDrawerMenu from '../../../components/OperatorDrawerMenu/OperatorDrawerMenu.jsx'
 import LocationMapModal from '../../../components/LocationMapModal/LocationMapModal.jsx'
 import { formatLocationQuery } from '../../../lib/locationQuery.js'
+import { parseContentorQr } from '../../../lib/parseContentorQr.js'
+import Formulario from './Formulario/Formulario.jsx'
 import Processar from './Processar/Processar.jsx'
 import QrScanner from './QrScanner/QrScanner.jsx'
 import {
@@ -53,17 +55,46 @@ export default function Operador({ onLogout }) {
   const [locationMap, setLocationMap] = useState(null)
   const [screen, setScreen] = useState('dashboard')
   const [qrMode, setQrMode] = useState(null)
+  const [qrError, setQrError] = useState(null)
+  /** @type {{ mode: 'recolher' | 'entregar', contentorId: string } | null} */
+  const [formContext, setFormContext] = useState(null)
 
   function openQrScanner(mode) {
+    setQrError(null)
     setQrMode(mode)
     setScreen('qr-scan')
   }
 
+  function openFormulario(mode, payload = null) {
+    setFormContext(
+      payload
+        ? { mode, contentorId: payload.contentorId }
+        : { mode, contentorId: '' },
+    )
+    setScreen('formulario')
+  }
+
   function handleQrDetected({ mode, value }) {
-    // Próximo passo: enviar mode + value à API Strapi
-    console.info('[QR]', mode, value)
+    const parsed = parseContentorQr(value)
     setQrMode(null)
+    if (!parsed) {
+      setQrError('Código QR inválido. O QR deve conter apenas o código do contentor (ex.: CNT-001).')
+      setScreen('processar')
+      return
+    }
+    setQrError(null)
+    openFormulario(mode, parsed)
+  }
+
+  function closeFormulario() {
+    setFormContext(null)
     setScreen('dashboard')
+  }
+
+  async function handleFormularioSubmit(payload) {
+    // Próximo passo: POST Strapi com payload (inclui inputs ocultos)
+    console.info('[Formulário]', payload)
+    closeFormulario()
   }
 
   function openCollectionLocation(item) {
@@ -218,10 +249,15 @@ export default function Operador({ onLogout }) {
 
       <Processar
         isOpen={screen === 'processar'}
-        onClose={() => setScreen('dashboard')}
+        qrError={qrError}
+        onDismissQrError={() => setQrError(null)}
+        onClose={() => {
+          setQrError(null)
+          setScreen('dashboard')
+        }}
         onSelectRecolha={() => openQrScanner('recolher')}
         onSelectEntrega={() => openQrScanner('entregar')}
-        onSelectFormulario={() => setScreen('dashboard')}
+        onSelectFormulario={() => openFormulario('recolher')}
       />
 
       <QrScanner
@@ -229,6 +265,14 @@ export default function Operador({ onLogout }) {
         mode={qrMode ?? 'recolher'}
         onClose={() => setScreen('processar')}
         onDetected={handleQrDetected}
+      />
+
+      <Formulario
+        isOpen={screen === 'formulario' && Boolean(formContext)}
+        mode={formContext?.mode ?? 'recolher'}
+        contentorId={formContext?.contentorId ?? ''}
+        onClose={closeFormulario}
+        onSubmit={handleFormularioSubmit}
       />
     </div>
   )
