@@ -1,5 +1,14 @@
-const CACHE_NAME = 'soiloop-v1'
-const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icons.svg']
+const CACHE_NAME = 'soiloop-v2'
+const APP_SHELL = [
+  '/',
+  '/index.html',
+  '/manifest.webmanifest',
+  '/apple-touch-icon.png',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/favicon-32.png',
+  '/favicon-16.png',
+]
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
