@@ -18,7 +18,7 @@ export default function BottomNav({
   return (
     <nav className={navClass} aria-label={ariaLabel}>
       <ul className="bottom-nav__list">
-        {items.map(({ id, label, icon }) => {
+        {items.map(({ id, label, icon, iconNode }) => {
           const isActive = id === activeId
           return (
             <li key={id} className="bottom-nav__item">
@@ -28,7 +28,9 @@ export default function BottomNav({
                 aria-current={isActive ? 'page' : undefined}
                 onClick={() => onSelect?.(id)}
               >
-                <FontAwesomeIcon icon={icon} className="bottom-nav__icon" aria-hidden />
+                {iconNode ?? (
+                  <FontAwesomeIcon icon={icon} className="bottom-nav__icon" aria-hidden />
+                )}
                 <span>{label}</span>
               </button>
             </li>

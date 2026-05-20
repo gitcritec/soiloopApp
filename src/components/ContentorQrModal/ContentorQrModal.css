@@ -1,0 +1,96 @@
+.contentor-qr-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.contentor-qr-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(6, 14, 11, 0.45);
+  cursor: pointer;
+}
+
+.contentor-qr-modal__panel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 320px;
+  padding: 20px 18px 22px;
+  box-sizing: border-box;
+  background: #f9f8f9;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.contentor-qr-modal__close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: #e5e9e8;
+  color: #40534c;
+  cursor: pointer;
+}
+
+.contentor-qr-modal__title {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #060e0b;
+}
+
+.contentor-qr-modal__image {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  margin: 0 auto 14px;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.contentor-qr-modal__download {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #15d67f;
+  color: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.contentor-qr-modal__download:hover:not(:disabled) {
+  background: #12b96d;
+}
+
+.contentor-qr-modal__download:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.contentor-qr-modal__error {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #c0392b;
+}

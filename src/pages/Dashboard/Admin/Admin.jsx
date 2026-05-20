@@ -1,60 +1,87 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   faComments,
   faHouseChimney,
   faRecycle,
-  faTrash,
   faUsers,
 } from '@fortawesome/pro-light-svg-icons'
 import logoSoiloop from '../../../assets/figma-operador/logo-soiloop.png'
 import './Admin.css'
-import OperatorDrawerMenu from '../../../components/OperatorDrawerMenu/OperatorDrawerMenu.jsx'
+import AdminDrawerMenu from '../../../components/AdminDrawerMenu/AdminDrawerMenu.jsx'
 import PageHeader from '../../../components/PageHeader/PageHeader.jsx'
-import SectionTitleWithIcon from '../../../components/SectionTitleWithIcon/SectionTitleWithIcon.jsx'
-import CollectionCard from '../../../components/CollectionCard/CollectionCard.jsx'
 import FloatingPrimaryButton from '../../../components/FloatingPrimaryButton/FloatingPrimaryButton.jsx'
 import BottomNav from '../../../components/BottomNav/BottomNav.jsx'
-import { IconBarcodeScan, IconChevronRight } from '../../../components/icons/icons.jsx'
-import { MOCK_ADMIN_PEDIDOS, MOCK_ADMIN_TICKETS } from './mockData.js'
+import { IconBarcodeScan, IconContentor } from '../../../components/icons/icons.jsx'
+import AdminHome from './AdminHome.jsx'
+import { readAdminNavId, setAppHash } from '../../../lib/appRoute.js'
+import Contentores from './Contentores/Contentores.jsx'
 
 const ADMIN_BOTTOM_NAV_ITEMS = [
   { id: 'recolhas', label: 'Recolhas', icon: faRecycle },
-  { id: 'contentores', label: 'Contentores', icon: faTrash },
+  {
+    id: 'contentores',
+    label: 'Contentores',
+    iconNode: <IconContentor className="bottom-nav__icon bottom-nav__icon--contentor" />,
+  },
   { id: 'dashboard', label: 'Dashboard', icon: faHouseChimney },
   { id: 'clientes', label: 'Clientes', icon: faUsers },
   { id: 'tickets', label: 'Tickets', icon: faComments },
 ]
 
-const TICKET_STATUS_LABEL = {
-  'aberto-hoje': 'Aberto',
-  'aberto-amanha': 'Aberto',
-  respondido: 'Respondido',
+const PLACEHOLDER_LABELS = {
+  recolhas: 'Recolhas',
+  clientes: 'Clientes',
+  tickets: 'Tickets',
 }
 
 /**
- * Painel principal para utilizadores com role Admin no Strapi (Users & Permissions).
- * @param {object} props
- * @param {() => void} props.onLogout
- * @param {string} props.userName
- * @param {string|null|undefined} props.userRole
- * @param {string|null} [props.headerLogoSrc]
+ * Shell admin: menu lateral, header, barra inferior e vistas por separador.
  */
 export default function Admin({ onLogout, userName, userRole, headerLogoSrc }) {
   const [menuOpen, setMenuOpen] = useState(false)
-  const [navActiveId, setNavActiveId] = useState('dashboard')
+  const [navActiveId, setNavActiveId] = useState(() => readAdminNavId())
+
+  useEffect(() => {
+    function syncFromHash() {
+      setNavActiveId(readAdminNavId())
+    }
+    window.addEventListener('hashchange', syncFromHash)
+    return () => window.removeEventListener('hashchange', syncFromHash)
+  }, [])
+
+  const selectNav = useCallback((id) => {
+    setNavActiveId(id)
+    setAppHash('admin', id)
+  }, [])
 
   const drawerRoleLabel =
     typeof userRole === 'string' && userRole.trim() ? userRole.trim() : 'A sincronizar…'
 
   function handleDrawerNavigate(actionId) {
-    if (actionId === 'movimentos') setNavActiveId('contentores')
-    else if (actionId === 'historico') setNavActiveId('tickets')
-    else if (actionId === 'recolhas') setNavActiveId('recolhas')
+    if (actionId === 'clientes') selectNav('clientes')
+    else if (actionId === 'recolhas') selectNav('recolhas')
+    else if (actionId === 'contentores') selectNav('contentores')
+    else if (actionId === 'tickets') selectNav('tickets')
+    else if (actionId === 'gestao') selectNav('dashboard')
+  }
+
+  function renderMain() {
+    if (navActiveId === 'contentores') return <Contentores />
+    if (navActiveId === 'dashboard') return <AdminHome />
+    const label = PLACEHOLDER_LABELS[navActiveId]
+    if (label) {
+      return (
+        <p className="admin-dashboard__placeholder">
+          A secção <strong>{label}</strong> estará disponível em breve.
+        </p>
+      )
+    }
+    return <AdminHome />
   }
 
   return (
     <div className="admin-dashboard">
-      <OperatorDrawerMenu
+      <AdminDrawerMenu
         isOpen={menuOpen}
         onClose={() => setMenuOpen(false)}
         userName={userName}
@@ -70,92 +97,27 @@ export default function Admin({ onLogout, userName, userRole, headerLogoSrc }) {
           logoSrc={headerLogoSrc ?? logoSoiloop}
           userName={userName}
           menuOpen={menuOpen}
+          menuAriaControls="admin-drawer-panel"
           onMenuClick={() => setMenuOpen((o) => !o)}
         />
       </div>
 
-      <main className="admin-dashboard__main">
-        <section className="admin-dashboard__section" aria-labelledby="sec-pedidos">
-          <div className="admin-dashboard__section-head">
-            <SectionTitleWithIcon
-              id="sec-pedidos"
-              title="Pedidos de Recolha"
-              icon={faRecycle}
-              iconSize="large"
-              titleTone="swapped"
-            />
-            <button type="button" className="admin-dashboard__see-all">
-              Ver todos
-            </button>
-          </div>
-          <div className="admin-dashboard__cards">
-            {MOCK_ADMIN_PEDIDOS.map((item) => (
-              <CollectionCard
-                key={item.id}
-                collectionId={item.id}
-                location={item.location}
-                status={item.status}
-                scheduledAt={item.scheduledAt}
-                binNumber={item.binNumber}
-                taskType={item.taskType}
-                primaryAction="edit"
-                onEditClick={() => {}}
-              />
-            ))}
-          </div>
-        </section>
+      <main className="admin-dashboard__main">{renderMain()}</main>
 
-        <section className="admin-dashboard__section" aria-labelledby="sec-tickets">
-          <div className="admin-dashboard__section-head">
-            <SectionTitleWithIcon
-              id="sec-tickets"
-              title="Tickets para si"
-              icon={faComments}
-              iconSize="large"
-            />
-            <button type="button" className="admin-dashboard__see-all">
-              Ver todos
-            </button>
-          </div>
-          <ul className="admin-dashboard__ticket-list">
-            {MOCK_ADMIN_TICKETS.map((ticket) => (
-              <li key={ticket.id}>
-                <article className="admin-ticket-card">
-                  <div className="admin-ticket-card__main">
-                    <p className="admin-ticket-card__title">{ticket.title}</p>
-                    <p className="admin-ticket-card__client">{ticket.clientLine}</p>
-                    <p className="admin-ticket-card__ref">{ticket.refLine}</p>
-                  </div>
-                  <span
-                    className={`admin-ticket-card__badge admin-ticket-card__badge--${ticket.status}`}
-                  >
-                    {TICKET_STATUS_LABEL[ticket.status]}
-                  </span>
-                  <button
-                    type="button"
-                    className="admin-ticket-card__chevron"
-                    aria-label="Abrir ticket"
-                  >
-                    <IconChevronRight className="admin-ticket-card__chevron-icon" />
-                  </button>
-                </article>
-              </li>
-            ))}
-          </ul>
-        </section>
-      </main>
+      {navActiveId === 'dashboard' ? (
+        <FloatingPrimaryButton
+          variant="operador"
+          label="Processar"
+          onClick={() => {}}
+          icon={<IconBarcodeScan />}
+        />
+      ) : null}
 
-      <FloatingPrimaryButton
-        variant="operador"
-        label="Processar"
-        onClick={() => {}}
-        icon={<IconBarcodeScan />}
-      />
       <BottomNav
         variant="admin"
         items={ADMIN_BOTTOM_NAV_ITEMS}
         activeId={navActiveId}
-        onSelect={setNavActiveId}
+        onSelect={selectNav}
       />
     </div>
   )

@@ -141,5 +141,13 @@ export function applyStrapiGlobalHead(doc) {
     const mime = faviconMimeFromHref(doc.faviconUrl)
     if (mime) link.setAttribute('type', mime)
     else link.removeAttribute('type')
+
+    let appleIcon = document.querySelector('link[rel="apple-touch-icon"]')
+    if (!appleIcon) {
+      appleIcon = document.createElement('link')
+      appleIcon.setAttribute('rel', 'apple-touch-icon')
+      document.head.appendChild(appleIcon)
+    }
+    appleIcon.setAttribute('href', doc.faviconUrl)
   }
 }
