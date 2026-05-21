@@ -4,16 +4,18 @@ import {
   getStoredStrapiRoleLabel,
   getStoredStrapiUsername,
   isStrapiAdminRoleLabel,
+  isStrapiClienteRoleLabel,
   normalizeStrapiUserRole,
   persistStrapiUserCache,
 } from '../../lib/strapiAuth.js'
 import { fetchStrapiGlobalLogoSmallUrl } from '../../lib/strapiGlobal.js'
 import Admin from './Admin/Admin.jsx'
+import Cliente from './Cliente/Cliente.jsx'
 import Operador from './Operador/Operador.jsx'
 import { MOCK_OPERATOR_NAME } from './Operador/mockData.js'
 
 /**
- * Encaminha para o painel Admin ou Operador consoante a role do Strapi (Users & Permissions).
+ * Encaminha para o painel Admin, Cliente ou Operador consoante a role do Strapi.
  */
 export default function Dashboard({ onLogout }) {
   const [headerLogoSrc, setHeaderLogoSrc] = useState(null)
@@ -50,6 +52,17 @@ export default function Dashboard({ onLogout }) {
   if (isStrapiAdminRoleLabel(userRole)) {
     return (
       <Admin
+        onLogout={onLogout}
+        userName={userName}
+        userRole={userRole}
+        headerLogoSrc={headerLogoSrc}
+      />
+    )
+  }
+
+  if (isStrapiClienteRoleLabel(userRole)) {
+    return (
+      <Cliente
         onLogout={onLogout}
         userName={userName}
         userRole={userRole}

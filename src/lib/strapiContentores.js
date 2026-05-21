@@ -262,6 +262,35 @@ export async function fetchStrapiContentores() {
 }
 
 /**
+ * Obtém um contentor pelo CID (ex.: CNT-001), para o formulário pós-QR.
+ * @param {string} cid
+ * @returns {Promise<ContentorItem|null>}
+ */
+export async function fetchStrapiContentorByCid(cid) {
+  const code = pickString(cid)
+  if (!code) return null
+
+  const base = strapiBaseUrl()
+  if (!base) return null
+
+  const params = new URLSearchParams()
+  params.set('filters[CID][$eq]', code)
+  params.set('populate[capacidade]', 'true')
+  params.set('populate[qrcode]', 'true')
+  params.set('pagination[pageSize]', '1')
+
+  const url = `${base}/api/contentores?${params.toString()}`
+  const res = await fetch(url, { headers: authHeaders() })
+  if (!res.ok) {
+    throw new Error(`Strapi contentor: HTTP ${res.status}`)
+  }
+  const json = await res.json()
+  const rows = parseStrapiListRows(json)
+  const item = rows.map(coerceContentorRow).find(Boolean)
+  return item ?? null
+}
+
+/**
  * @typedef {object} CapacidadeOption
  * @property {string} id
  * @property {number|null} litros

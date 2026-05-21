@@ -28,7 +28,7 @@ import OperatorDrawerMenu from '../../../components/OperatorDrawerMenu/OperatorD
 import LocationMapModal from '../../../components/LocationMapModal/LocationMapModal.jsx'
 import { formatLocationQuery } from '../../../lib/locationQuery.js'
 import { parseContentorQr } from '../../../lib/parseContentorQr.js'
-import Formulario from './Formulario/Formulario.jsx'
+import MovimentosRecolha from './MovimentosRecolha/MovimentosRecolha.jsx'
 import Processar from './Processar/Processar.jsx'
 import QrScanner from './QrScanner/QrScanner.jsx'
 import { readOperadorNavId, setAppHash } from '../../../lib/appRoute.js'
@@ -80,13 +80,13 @@ export default function Operador({ onLogout }) {
     setScreen('qr-scan')
   }
 
-  function openFormulario(mode, payload = null) {
+  function openMovimentosRecolha(mode, payload = null) {
     setFormContext(
       payload
         ? { mode, contentorId: payload.contentorId }
         : { mode, contentorId: '' },
     )
-    setScreen('formulario')
+    setScreen('movimentos-recolha')
   }
 
   function handleQrDetected({ mode, value }) {
@@ -98,18 +98,18 @@ export default function Operador({ onLogout }) {
       return
     }
     setQrError(null)
-    openFormulario(mode, parsed)
+    openMovimentosRecolha(mode, parsed)
   }
 
-  function closeFormulario() {
+  function closeMovimentosRecolha() {
     setFormContext(null)
     setScreen('dashboard')
   }
 
-  async function handleFormularioSubmit(payload) {
+  async function handleMovimentosRecolhaSubmit(payload) {
     // Próximo passo: POST Strapi com payload (inclui inputs ocultos)
-    console.info('[Formulário]', payload)
-    closeFormulario()
+    console.info('[MovimentosRecolha]', payload)
+    closeMovimentosRecolha()
   }
 
   function openCollectionLocation(item) {
@@ -272,7 +272,7 @@ export default function Operador({ onLogout }) {
         }}
         onSelectRecolha={() => openQrScanner('recolher')}
         onSelectEntrega={() => openQrScanner('entregar')}
-        onSelectFormulario={() => openFormulario('recolher')}
+        onSelectMovimentosRecolha={() => openMovimentosRecolha('recolher')}
       />
 
       <QrScanner
@@ -282,12 +282,12 @@ export default function Operador({ onLogout }) {
         onDetected={handleQrDetected}
       />
 
-      <Formulario
-        isOpen={screen === 'formulario' && Boolean(formContext)}
+      <MovimentosRecolha
+        isOpen={screen === 'movimentos-recolha' && Boolean(formContext)}
         mode={formContext?.mode ?? 'recolher'}
         contentorId={formContext?.contentorId ?? ''}
-        onClose={closeFormulario}
-        onSubmit={handleFormularioSubmit}
+        onClose={closeMovimentosRecolha}
+        onSubmit={handleMovimentosRecolhaSubmit}
       />
     </div>
   )

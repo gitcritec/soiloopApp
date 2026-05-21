@@ -4,8 +4,11 @@ export const ADMIN_NAV_IDS = ['recolhas', 'contentores', 'dashboard', 'clientes'
 /** IDs válidos da barra inferior operador. */
 export const OPERADOR_NAV_IDS = ['movimentos', 'dashboard', 'historico']
 
+/** IDs válidos da barra inferior cliente. */
+export const CLIENTE_NAV_IDS = ['pedidos', 'dashboard', 'contentores']
+
 /**
- * @returns {{ profile: 'admin'|'operador', section: string, sub: string|null }|null}
+ * @returns {{ profile: 'admin'|'operador'|'cliente', section: string, sub: string|null }|null}
  */
 export function parseAppHash() {
   const raw = window.location.hash.replace(/^#\/?/, '').trim()
@@ -13,12 +16,12 @@ export function parseAppHash() {
   const parts = raw.split('/').filter(Boolean)
   if (parts.length < 2) return null
   const [profile, section, sub] = parts
-  if (profile !== 'admin' && profile !== 'operador') return null
+  if (profile !== 'admin' && profile !== 'operador' && profile !== 'cliente') return null
   return { profile, section, sub: sub ?? null }
 }
 
 /**
- * @param {'admin'|'operador'} profile
+ * @param {'admin'|'operador'|'cliente'} profile
  * @param {string} section
  * @param {string|null} [sub]
  */
@@ -29,7 +32,7 @@ export function buildAppHash(profile, section, sub = null) {
 }
 
 /**
- * @param {'admin'|'operador'} profile
+ * @param {'admin'|'operador'|'cliente'} profile
  * @param {string} section
  * @param {string|null} [sub]
  */
@@ -63,6 +66,15 @@ export function readAdminContentoresView() {
 export function readOperadorNavId() {
   const parsed = parseAppHash()
   if (parsed?.profile === 'operador' && OPERADOR_NAV_IDS.includes(parsed.section)) {
+    return parsed.section
+  }
+  return 'dashboard'
+}
+
+/** @returns {string} */
+export function readClienteNavId() {
+  const parsed = parseAppHash()
+  if (parsed?.profile === 'cliente' && CLIENTE_NAV_IDS.includes(parsed.section)) {
     return parsed.section
   }
   return 'dashboard'

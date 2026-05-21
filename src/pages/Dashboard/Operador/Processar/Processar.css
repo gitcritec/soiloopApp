@@ -187,11 +187,11 @@
   filter: brightness(1.03);
 }
 
-.processar-screen__action--formulario {
+.processar-screen__action--movimentos-recolha {
   background: #e5e9e8;
   color: #40534c;
 }
 
-.processar-screen__action--formulario:hover {
+.processar-screen__action--movimentos-recolha:hover {
   filter: brightness(0.98);
 }
