@@ -15,6 +15,7 @@ import { IconBarcodeScan, IconContentor } from '../../../components/icons/icons.
 import AdminHome from './AdminHome.jsx'
 import { readAdminNavId, setAppHash } from '../../../lib/appRoute.js'
 import Contentores from './Contentores/Contentores.jsx'
+import Clientes from './Clientes/Clientes.jsx'
 
 const ADMIN_BOTTOM_NAV_ITEMS = [
   { id: 'recolhas', label: 'Recolhas', icon: faRecycle },
@@ -30,7 +31,6 @@ const ADMIN_BOTTOM_NAV_ITEMS = [
 
 const PLACEHOLDER_LABELS = {
   recolhas: 'Recolhas',
-  clientes: 'Clientes',
   tickets: 'Tickets',
 }
 
@@ -67,6 +67,7 @@ export default function Admin({ onLogout, userName, userRole, headerLogoSrc }) {
 
   function renderMain() {
     if (navActiveId === 'contentores') return <Contentores />
+    if (navActiveId === 'clientes') return <Clientes />
     if (navActiveId === 'dashboard') return <AdminHome />
     const label = PLACEHOLDER_LABELS[navActiveId]
     if (label) {

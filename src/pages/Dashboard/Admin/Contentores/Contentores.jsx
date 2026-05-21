@@ -11,7 +11,11 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import contentoresHero from '../../../../assets/figma-cliente/contentores-hero.png'
 import ContentorCard from '../../../../components/ContentorCard/ContentorCard.jsx'
 import ContentorQrModal from '../../../../components/ContentorQrModal/ContentorQrModal.jsx'
-import { readAdminContentoresView, setAppHash } from '../../../../lib/appRoute.js'
+import {
+  readAdminContentoresEditId,
+  readAdminContentoresView,
+  setAppHash,
+} from '../../../../lib/appRoute.js'
 import { fetchStrapiContentores } from '../../../../lib/strapiContentores.js'
 import ContentorRegisto from './ContentorRegisto.jsx'
 import './Contentores.css'
@@ -19,6 +23,7 @@ import './Contentores.css'
 /** Lista e registo de contentores (admin) — Figma 16:793. */
 export default function Contentores() {
   const [view, setView] = useState(() => readAdminContentoresView())
+  const [editingId, setEditingId] = useState(() => readAdminContentoresEditId())
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -46,7 +51,9 @@ export default function Contentores() {
 
   useEffect(() => {
     function syncViewFromHash() {
-      setView(readAdminContentoresView())
+      const nextView = readAdminContentoresView()
+      setView(nextView)
+      setEditingId(nextView === 'edit' ? readAdminContentoresEditId() : null)
     }
     window.addEventListener('hashchange', syncViewFromHash)
     return () => window.removeEventListener('hashchange', syncViewFromHash)
@@ -66,13 +73,26 @@ export default function Contentores() {
 
   function goToList() {
     setView('list')
+    setEditingId(null)
     setAppHash('admin', 'contentores')
   }
 
   function openCreate() {
+    setEditingId(null)
     setView('create')
     setAppHash('admin', 'contentores', 'criar')
   }
+
+  function openEdit(item) {
+    setEditingId(item.id)
+    setView('edit')
+    setAppHash('admin', 'contentores', 'editar', item.id)
+  }
+
+  const editingItem = useMemo(() => {
+    if (!editingId) return null
+    return items.find((item) => item.id === editingId) ?? null
+  }, [items, editingId])
 
   function handleRegistoSuccess() {
     goToList()
@@ -82,6 +102,33 @@ export default function Contentores() {
   if (view === 'create') {
     return (
       <ContentorRegisto
+        onCancel={goToList}
+        onSuccess={handleRegistoSuccess}
+      />
+    )
+  }
+
+  if (view === 'edit') {
+    if (loading) {
+      return (
+        <p className="admin-contentores__status" role="status">
+          A carregar contentor…
+        </p>
+      )
+    }
+    if (!editingItem) {
+      return (
+        <p className="admin-contentores__status admin-contentores__status--muted">
+          Contentor não encontrado.{' '}
+          <button type="button" className="admin-contentores__back-link" onClick={goToList}>
+            Voltar à lista
+          </button>
+        </p>
+      )
+    }
+    return (
+      <ContentorRegisto
+        contentorToEdit={editingItem}
         onCancel={goToList}
         onSuccess={handleRegistoSuccess}
       />
@@ -148,8 +195,7 @@ export default function Contentores() {
 
         {!loading && loadError && items.length === 0 ? (
           <p className="admin-contentores__status admin-contentores__status--muted">
-            Não foi possível carregar os contentores. Verifica as permissões da role no Strapi
-            (Contentor — find) e a ligação à API.
+            Não foi possível carregar os contentores. Tenta novamente mais tarde ou contacta o suporte.
           </p>
         ) : null}
 
@@ -176,7 +222,7 @@ export default function Contentores() {
                   cliente={item.numeroEgar || ''}
                   estado={item.estado}
                   estadoLabel={item.estadoLabel}
-                  onLocationClick={() => {}}
+                  onEditClick={() => openEdit(item)}
                   onScanClick={() =>
                     setQrPreview({ cid: item.cid, qrcodeImageUrl: item.qrcodeUrl })
                   }

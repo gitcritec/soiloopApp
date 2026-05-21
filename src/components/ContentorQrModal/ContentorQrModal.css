@@ -55,14 +55,48 @@
   color: #060e0b;
 }
 
+.contentor-qr-modal__ios-hint {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #40534c;
+  background: #eef2f0;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.contentor-qr-modal__ios-hint--share {
+  background: #f3f6f4;
+  text-align: center;
+}
+
+.contentor-qr-modal__ios-hint--active {
+  color: #060e0b;
+  background: #dff5e9;
+  outline: 2px solid #15d67f;
+}
+
+.contentor-qr-modal__image-wrap {
+  margin: 0 auto 14px;
+  border-radius: 8px;
+}
+
+.contentor-qr-modal__image-wrap--active {
+  outline: 3px solid #15d67f;
+  outline-offset: 2px;
+}
+
 .contentor-qr-modal__image {
   display: block;
   width: 100%;
   max-width: 320px;
   height: auto;
-  margin: 0 auto 14px;
+  margin: 0 auto;
   border-radius: 8px;
   background: #fff;
+  -webkit-touch-callout: default;
+  user-select: auto;
 }
 
 .contentor-qr-modal__download {

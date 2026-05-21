@@ -1,6 +1,5 @@
-import { faBarcodeRead } from '@fortawesome/pro-light-svg-icons'
+import { faBarcodeRead, faPen } from '@fortawesome/pro-light-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faLocationDot as faLocationDotSharp } from '@fortawesome/sharp-light-svg-icons'
 import { IconContentor } from '../icons/icons.jsx'
 import './ContentorCard.css'
 
@@ -15,7 +14,7 @@ export default function ContentorCard({
   estado,
   estadoLabel,
   secondaryBadge,
-  onLocationClick,
+  onEditClick,
   onScanClick,
 }) {
   const estadoKey = estado ?? 'default'
@@ -61,11 +60,11 @@ export default function ContentorCard({
       <div className="contentor-card__actions">
         <button
           type="button"
-          className="contentor-card__btn contentor-card__btn--location"
-          aria-label="Ver localização"
-          onClick={onLocationClick}
+          className="contentor-card__btn contentor-card__btn--edit"
+          aria-label="Editar contentor"
+          onClick={onEditClick}
         >
-          <FontAwesomeIcon icon={faLocationDotSharp} className="contentor-card__btn-icon" aria-hidden />
+          <FontAwesomeIcon icon={faPen} className="contentor-card__btn-icon" aria-hidden />
         </button>
         <button
           type="button"

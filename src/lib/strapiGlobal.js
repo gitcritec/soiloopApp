@@ -11,9 +11,22 @@ function strapiBaseUrl() {
 function pickMediaUrl(media) {
   if (!media) return null
   if (typeof media === 'string') return media
-  if (media.url) return media.url
-  const nested = media.data?.attributes ?? media.data
-  if (nested?.url) return nested.url
+  if (typeof media === 'object') {
+    if (typeof media.url === 'string' && media.url) return media.url
+    const formats = media.formats
+    if (formats && typeof formats === 'object') {
+      const sized =
+        formats.small?.url ??
+        formats.medium?.url ??
+        formats.thumbnail?.url ??
+        formats.large?.url
+      if (sized) return sized
+    }
+    const nested = media.data?.attributes ?? media.data
+    if (nested && typeof nested === 'object') {
+      return pickMediaUrl(nested)
+    }
+  }
   return null
 }
 
@@ -109,15 +122,98 @@ function faviconMimeFromHref(href) {
   return null
 }
 
+function removeHeadLinks(rel) {
+  document.querySelectorAll(`link[rel="${rel}"]`).forEach((el) => el.remove())
+}
+
 /**
- * Aplica `document.title`, meta description e `link[rel="icon"]` a partir do documento Global.
+ * @param {string} rel
+ * @param {string} href
+ * @param {{ sizes?: string, type?: string }} [opts]
+ */
+function appendHeadLink(rel, href, opts = {}) {
+  const link = document.createElement('link')
+  link.setAttribute('rel', rel)
+  link.setAttribute('href', href)
+  if (opts.sizes) link.setAttribute('sizes', opts.sizes)
+  if (opts.type) link.setAttribute('type', opts.type)
+  document.head.appendChild(link)
+}
+
+let manifestBlobUrl = null
+
+/**
+ * Manifest PWA com ícones do favicon Strapi (ecrã principal no telemóvel).
+ * @param {StrapiGlobalDocument} doc
+ */
+async function applyStrapiGlobalManifest(doc) {
+  if (!doc.faviconUrl) return
+  try {
+    const res = await fetch('/manifest.webmanifest')
+    const base = res.ok ? await res.json() : {}
+    const name = doc.siteName ?? base.name ?? 'Soiloop'
+    const manifest = {
+      name,
+      short_name: name,
+      description: doc.siteDescription ?? base.description ?? '',
+      start_url: base.start_url ?? '/',
+      scope: base.scope ?? '/',
+      display: base.display ?? 'standalone',
+      background_color: base.background_color ?? '#ffffff',
+      theme_color: base.theme_color ?? '#15d67f',
+      icons: [
+        {
+          src: doc.faviconUrl,
+          sizes: '192x192',
+          type: faviconMimeFromHref(doc.faviconUrl) ?? 'image/png',
+          purpose: 'any',
+        },
+        {
+          src: doc.faviconUrl,
+          sizes: '512x512',
+          type: faviconMimeFromHref(doc.faviconUrl) ?? 'image/png',
+          purpose: 'any',
+        },
+        {
+          src: doc.faviconUrl,
+          sizes: '512x512',
+          type: faviconMimeFromHref(doc.faviconUrl) ?? 'image/png',
+          purpose: 'maskable',
+        },
+      ],
+    }
+    const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' })
+    const url = URL.createObjectURL(blob)
+    if (manifestBlobUrl) URL.revokeObjectURL(manifestBlobUrl)
+    manifestBlobUrl = url
+    let link = document.querySelector('link[rel="manifest"]')
+    if (!link) {
+      link = document.createElement('link')
+      link.setAttribute('rel', 'manifest')
+      document.head.appendChild(link)
+    }
+    link.setAttribute('href', url)
+  } catch {
+    /* mantém manifest estático */
+  }
+}
+
+/**
+ * Aplica título, meta e favicon do single type Global (`api::global.global`, campo `favicon`).
  * @param {StrapiGlobalDocument|null} doc
  */
-export function applyStrapiGlobalHead(doc) {
+export async function applyStrapiGlobalHead(doc) {
   if (!doc) return
 
   if (doc.siteName) {
     document.title = doc.siteName
+    let appleTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]')
+    if (!appleTitle) {
+      appleTitle = document.createElement('meta')
+      appleTitle.setAttribute('name', 'apple-mobile-web-app-title')
+      document.head.appendChild(appleTitle)
+    }
+    appleTitle.setAttribute('content', doc.siteName)
   }
 
   if (doc.siteDescription) {
@@ -131,23 +227,18 @@ export function applyStrapiGlobalHead(doc) {
   }
 
   if (doc.faviconUrl) {
-    let link = document.querySelector('link[rel="icon"]')
-    if (!link) {
-      link = document.createElement('link')
-      link.setAttribute('rel', 'icon')
-      document.head.appendChild(link)
-    }
-    link.setAttribute('href', doc.faviconUrl)
-    const mime = faviconMimeFromHref(doc.faviconUrl)
-    if (mime) link.setAttribute('type', mime)
-    else link.removeAttribute('type')
-
-    let appleIcon = document.querySelector('link[rel="apple-touch-icon"]')
-    if (!appleIcon) {
-      appleIcon = document.createElement('link')
-      appleIcon.setAttribute('rel', 'apple-touch-icon')
-      document.head.appendChild(appleIcon)
-    }
-    appleIcon.setAttribute('href', doc.faviconUrl)
+    const mime = faviconMimeFromHref(doc.faviconUrl) ?? 'image/png'
+    removeHeadLinks('icon')
+    removeHeadLinks('shortcut icon')
+    removeHeadLinks('apple-touch-icon')
+    appendHeadLink('icon', doc.faviconUrl, { type: mime })
+    appendHeadLink('apple-touch-icon', doc.faviconUrl, { sizes: '180x180' })
+    await applyStrapiGlobalManifest(doc)
   }
+}
+
+/** @returns {Promise<string|null>} URL do campo `favicon` em Global. */
+export async function fetchStrapiGlobalFaviconUrl() {
+  const doc = await getStrapiGlobalDocument()
+  return doc?.faviconUrl ?? null
 }

@@ -1,7 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { applyStrapiGlobalHead, getStrapiGlobalDocument } from './lib/strapiGlobal.js'
 import './index.css'
 import App from './App.jsx'
+
+void getStrapiGlobalDocument().then((doc) => applyStrapiGlobalHead(doc))
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {

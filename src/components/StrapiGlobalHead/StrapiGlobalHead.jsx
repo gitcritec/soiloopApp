@@ -8,7 +8,7 @@ export default function StrapiGlobalHead() {
   useEffect(() => {
     let cancelled = false
     getStrapiGlobalDocument().then((doc) => {
-      if (!cancelled) applyStrapiGlobalHead(doc)
+      if (!cancelled) void applyStrapiGlobalHead(doc)
     })
     return () => {
       cancelled = true

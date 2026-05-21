@@ -1,0 +1,107 @@
+.cliente-card {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) minmax(100px, 114px);
+  align-items: start;
+  gap: 8px 10px;
+  width: 100%;
+  max-width: 353px;
+  min-width: 0;
+  margin: 0 auto;
+  padding: 10px 8px 10px 12px;
+  box-sizing: border-box;
+  background: #f9f8f9;
+  border-radius: 10px;
+}
+
+.cliente-card__icon-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding-top: 2px;
+}
+
+.cliente-card__icon {
+  display: block;
+  width: 16px;
+  height: 22px;
+  flex-shrink: 0;
+  color: #40534c;
+}
+
+.cliente-card__count {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 15px;
+  color: #060e0b;
+}
+
+.cliente-card__main {
+  min-width: 0;
+}
+
+.cliente-card__nome {
+  margin: 0 0 2px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 15px;
+  color: #060e0b;
+}
+
+.cliente-card__cli,
+.cliente-card__telefone {
+  margin: 0 0 2px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 15px;
+  color: #40534c;
+}
+
+.cliente-card__actions {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  align-items: flex-start;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.cliente-card__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  max-width: 48px;
+  height: 48px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.cliente-card__btn-icon {
+  display: block;
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.cliente-card__btn--location {
+  background: #e5e9e8;
+  color: #40534c;
+}
+
+.cliente-card__btn--location:hover {
+  filter: brightness(0.97);
+}
+
+.cliente-card__btn--edit {
+  background: #40534c;
+  color: #f9f8f9;
+}
+
+.cliente-card__btn--edit:hover {
+  filter: brightness(1.06);
+}

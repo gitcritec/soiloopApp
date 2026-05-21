@@ -129,6 +129,15 @@
   border-color: #15d67f;
 }
 
+.contentor-registo__input--readonly {
+  color: #5c6d66;
+  cursor: default;
+}
+
+.contentor-registo__input--readonly:focus {
+  border-color: #e5e9e8;
+}
+
 .contentor-registo__select-wrap {
   position: relative;
   display: block;

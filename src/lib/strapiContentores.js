@@ -187,6 +187,30 @@ export function formatContentorDate(iso) {
   return `${day}/${month}/${year}`
 }
 
+/** @param {unknown} value */
+function toIsoDateOnly(value) {
+  if (value == null || value === '') return ''
+  const s = pickString(value)
+  if (s && /^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10)
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return ''
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+/** @param {unknown} capacidade */
+function extractCapacidadeId(capacidade) {
+  if (!capacidade || typeof capacidade !== 'object') return ''
+  const data = capacidade.data
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    const nestedId = extractStrapiEntityId(data)
+    if (nestedId) return nestedId
+  }
+  return extractStrapiEntityId(capacidade) ?? ''
+}
+
 /**
  * @param {unknown} row
  * @returns {import('./strapiContentores.js').ContentorItem|null}
@@ -195,7 +219,8 @@ function coerceContentorRow(row) {
   if (!row || typeof row !== 'object') return null
   const base = strapiBaseUrl()
   const attrs = row.attributes ?? row
-  const id = row.id ?? row.documentId ?? attrs.id ?? attrs.documentId
+  /** Strapi v5: rotas REST usam documentId; v4 usa id numérico. */
+  const id = extractStrapiEntityId(row) ?? extractStrapiEntityId(attrs)
   const cid = pickString(attrs.CID ?? attrs.cid ?? row.CID)
   const localizacao = pickString(attrs.localizacao ?? row.localizacao)
   const numeroEgar = pickString(attrs.numero_egar ?? row.numero_egar)
@@ -204,7 +229,9 @@ function coerceContentorRow(row) {
   const estadoRaw = pickString(attrs.estado ?? row.estado)
   const estado = normalizeContentorEstado(estadoRaw)
   const dataRaw = attrs.data ?? row.data
-  const litros = normalizeCapacidadeLitros(attrs.capacidade ?? row.capacidade)
+  const capacidadeRaw = attrs.capacidade ?? row.capacidade
+  const capacidadeId = extractCapacidadeId(capacidadeRaw)
+  const litros = normalizeCapacidadeLitros(capacidadeRaw)
 
   if (!cid && id == null) return null
 
@@ -217,6 +244,8 @@ function coerceContentorRow(row) {
     estado,
     estadoLabel: estadoRaw ?? '—',
     data: formatContentorDate(dataRaw),
+    dataIso: toIsoDateOnly(dataRaw),
+    capacidadeId,
     litros,
     litrosLabel: litros != null ? `${litros} L` : '—',
   }
@@ -232,6 +261,8 @@ function coerceContentorRow(row) {
  * @property {'novo'|'usado'|'danificado'|null} estado
  * @property {string} estadoLabel
  * @property {string} data
+ * @property {string} dataIso Data ISO (YYYY-MM-DD) para formulários
+ * @property {string} capacidadeId ID Strapi da relação capacidade
  * @property {number|null} litros
  * @property {string} litrosLabel
  */
@@ -518,7 +549,7 @@ export async function createStrapiContentor(payload) {
   let item = coerceContentorRow(row)
 
   if (item && !item.qrcodeUrl) {
-    const docId = row?.documentId ?? row?.id ?? item.id
+    const docId = extractStrapiEntityId(row) ?? item.id
     if (docId != null) {
       const params = new URLSearchParams()
       params.set('populate[qrcode]', 'true')
@@ -534,5 +565,93 @@ export async function createStrapiContentor(payload) {
   }
 
   if (!item) throw new Error('Resposta inválida ao criar contentor.')
+  return item
+}
+
+/**
+ * @typedef {object} UpdateContentorPayload
+ * @property {string} capacidadeId
+ * @property {string} localizacao
+ * @property {string} estado
+ * @property {string} data
+ */
+
+/**
+ * Atualiza um contentor existente (sem alterar CID nem QR).
+ * @param {string} documentId
+ * @param {UpdateContentorPayload} payload
+ * @returns {Promise<ContentorItem>}
+ */
+export async function updateStrapiContentor(documentId, payload) {
+  const base = strapiBaseUrl()
+  if (!base) throw new Error('Configura VITE_STRAPI_URL no .env')
+
+  const capacidadeRef = /^\d+$/.test(payload.capacidadeId)
+    ? Number(payload.capacidadeId)
+    : payload.capacidadeId
+
+  const body = {
+    data: {
+      localizacao: payload.localizacao.trim(),
+      estado: payload.estado,
+      data: payload.data,
+      capacidade: capacidadeRef,
+    },
+  }
+
+  const res = await fetch(`${base}/api/contentores/${encodeURIComponent(documentId)}`, {
+    method: 'PUT',
+    headers: {
+      ...authHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+
+  if (!res.ok) {
+    let message = `Strapi contentores: HTTP ${res.status}`
+    try {
+      const err = await res.json()
+      const detail =
+        err?.error?.message ??
+        err?.error?.details?.errors?.[0]?.message ??
+        err?.message
+      if (detail) message = String(detail)
+    } catch {
+      /* ignore */
+    }
+    if (res.status === 403) {
+      throw new Error(
+        'Sem permissão para atualizar contentores. No Strapi: Settings → Users & Permissions → Roles → Authenticated → Contentor → ativa «update».',
+      )
+    }
+    if (res.status === 404) {
+      throw new Error(
+        'Contentor não encontrado na API. Recarrega a lista e tenta de novo (o identificador pode ter mudado após atualização do Strapi).',
+      )
+    }
+    throw new Error(message)
+  }
+
+  const json = await res.json()
+  let row = json.data ?? json
+  let item = coerceContentorRow(row)
+
+  if (item && (!item.capacidadeId || !item.qrcodeUrl)) {
+    const params = new URLSearchParams()
+    params.set('populate[capacidade]', 'true')
+    params.set('populate[qrcode]', 'true')
+    const getRes = await fetch(
+      `${base}/api/contentores/${encodeURIComponent(documentId)}?${params.toString()}`,
+      { headers: authHeaders() },
+    )
+    if (getRes.ok) {
+      const getJson = await getRes.json()
+      row = getJson.data ?? getJson
+      item = coerceContentorRow(row) ?? item
+    }
+  }
+
+  if (!item) throw new Error('Resposta inválida ao atualizar contentor.')
   return item
 }

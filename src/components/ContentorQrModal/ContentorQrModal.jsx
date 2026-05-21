@@ -1,17 +1,31 @@
 import { useEffect, useState } from 'react'
 import { faXmark } from '@fortawesome/pro-light-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import {
+  IOS_MANUAL_SAVE_HINT,
+  IOS_SAVE_ERROR_HINT,
+  IOS_SHARE_SAVE_HINT,
+  canIosPickSaveLocation,
+  fetchImageBlob,
+  isIosDevice,
+  saveImageBlob,
+  saveImageButtonLabel,
+} from '../../lib/downloadImage.js'
 import { buildQrcodeImageUrl } from '../../lib/strapiContentores.js'
 import './ContentorQrModal.css'
 
 /**
- * Pré-visualização do QR do contentor (imagem Strapi ou fallback) + download.
+ * Pré-visualização do QR do contentor (imagem Strapi ou fallback) + guardar.
  */
 export default function ContentorQrModal({ isOpen, onClose, cid, qrcodeImageUrl }) {
   const label = (cid ?? '').trim()
   const imageUrl = (qrcodeImageUrl ?? '').trim() || buildQrcodeImageUrl(label)
+  const ios = isIosDevice()
+  const iosCanPickFolder = canIosPickSaveLocation()
   const [downloading, setDownloading] = useState(false)
   const [downloadError, setDownloadError] = useState('')
+  const [manualHintActive, setManualHintActive] = useState(false)
+  const downloadLabel = saveImageButtonLabel()
 
   useEffect(() => {
     if (!isOpen) return undefined
@@ -26,48 +40,47 @@ export default function ContentorQrModal({ isOpen, onClose, cid, qrcodeImageUrl 
     if (!isOpen) {
       setDownloading(false)
       setDownloadError('')
+      setManualHintActive(false)
     }
   }, [isOpen])
 
   async function handleDownload() {
     if (!imageUrl || !label) return
     setDownloadError('')
-    setDownloading(true)
+    setManualHintActive(false)
 
+    if (ios && !window.isSecureContext) {
+      setManualHintActive(true)
+      return
+    }
+
+    setDownloading(true)
     const filename = `${label.replace(/[^a-zA-Z0-9-]/g, '_')}-qrcode.png`
 
     try {
-      const res = await fetch(imageUrl)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const blob = await res.blob()
-      const objectUrl = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = objectUrl
-      link.download = filename
-      link.rel = 'noopener'
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(objectUrl)
-    } catch {
-      try {
-        const link = document.createElement('a')
-        link.href = imageUrl
-        link.download = filename
-        link.target = '_blank'
-        link.rel = 'noopener noreferrer'
-        document.body.appendChild(link)
-        link.click()
-        link.remove()
-      } catch {
-        setDownloadError('Não foi possível transferir a imagem. Tenta outra vez.')
+      const blob = await fetchImageBlob(imageUrl)
+      const result = await saveImageBlob(blob, filename)
+      if (result.method === 'cancelled') return
+      if (result.method === 'manual') {
+        setManualHintActive(true)
+        if (iosCanPickFolder) setDownloadError(IOS_SAVE_ERROR_HINT)
+        return
       }
+    } catch {
+      if (ios) {
+        setManualHintActive(true)
+        return
+      }
+      setDownloadError('Não foi possível guardar a imagem. Tenta outra vez.')
     } finally {
       setDownloading(false)
     }
   }
 
   if (!isOpen || !label) return null
+
+  const showLocalHint = ios && !window.isSecureContext
+  const showShareHint = iosCanPickFolder && !manualHintActive
 
   return (
     <div className="contentor-qr-modal" role="dialog" aria-modal="true" aria-labelledby="contentor-qr-title">
@@ -79,14 +92,35 @@ export default function ContentorQrModal({ isOpen, onClose, cid, qrcodeImageUrl 
         <h2 id="contentor-qr-title" className="contentor-qr-modal__title">
           QR Code
         </h2>
+        {showLocalHint ? (
+          <p
+            className={`contentor-qr-modal__ios-hint${manualHintActive ? ' contentor-qr-modal__ios-hint--active' : ''}`}
+          >
+            {IOS_MANUAL_SAVE_HINT}
+          </p>
+        ) : null}
+        {showShareHint ? (
+          <p className="contentor-qr-modal__ios-hint contentor-qr-modal__ios-hint--share">
+            {IOS_SHARE_SAVE_HINT}
+          </p>
+        ) : null}
+        {manualHintActive && !showLocalHint ? (
+          <p className="contentor-qr-modal__ios-hint contentor-qr-modal__ios-hint--active">
+            {IOS_MANUAL_SAVE_HINT}
+          </p>
+        ) : null}
         {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={`QR code ${label}`}
-            className="contentor-qr-modal__image"
-            width={320}
-            height={360}
-          />
+          <div
+            className={`contentor-qr-modal__image-wrap${manualHintActive ? ' contentor-qr-modal__image-wrap--active' : ''}`}
+          >
+            <img
+              src={imageUrl}
+              alt={`QR code ${label}`}
+              className="contentor-qr-modal__image"
+              width={320}
+              height={360}
+            />
+          </div>
         ) : null}
         {imageUrl ? (
           <button
@@ -95,7 +129,7 @@ export default function ContentorQrModal({ isOpen, onClose, cid, qrcodeImageUrl 
             onClick={handleDownload}
             disabled={downloading}
           >
-            {downloading ? 'A descarregar…' : 'Descarregar QR code'}
+            {downloading ? 'A preparar…' : downloadLabel}
           </button>
         ) : null}
         {downloadError ? (

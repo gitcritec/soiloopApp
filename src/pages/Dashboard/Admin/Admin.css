@@ -1,6 +1,11 @@
 .admin-dashboard {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
+  overflow-x: hidden;
+  box-sizing: border-box;
   background: #f0eeec;
   color: #060e0b;
 }
@@ -24,17 +29,20 @@
 }
 
 .admin-dashboard__main {
+  width: 100%;
   max-width: 393px;
   margin: 0 auto;
-  padding: 108px 20px 220px;
+  padding: 108px 20px calc(96px + env(safe-area-inset-bottom, 0px) + 24px);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 24px;
+  min-width: 0;
 }
 
 /* Formulário de registo: altura fixa entre header e bottom nav; scroll só no cartão */
-.admin-dashboard__main:has(.contentor-registo) {
+.admin-dashboard__main:has(.contentor-registo),
+.admin-dashboard__main:has(.cliente-registo) {
   overflow: hidden;
   height: 100dvh;
   max-height: 100dvh;

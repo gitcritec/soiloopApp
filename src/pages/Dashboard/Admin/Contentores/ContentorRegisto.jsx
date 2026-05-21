@@ -6,6 +6,7 @@ import {
   CONTENTOR_ESTADOS,
   createStrapiContentor,
   fetchStrapiCapacidades,
+  updateStrapiContentor,
 } from '../../../../lib/strapiContentores.js'
 import './ContentorRegisto.css'
 
@@ -26,12 +27,30 @@ function emptyForm(capacidadeId = '') {
   }
 }
 
+/** @param {import('../../../../lib/strapiContentores.js').ContentorItem} contentor */
+function formFromContentor(contentor) {
+  const estado =
+    CONTENTOR_ESTADOS.includes(contentor.estadoLabel) ? contentor.estadoLabel : CONTENTOR_ESTADOS[0]
+  const localizacao =
+    contentor.localizacao && contentor.localizacao !== '—' ? contentor.localizacao : ''
+  return {
+    capacidadeId: contentor.capacidadeId ?? '',
+    localizacao,
+    estado,
+    data: contentor.dataIso || todayIsoDate(),
+  }
+}
+
 /**
- * Formulário de registo de contentor (Figma).
- * O CID (CNT-001, …) é gerado automaticamente no envio.
+ * Formulário de registo ou edição de contentor (Figma).
+ * Criação: CID gerado automaticamente no envio.
+ * @param {import('../../../../lib/strapiContentores.js').ContentorItem} [contentorToEdit]
  */
-export default function ContentorRegisto({ onCancel, onSuccess }) {
-  const [form, setForm] = useState(() => emptyForm())
+export default function ContentorRegisto({ contentorToEdit, onCancel, onSuccess }) {
+  const isEdit = Boolean(contentorToEdit)
+  const [form, setForm] = useState(() =>
+    contentorToEdit ? formFromContentor(contentorToEdit) : emptyForm(),
+  )
   const [capacidades, setCapacidades] = useState([])
   const [loadingCaps, setLoadingCaps] = useState(true)
   const [capsError, setCapsError] = useState(null)
@@ -47,7 +66,13 @@ export default function ContentorRegisto({ onCancel, onSuccess }) {
         if (cancelled) return
         setCapacidades(rows)
         if (rows.length > 0) {
-          setForm((prev) => (prev.capacidadeId ? prev : { ...prev, capacidadeId: rows[0].id }))
+          setForm((prev) => {
+            if (prev.capacidadeId) return prev
+            if (isEdit && contentorToEdit?.capacidadeId) {
+              return { ...prev, capacidadeId: contentorToEdit.capacidadeId }
+            }
+            return { ...prev, capacidadeId: rows[0].id }
+          })
         }
       })
       .catch((err) => {
@@ -65,7 +90,14 @@ export default function ContentorRegisto({ onCancel, onSuccess }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [isEdit, contentorToEdit])
+
+  useEffect(() => {
+    if (contentorToEdit) {
+      setForm(formFromContentor(contentorToEdit))
+      setFormError('')
+    }
+  }, [contentorToEdit])
 
   function updateField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -73,7 +105,11 @@ export default function ContentorRegisto({ onCancel, onSuccess }) {
   }
 
   function handleDiscard() {
-    setForm(emptyForm(capacidades[0]?.id ?? ''))
+    if (isEdit && contentorToEdit) {
+      setForm(formFromContentor(contentorToEdit))
+    } else {
+      setForm(emptyForm(capacidades[0]?.id ?? ''))
+    }
     setFormError('')
     onCancel?.()
   }
@@ -103,15 +139,24 @@ export default function ContentorRegisto({ onCancel, onSuccess }) {
 
     setSubmitting(true)
     try {
-      const created = await createStrapiContentor({
+      const payload = {
         capacidadeId: form.capacidadeId,
         localizacao,
         estado: form.estado,
         data: form.data,
-      })
-      onSuccess?.(created)
+      }
+      const saved = isEdit
+        ? await updateStrapiContentor(contentorToEdit.id, payload)
+        : await createStrapiContentor(payload)
+      onSuccess?.(saved)
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Não foi possível registar o contentor.')
+      setFormError(
+        err instanceof Error
+          ? err.message
+          : isEdit
+            ? 'Não foi possível guardar as alterações.'
+            : 'Não foi possível registar o contentor.',
+      )
     } finally {
       setSubmitting(false)
     }
@@ -121,7 +166,7 @@ export default function ContentorRegisto({ onCancel, onSuccess }) {
     <section className="contentor-registo" aria-labelledby="contentor-registo-title">
       <form className="contentor-registo__form" onSubmit={handleSubmit} noValidate>
         <h2 id="contentor-registo-title" className="visually-hidden">
-          Registo de contentor
+          {isEdit ? 'Editar contentor' : 'Registo de contentor'}
         </h2>
 
         <div className="contentor-registo__card">
@@ -134,6 +179,19 @@ export default function ContentorRegisto({ onCancel, onSuccess }) {
               <p className="contentor-registo__error" role="alert">
                 {formError}
               </p>
+            ) : null}
+
+            {isEdit ? (
+              <label className="contentor-registo__field">
+                <span className="contentor-registo__label">CID</span>
+                <input
+                  type="text"
+                  className="contentor-registo__input contentor-registo__input--readonly"
+                  value={contentorToEdit.cid}
+                  readOnly
+                  aria-readonly="true"
+                />
+              </label>
             ) : null}
 
             <label className="contentor-registo__field">
@@ -163,15 +221,12 @@ export default function ContentorRegisto({ onCancel, onSuccess }) {
             {capsError ? (
               <p className="contentor-registo__hint contentor-registo__hint--error" role="alert">
                 {capsError}
-                {capsError.includes('403')
-                  ? ' Ativa find/findOne em Capacidade para o role Autenticado no Strapi.'
-                  : null}
+                {capsError.includes('403') ? ' Contacta o suporte se o problema continuar.' : null}
               </p>
             ) : null}
             {!loadingCaps && !capsError && capacidades.length === 0 ? (
               <p className="contentor-registo__hint contentor-registo__hint--error" role="status">
-                Não há capacidades publicadas no Strapi. Publica os registos em Capacidade ou confirma
-                permissões find.
+                Não há capacidades disponíveis. Contacta o suporte.
               </p>
             ) : null}
 
@@ -219,7 +274,7 @@ export default function ContentorRegisto({ onCancel, onSuccess }) {
 
           <div className="contentor-registo__actions">
             <button type="submit" className="contentor-registo__submit" disabled={submitting}>
-              {submitting ? 'A guardar…' : 'Confirmar Registo'}
+              {submitting ? 'A guardar…' : isEdit ? 'Guardar alterações' : 'Confirmar Registo'}
             </button>
             <button
               type="button"
