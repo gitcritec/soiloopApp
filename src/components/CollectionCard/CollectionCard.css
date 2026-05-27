@@ -1,6 +1,6 @@
 .collection-card {
   display: grid;
-  grid-template-columns: 28px 1fr 53px;
+  grid-template-columns: 28px 1fr 114px;
   align-items: center;
   gap: 12px;
   width: 100%;
@@ -10,6 +10,10 @@
   box-sizing: border-box;
   background: #f9f8f9;
   border-radius: 10px;
+}
+
+.collection-card--request-pedido {
+  opacity: 0.58;
 }
 
 .collection-card__bin {
@@ -24,8 +28,9 @@
 .collection-card__bin-icon {
   display: block;
   width: 20px;
-  height: 24px;
-  object-fit: contain;
+  height: 20px;
+  font-size: 20px;
+  line-height: 1;
   flex-shrink: 0;
 }
 
@@ -117,7 +122,7 @@
 }
 
 .collection-card__date,
-.collection-card__time {
+.collection-card__period {
   font-size: 9px;
   line-height: 15px;
 }
@@ -156,24 +161,36 @@
 }
 
 .collection-card__btn--edit {
-  background: #5c6d66;
-  color: #f9f8f9;
-}
-
-.collection-card__btn--edit:hover {
-  filter: brightness(1.08);
-}
-
-.collection-card__btn--location {
   background: #e5e9e8;
   color: #40534c;
 }
 
-.collection-card__btn--location:hover {
+.collection-card__btn--edit:hover {
   filter: brightness(0.97);
 }
 
+.collection-card__btn--delete {
+  background: #e5e9e8;
+  color: #e6193c;
+}
+
+.collection-card__btn--delete:hover {
+  filter: brightness(0.97);
+}
+
+.collection-card--status-atrasado .collection-card__bin-number,
+.collection-card--status-atrasado .collection-card__bin-icon,
+.collection-card--status-atrasado .collection-card__meta {
+  color: #9f1239;
+}
+
+.collection-card--status-atrasado .collection-card__badge {
+  background: #ffd6df;
+  color: #9f1239;
+}
+
 .collection-card--status-hoje .collection-card__bin-number,
+.collection-card--status-hoje .collection-card__bin-icon,
 .collection-card--status-hoje .collection-card__meta {
   color: #e6193c;
 }
@@ -184,6 +201,7 @@
 }
 
 .collection-card--status-amanha .collection-card__bin-number,
+.collection-card--status-amanha .collection-card__bin-icon,
 .collection-card--status-amanha .collection-card__meta {
   color: #f1ba00;
 }
@@ -194,6 +212,7 @@
 }
 
 .collection-card--status-agendada .collection-card__bin-number,
+.collection-card--status-agendada .collection-card__bin-icon,
 .collection-card--status-agendada .collection-card__meta {
   color: #1e8f2b;
 }

@@ -12,6 +12,19 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useEffect } from 'react'
 import './OperatorDrawerMenu.css'
 
+const DEFAULT_PRIMARY_ITEMS = [
+  { id: 'notificacoes', label: 'Notificações', icon: faBell },
+  { id: 'recolhas', label: 'Recolhas', icon: faRecycle },
+  { id: 'movimentos', label: 'Movimentos', icon: faArrowsRotate },
+  { id: 'historico', label: 'Histórico', icon: faClock },
+]
+
+const DEFAULT_SECONDARY_ITEMS = [
+  { id: 'definicoes', label: 'Definições', icon: faGear },
+  { id: 'ajuda', label: 'Ajuda', icon: faCircleInfo },
+  { id: 'sair', label: 'Sair', icon: faPowerOff, isLogout: true },
+]
+
 /**
  * Menu lateral operador (layout Figma node 228:6634).
  * @param {object} props
@@ -22,6 +35,8 @@ import './OperatorDrawerMenu.css'
  * @param {string|null} [props.avatarSrc]
  * @param {() => void} props.onLogout
  * @param {(actionId: string) => void} [props.onNavigate]
+ * @param {Array<{ id: string, label: string, icon: import('@fortawesome/fontawesome-svg-core').IconDefinition }>} [props.primaryItems]
+ * @param {Array<{ id: string, label: string, icon: import('@fortawesome/fontawesome-svg-core').IconDefinition, isLogout?: boolean }>} [props.secondaryItems]
  */
 export default function OperatorDrawerMenu({
   isOpen,
@@ -31,6 +46,8 @@ export default function OperatorDrawerMenu({
   avatarSrc,
   onLogout,
   onNavigate,
+  primaryItems = DEFAULT_PRIMARY_ITEMS,
+  secondaryItems = DEFAULT_SECONDARY_ITEMS,
 }) {
   useEffect(() => {
     if (!isOpen) return
@@ -105,88 +122,39 @@ export default function OperatorDrawerMenu({
         </div>
 
         <nav className="operator-drawer__nav operator-drawer__nav--primary" aria-label="Navegação principal">
-          <button
-            type="button"
-            className="operator-drawer__item"
-            onClick={() => handlePrimaryClick('notificacoes')}
-          >
-            <span className="operator-drawer__item-icon" aria-hidden="true">
-              <FontAwesomeIcon icon={faBell} />
-            </span>
-            <span className="operator-drawer__item-label">Notificações</span>
-          </button>
-          <button
-            type="button"
-            className="operator-drawer__item"
-            onClick={() => handlePrimaryClick('recolhas')}
-          >
-            <span className="operator-drawer__item-icon" aria-hidden="true">
-              <FontAwesomeIcon icon={faRecycle} />
-            </span>
-            <span className="operator-drawer__item-label">Recolhas</span>
-          </button>
-          <button
-            type="button"
-            className="operator-drawer__item"
-            onClick={() => handlePrimaryClick('movimentos')}
-          >
-            <span className="operator-drawer__item-icon" aria-hidden="true">
-              <FontAwesomeIcon icon={faArrowsRotate} />
-            </span>
-            <span className="operator-drawer__item-label">Movimentos</span>
-          </button>
-          <button
-            type="button"
-            className="operator-drawer__item"
-            onClick={() => handlePrimaryClick('historico')}
-          >
-            <span className="operator-drawer__item-icon" aria-hidden="true">
-              <FontAwesomeIcon icon={faClock} />
-            </span>
-            <span className="operator-drawer__item-label">Histórico</span>
-          </button>
+          {primaryItems.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className="operator-drawer__item"
+              onClick={() => handlePrimaryClick(item.id)}
+            >
+              <span className="operator-drawer__item-icon" aria-hidden="true">
+                <FontAwesomeIcon icon={item.icon} />
+              </span>
+              <span className="operator-drawer__item-label">{item.label}</span>
+            </button>
+          ))}
         </nav>
 
         <nav className="operator-drawer__nav operator-drawer__nav--secondary" aria-label="Conta e sessão">
-          <button
-            type="button"
-            className="operator-drawer__item"
-            onClick={() => {
-              onClose()
-              onNavigate?.('definicoes')
-            }}
-          >
-            <span className="operator-drawer__item-icon" aria-hidden="true">
-              <FontAwesomeIcon icon={faGear} />
-            </span>
-            <span className="operator-drawer__item-label">Definições</span>
-          </button>
-          <button
-            type="button"
-            className="operator-drawer__item"
-            onClick={() => {
-              onClose()
-              onNavigate?.('ajuda')
-            }}
-          >
-            <span className="operator-drawer__item-icon" aria-hidden="true">
-              <FontAwesomeIcon icon={faCircleInfo} />
-            </span>
-            <span className="operator-drawer__item-label">Ajuda</span>
-          </button>
-          <button
-            type="button"
-            className="operator-drawer__item"
-            onClick={() => {
-              onClose()
-              onLogout()
-            }}
-          >
-            <span className="operator-drawer__item-icon" aria-hidden="true">
-              <FontAwesomeIcon icon={faPowerOff} />
-            </span>
-            <span className="operator-drawer__item-label">Sair</span>
-          </button>
+          {secondaryItems.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className="operator-drawer__item"
+              onClick={() => {
+                onClose()
+                if (item.isLogout) onLogout()
+                else onNavigate?.(item.id)
+              }}
+            >
+              <span className="operator-drawer__item-icon" aria-hidden="true">
+                <FontAwesomeIcon icon={item.icon} />
+              </span>
+              <span className="operator-drawer__item-label">{item.label}</span>
+            </button>
+          ))}
         </nav>
       </div>
     </div>

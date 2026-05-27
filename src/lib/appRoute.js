@@ -5,7 +5,7 @@ export const ADMIN_NAV_IDS = ['recolhas', 'contentores', 'dashboard', 'clientes'
 export const OPERADOR_NAV_IDS = ['movimentos', 'dashboard', 'historico']
 
 /** IDs válidos da barra inferior cliente. */
-export const CLIENTE_NAV_IDS = ['pedidos', 'dashboard', 'contentores']
+export const CLIENTE_NAV_IDS = ['dashboard', 'recolhas', 'contentores', 'tickets']
 
 /**
  * @returns {{ profile: 'admin'|'operador'|'cliente', section: string, sub: string|null }|null}
