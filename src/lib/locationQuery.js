@@ -25,3 +25,42 @@ export function buildGoogleMapsOpenUrl(query) {
   const q = encodeURIComponent(query)
   return `https://www.google.com/maps/search/?api=1&query=${q}`
 }
+
+const NOMINATIM_HEADERS = {
+  Accept: 'application/json',
+  'User-Agent': 'SoiloopApp/1.0 (location-picker)',
+}
+
+/**
+ * Pesquisa de moradas (OpenStreetMap Nominatim).
+ * @param {string} query
+ * @returns {Promise<Array<{ label: string, lat: number, lng: number }>>}
+ */
+export async function searchLocationAddress(query) {
+  const q = String(query ?? '').trim()
+  if (q.length < 2) return []
+
+  const params = new URLSearchParams({
+    format: 'json',
+    limit: '5',
+    q,
+    countrycodes: 'pt',
+    'accept-language': 'pt',
+  })
+
+  const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+    headers: NOMINATIM_HEADERS,
+  })
+  if (!res.ok) throw new Error('Não foi possível pesquisar o endereço.')
+
+  const rows = await res.json()
+  if (!Array.isArray(rows)) return []
+
+  return rows
+    .map((row) => ({
+      label: row.display_name,
+      lat: Number(row.lat),
+      lng: Number(row.lon),
+    }))
+    .filter((row) => row.label && Number.isFinite(row.lat) && Number.isFinite(row.lng))
+}

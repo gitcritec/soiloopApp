@@ -8,6 +8,8 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import clientesHero from '../../../../assets/figma-cliente/ListaCliente.png'
 import ClienteCard from '../../../../components/ClienteCard/ClienteCard.jsx'
+import FloatingPrimaryButton from '../../../../components/FloatingPrimaryButton/FloatingPrimaryButton.jsx'
+import { IconBarcodeScan } from '../../../../components/icons/icons.jsx'
 import {
   readAdminClientesEditId,
   readAdminClientesView,
@@ -195,6 +197,15 @@ export default function Clientes() {
           ))}
         </ul>
       ) : null}
+
+      <div className="admin-clientes__processar">
+        <FloatingPrimaryButton
+          variant="operador"
+          label="Processar"
+          onClick={() => {}}
+          icon={<IconBarcodeScan />}
+        />
+      </div>
     </div>
   )
 }

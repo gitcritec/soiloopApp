@@ -40,6 +40,16 @@
   min-width: 0;
 }
 
+.admin-dashboard__main:has(.admin-contentores) {
+  gap: 12px;
+  padding-bottom: calc(168px + env(safe-area-inset-bottom, 0px));
+}
+
+.admin-dashboard__main:has(.admin-clientes) {
+  gap: 12px;
+  padding-bottom: calc(168px + env(safe-area-inset-bottom, 0px));
+}
+
 /* Formulário de registo: altura fixa entre header e bottom nav; scroll só no cartão */
 .admin-dashboard__main:has(.contentor-registo),
 .admin-dashboard__main:has(.cliente-registo) {

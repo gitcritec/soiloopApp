@@ -11,6 +11,9 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import contentoresHero from '../../../../assets/figma-cliente/contentores-hero.png'
 import ContentorCard from '../../../../components/ContentorCard/ContentorCard.jsx'
 import ContentorQrModal from '../../../../components/ContentorQrModal/ContentorQrModal.jsx'
+import FloatingPrimaryButton from '../../../../components/FloatingPrimaryButton/FloatingPrimaryButton.jsx'
+import LocationMapModal from '../../../../components/LocationMapModal/LocationMapModal.jsx'
+import { IconBarcodeScan } from '../../../../components/icons/icons.jsx'
 import {
   readAdminContentoresEditId,
   readAdminContentoresView,
@@ -29,6 +32,7 @@ export default function Contentores() {
   const [loadError, setLoadError] = useState(false)
   const [search, setSearch] = useState('')
   const [qrPreview, setQrPreview] = useState(null)
+  const [locationMap, setLocationMap] = useState(null)
 
   const loadList = useCallback(() => {
     setLoading(true)
@@ -223,6 +227,15 @@ export default function Contentores() {
                   estado={item.estado}
                   estadoLabel={item.estadoLabel}
                   onEditClick={() => openEdit(item)}
+                  onLocationClick={() => {
+                    const loc = item.localizacao?.trim()
+                    if (!loc || loc === '—') return
+                    setLocationMap({
+                      query: loc,
+                      title: item.cid,
+                      subtitle: loc,
+                    })
+                  }}
                   onScanClick={() =>
                     setQrPreview({ cid: item.cid, qrcodeImageUrl: item.qrcodeUrl })
                   }
@@ -233,11 +246,28 @@ export default function Contentores() {
         ) : null}
       </div>
 
+      <div className="admin-contentores__processar">
+        <FloatingPrimaryButton
+          variant="operador"
+          label="Processar"
+          onClick={() => {}}
+          icon={<IconBarcodeScan />}
+        />
+      </div>
+
       <ContentorQrModal
         isOpen={Boolean(qrPreview)}
         cid={qrPreview?.cid ?? ''}
         qrcodeImageUrl={qrPreview?.qrcodeImageUrl ?? ''}
         onClose={() => setQrPreview(null)}
+      />
+
+      <LocationMapModal
+        isOpen={Boolean(locationMap)}
+        query={locationMap?.query ?? ''}
+        title={locationMap?.title}
+        subtitle={locationMap?.subtitle}
+        onClose={() => setLocationMap(null)}
       />
     </>
   )

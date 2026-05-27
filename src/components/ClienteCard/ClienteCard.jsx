@@ -22,15 +22,17 @@ export default function ClienteCard({
 
   return (
     <article className="cliente-card">
-      <div className="cliente-card__icon-col">
-        <IconContentor className="cliente-card__icon" aria-hidden />
-        <span className="cliente-card__count">{countText}</span>
-      </div>
+      <div className="cliente-card__lead">
+        <div className="cliente-card__icon-col">
+          <IconContentor className="cliente-card__icon" aria-hidden />
+          <span className="cliente-card__count">{countText}</span>
+        </div>
 
-      <div className="cliente-card__main">
-        <p className="cliente-card__nome">{nameText}</p>
-        <p className="cliente-card__cli">{codeText}</p>
-        <p className="cliente-card__telefone">{phoneText}</p>
+        <div className="cliente-card__main">
+          <p className="cliente-card__nome">{nameText}</p>
+          <p className="cliente-card__cli">{codeText}</p>
+          <p className="cliente-card__telefone">{phoneText}</p>
+        </div>
       </div>
 
       <div className="cliente-card__actions">

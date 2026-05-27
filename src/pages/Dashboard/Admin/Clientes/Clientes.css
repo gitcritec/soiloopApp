@@ -6,12 +6,13 @@
   max-width: 353px;
   min-width: 0;
   margin: 0 auto;
+  padding-bottom: 64px;
   box-sizing: border-box;
 }
 
 .admin-clientes__hero-wrap {
   width: 100%;
-  height: 128px;
+  height: 120px;
   overflow: hidden;
   border-radius: 0;
   background: #f0eeec;
@@ -30,23 +31,24 @@
 .admin-clientes__toolbar {
   display: flex;
   align-items: stretch;
-  gap: 6px;
+  gap: 8px;
   width: 100%;
   min-width: 0;
   max-width: 100%;
+  min-height: 54px;
 }
 
 .admin-clientes__search {
   display: flex;
   flex: 1 1 auto;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   min-width: 0;
-  min-height: 48px;
-  padding: 0 12px;
+  min-height: 54px;
+  padding: 0 16px;
   box-sizing: border-box;
   background: #f9f8f9;
-  border-radius: 8px;
+  border-radius: 5px;
 }
 
 .admin-clientes__search-icon {
@@ -73,16 +75,16 @@
 
 .admin-clientes__tool-btn {
   display: flex;
-  flex: 0 0 48px;
+  flex: 0 0 53px;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  min-width: 48px;
-  max-width: 48px;
-  min-height: 48px;
+  width: 53px;
+  min-width: 53px;
+  max-width: 53px;
+  min-height: 54px;
   padding: 0;
   border: none;
-  border-radius: 8px;
+  border-radius: 5px;
   background: #f9f8f9;
   color: #40534c;
   cursor: pointer;
@@ -100,20 +102,19 @@
 
 .admin-clientes__add {
   display: flex;
-  flex: 0 0 48px;
+  flex: 0 0 53px;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  min-width: 48px;
-  max-width: 48px;
-  min-height: 48px;
+  width: 53px;
+  min-width: 53px;
+  max-width: 53px;
+  min-height: 54px;
   padding: 0;
   border: none;
-  border-radius: 8px;
-  background: #15d67f;
+  border-radius: 5px;
+  background: #1e8f2b;
   color: #f9f8f9;
   cursor: pointer;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.12);
   box-sizing: border-box;
 }
 
@@ -122,8 +123,8 @@
 }
 
 .admin-clientes__add-icon {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
 }
 
 .admin-clientes__list {
@@ -158,4 +159,32 @@
   color: #15d67f;
   text-decoration: underline;
   cursor: pointer;
+}
+
+.admin-clientes__processar {
+  position: fixed;
+  left: 50%;
+  z-index: 20;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px) + 12px);
+  width: 100%;
+  max-width: 353px;
+  padding: 0 20px;
+  box-sizing: border-box;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.admin-clientes__processar .floating-primary-button-wrap {
+  position: static;
+  width: 100%;
+  max-width: none;
+  padding: 0;
+  pointer-events: none;
+}
+
+.admin-clientes__processar .floating-primary-button {
+  pointer-events: auto;
+  width: 100%;
+  max-width: 353px;
+  min-width: 0;
 }

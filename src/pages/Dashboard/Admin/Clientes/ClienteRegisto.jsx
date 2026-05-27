@@ -276,11 +276,11 @@ export default function ClienteRegisto({ clienteToEdit, clienteId, onCancel, onS
                   type="text"
                   className="cliente-registo__input"
                   value={form.username}
+                  placeholder="Nome*"
                   onChange={(e) => updateField('username', e.target.value)}
                   autoComplete="organization"
                   required
                 />
-                <span className="cliente-registo__field-hint">Nome de utilizador (ex.: cliente-alpha)</span>
               </label>
 
               <label className="cliente-registo__field">
@@ -290,6 +290,7 @@ export default function ClienteRegisto({ clienteToEdit, clienteId, onCancel, onS
                   inputMode="numeric"
                   className="cliente-registo__input"
                   value={form.nif}
+                  placeholder="NIF*"
                   onChange={(e) => updateField('nif', e.target.value)}
                   required
                 />
@@ -302,6 +303,7 @@ export default function ClienteRegisto({ clienteToEdit, clienteId, onCancel, onS
                   inputMode="numeric"
                   className="cliente-registo__input"
                   value={form.telefone}
+                  placeholder="Telefone*"
                   onChange={(e) => updateField('telefone', e.target.value)}
                   required
                 />
@@ -313,6 +315,7 @@ export default function ClienteRegisto({ clienteToEdit, clienteId, onCancel, onS
                   type="email"
                   className="cliente-registo__input"
                   value={form.email}
+                  placeholder="e-mail*"
                   onChange={(e) => updateField('email', e.target.value)}
                   autoComplete="email"
                   required
@@ -326,6 +329,7 @@ export default function ClienteRegisto({ clienteToEdit, clienteId, onCancel, onS
                     type="password"
                     className="cliente-registo__input"
                     value={form.password}
+                    placeholder="Palavra-passe*"
                     onChange={(e) => updateField('password', e.target.value)}
                     autoComplete="new-password"
                     required
@@ -339,9 +343,9 @@ export default function ClienteRegisto({ clienteToEdit, clienteId, onCancel, onS
                     type="password"
                     className="cliente-registo__input"
                     value={form.password}
+                    placeholder="Nova palavra-passe"
                     onChange={(e) => updateField('password', e.target.value)}
                     autoComplete="new-password"
-                    placeholder="Deixar vazio para manter"
                   />
                 </label>
               )}
@@ -352,6 +356,7 @@ export default function ClienteRegisto({ clienteToEdit, clienteId, onCancel, onS
                   type="text"
                   className="cliente-registo__input"
                   value={form.pessoaContacto}
+                  placeholder="Pessoa de Contacto*"
                   onChange={(e) => updateField('pessoaContacto', e.target.value)}
                   required
                 />
@@ -363,6 +368,7 @@ export default function ClienteRegisto({ clienteToEdit, clienteId, onCancel, onS
                   type="text"
                   className="cliente-registo__input"
                   value={form.morada}
+                  placeholder="Morada*"
                   onChange={(e) => updateField('morada', e.target.value)}
                   required
                 />
@@ -370,10 +376,6 @@ export default function ClienteRegisto({ clienteToEdit, clienteId, onCancel, onS
 
               <div className="cliente-registo__section">
                 <h3 className="cliente-registo__section-title">Localizações</h3>
-                <p className="cliente-registo__section-hint">
-                  Cada cliente pode ter vários polos ou armazéns. Usa o pin para definir as coordenadas de
-                  cada local.
-                </p>
 
                 {form.localizacoes.map((loc, index) => (
                   <div key={loc.key} className="cliente-registo__loc-block">
@@ -384,7 +386,7 @@ export default function ClienteRegisto({ clienteToEdit, clienteId, onCancel, onS
                           type="text"
                           className="cliente-registo__input cliente-registo__input--loc"
                           value={loc.nome}
-                          placeholder="Ex.: Polo Norte"
+                          placeholder="Localização*"
                           onChange={(e) => updateLocalizacao(index, { nome: e.target.value })}
                           required
                         />

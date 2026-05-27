@@ -89,7 +89,110 @@
   cursor: pointer;
 }
 
+.location-picker-modal__search-row {
+  display: grid;
+  grid-template-columns: 1fr 44px;
+  gap: 8px;
+  padding: 0 16px;
+  margin-top: 4px;
+}
+
+.location-picker-modal__search-input {
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  border: 1px solid #e5e9e8;
+  border-radius: 5px;
+  background: #fff;
+  font-family: 'Rubik', sans-serif;
+  font-size: 13px;
+  color: #060e0b;
+  outline: none;
+}
+
+.location-picker-modal__search-input:focus {
+  border-color: #15d67f;
+}
+
+.location-picker-modal__search-btn {
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 5px;
+  background: #1e8f2b;
+  color: #fff;
+  cursor: pointer;
+}
+
+.location-picker-modal__inline-msg {
+  margin: 6px 16px 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #5c6d66;
+}
+
+.location-picker-modal__inline-msg--error {
+  color: #e6193c;
+}
+
+.location-picker-modal__results {
+  margin: 6px 16px 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid #e5e9e8;
+  border-radius: 8px;
+  background: #fff;
+  max-height: 160px;
+  overflow: auto;
+}
+
+.location-picker-modal__result-btn {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid #eef1f0;
+  background: transparent;
+  color: #060e0b;
+  text-align: left;
+  padding: 10px 12px;
+  font-family: 'Rubik', sans-serif;
+  font-size: 12px;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.location-picker-modal__results li:last-child .location-picker-modal__result-btn {
+  border-bottom: none;
+}
+
+.location-picker-modal__map-toolbar {
+  padding: 10px 16px 0;
+}
+
+.location-picker-modal__geo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid #cfd8d4;
+  border-radius: 8px;
+  background: #fff;
+  color: #40534c;
+  font-family: 'Rubik', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.location-picker-modal__geo-icon {
+  font-size: 14px;
+}
+
 .location-picker-modal__map-wrap {
+  position: relative;
   flex-shrink: 0;
   padding: 0 16px;
 }
@@ -99,7 +202,7 @@
   width: 100%;
   height: min(40vh, 280px);
   min-height: 200px;
-  border: 0;
+  border: 1px solid #e5e9e8;
   border-radius: 12px;
   background: #e5e9e8;
 }
@@ -147,6 +250,10 @@
   font-size: 11px;
   line-height: 1.35;
   color: #5c6d66;
+}
+
+.location-picker-modal__hint--error {
+  color: #e6193c;
 }
 
 .location-picker-modal__footer {
