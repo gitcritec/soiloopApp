@@ -25,9 +25,11 @@ import { IconContentor } from '../../../components/icons/icons.jsx'
 import { readClienteNavId, setAppHash } from '../../../lib/appRoute.js'
 import { formatLocationQuery } from '../../../lib/locationQuery.js'
 import {
+  createStrapiClienteSolicitacaoRecolha,
   fetchStrapiClienteContentoresInstalados,
   fetchStrapiClienteMovimentosAgendados,
 } from '../../../lib/strapiMovimentos.js'
+import SolicitarRecolha from './SolicitarRecolha/SolicitarRecolha.jsx'
 import {
   MOCK_CLIENT_CONTAINERS,
   MOCK_CLIENT_NAME,
@@ -60,7 +62,7 @@ const CLIENT_DRAWER_SECONDARY_ITEMS = [
   { id: 'sair', label: 'Sair', icon: faPowerOff, isLogout: true },
 ]
 
-function ClienteContentorCard({ item, onLocationClick }) {
+function ClienteContentorCard({ item, onLocationClick, onRequestPickup }) {
   const estadoLabel = item.estadoLabel ?? 'Reutilizável'
   const estadoKey = estadoLabel.toLowerCase().includes('recolha') ? 'em-recolha' : 'reutilizavel'
   const localizacao = [item.locationPrefix, item.locationDetail].filter(Boolean).join(' ')
@@ -99,6 +101,7 @@ function ClienteContentorCard({ item, onLocationClick }) {
             type="button"
             className="cliente-contentor-card__btn cliente-contentor-card__btn--recycle"
             aria-label="Solicitar recolha"
+            onClick={onRequestPickup}
           >
             <FontAwesomeIcon icon={faRecycle} aria-hidden />
           </button>
@@ -123,6 +126,7 @@ export default function Cliente({
   const [clientContainers, setClientContainers] = useState([])
   const [clientContainersLoading, setClientContainersLoading] = useState(true)
   const [clientContainersError, setClientContainersError] = useState(false)
+  const [recolhaContext, setRecolhaContext] = useState(null)
 
   useEffect(() => {
     function syncFromHash() {
@@ -180,6 +184,39 @@ export default function Cliente({
       cancelled = true
     }
   }, [])
+
+  function openSolicitarRecolha(item) {
+    setRecolhaContext(item)
+  }
+
+  function closeSolicitarRecolha() {
+    setRecolhaContext(null)
+  }
+
+  async function handleSolicitarRecolhaSubmit(payload) {
+    await createStrapiClienteSolicitacaoRecolha(payload)
+    closeSolicitarRecolha()
+
+    setClientRequestsLoading(true)
+    setClientRequestsError(false)
+    fetchStrapiClienteMovimentosAgendados(MOCK_CLIENT_REQUESTS)
+      .then((rows) => setClientRequests(rows))
+      .catch(() => {
+        setClientRequests([])
+        setClientRequestsError(true)
+      })
+      .finally(() => setClientRequestsLoading(false))
+
+    setClientContainersLoading(true)
+    setClientContainersError(false)
+    fetchStrapiClienteContentoresInstalados(MOCK_CLIENT_CONTAINERS)
+      .then((rows) => setClientContainers(rows))
+      .catch(() => {
+        setClientContainers([])
+        setClientContainersError(true)
+      })
+      .finally(() => setClientContainersLoading(false))
+  }
 
   function openCollectionLocation(item) {
     const query = formatLocationQuery(item)
@@ -261,7 +298,7 @@ export default function Cliente({
               ) : null}
               {!clientRequestsLoading && !clientRequestsError ? clientRequests.map((item) => (
                 <CollectionCard
-                  key={item.id}
+                  key={item.movimentoKey ?? `${item.id}-${item.taskType}-${item.scheduledAt}`}
                   collectionId={item.id}
                   location={item.location}
                   locationPrefix={item.locationPrefix}
@@ -305,6 +342,7 @@ export default function Cliente({
                   key={item.id}
                   item={item}
                   onLocationClick={() => openCollectionLocation(item)}
+                  onRequestPickup={() => openSolicitarRecolha(item)}
                 />
               )) : null}
             </div>
@@ -319,22 +357,31 @@ export default function Cliente({
         />
       </main>
 
-      <div className="cliente-dashboard__floating-actions" aria-label="Ações rápidas">
-        <button type="button" className="cliente-dashboard__floating-btn cliente-dashboard__floating-btn--primary">
-          <FontAwesomeIcon icon={faRecycle} aria-hidden />
-          Solicitar Recolha
-        </button>
-        <button type="button" className="cliente-dashboard__floating-btn cliente-dashboard__floating-btn--secondary">
-          <FontAwesomeIcon icon={faComments} aria-hidden />
-          Criar Novo Ticket
-        </button>
-      </div>
+      {!recolhaContext ? (
+        <div className="cliente-dashboard__floating-actions" aria-label="Ações rápidas">
+          <button type="button" className="cliente-dashboard__floating-btn cliente-dashboard__floating-btn--primary">
+            <FontAwesomeIcon icon={faRecycle} aria-hidden />
+            Solicitar Recolha
+          </button>
+          <button type="button" className="cliente-dashboard__floating-btn cliente-dashboard__floating-btn--secondary">
+            <FontAwesomeIcon icon={faComments} aria-hidden />
+            Criar Novo Ticket
+          </button>
+        </div>
+      ) : null}
      
       <BottomNav
         variant="operador"
         items={CLIENT_BOTTOM_NAV_ITEMS}
         activeId={navActiveId}
         onSelect={selectNav}
+      />
+
+      <SolicitarRecolha
+        isOpen={Boolean(recolhaContext)}
+        containerItem={recolhaContext}
+        onClose={closeSolicitarRecolha}
+        onSubmit={handleSolicitarRecolhaSubmit}
       />
     </div>
   )

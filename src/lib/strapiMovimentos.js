@@ -1,7 +1,10 @@
 import { STRAPI_JWT_STORAGE_KEY } from './strapiAuth.js'
+import { fetchStrapiContentorByCid } from './strapiContentores.js'
 
 const MOVIMENTO_ESTADO_AGENDADO = 'agendado'
 const MOVIMENTO_ESTADO_PEDIDO = 'pedido'
+const MOVIMENTO_TIPO_RECOLHA = 'recolha'
+const MOVIMENTO_TIPO_ENTREGA = 'entrega'
 
 function strapiBaseUrl() {
   const raw = import.meta.env.VITE_STRAPI_URL
@@ -39,6 +42,132 @@ function unwrapEntity(entity) {
     return { ...data, ...(data.attributes ?? {}) }
   }
   return { ...entity, ...(entity.attributes ?? {}) }
+}
+
+function pickRelationId(entity) {
+  const unwrapped = unwrapEntity(entity)
+  if (!unwrapped) return null
+  return pickString(unwrapped.documentId ?? unwrapped.id)
+}
+
+const LOCALIZACAO_MORADA_KEYS = ['morada', 'endereco', 'localizacao', 'descricao', 'titulo', 'title']
+const LOCALIZACAO_NOME_KEYS = ['nome', 'name', 'designacao', 'denominacao', 'label']
+
+function includesIgnoreCase(haystack, needle) {
+  if (!haystack || !needle) return false
+  return haystack.toLowerCase().includes(needle.toLowerCase())
+}
+
+function pickFirstStringField(obj, keys) {
+  if (!obj || typeof obj !== 'object') return null
+  for (const key of keys) {
+    const value = pickString(obj[key])
+    if (value) return value
+  }
+  return null
+}
+
+function joinLocalizacaoParts(morada, nome) {
+  const m = morada?.trim()
+  const n = nome?.trim()
+  if (m && n) {
+    if (includesIgnoreCase(m, n)) {
+      return { location: m, locationPrefix: null, locationDetail: m }
+    }
+    return {
+      location: `${m} ${n}`.trim(),
+      locationPrefix: m,
+      locationDetail: n,
+    }
+  }
+  if (m) return { location: m, locationPrefix: null, locationDetail: m }
+  if (n) return { location: n, locationPrefix: null, locationDetail: n }
+  return { location: null, locationPrefix: null, locationDetail: null }
+}
+
+/**
+ * @returns {{ location: string|null, locationPrefix: string|null, locationDetail: string|null }}
+ */
+function pickLocalizacaoDisplay(localizacaoEntity, contentor) {
+  const fromContentor = pickString(contentor?.localizacao)
+  if (fromContentor) {
+    return { location: fromContentor, locationPrefix: null, locationDetail: fromContentor }
+  }
+
+  const loc = unwrapEntity(localizacaoEntity)
+  if (loc) {
+    const moradaLike = pickFirstStringField(loc, LOCALIZACAO_MORADA_KEYS)
+    const nome = pickFirstStringField(loc, LOCALIZACAO_NOME_KEYS)
+    if (moradaLike && (!nome || includesIgnoreCase(moradaLike, nome))) {
+      return { location: moradaLike, locationPrefix: null, locationDetail: moradaLike }
+    }
+    const joined = joinLocalizacaoParts(moradaLike, nome)
+    if (joined.location) return joined
+  }
+
+  return { location: null, locationPrefix: null, locationDetail: null }
+}
+
+function buildPedidoGroupKey(row) {
+  const periodo = normalizeText(row.periodo ?? row.scheduledAt?.split(/\s+/).pop())
+  return `${row.localizacaoId ?? 'none'}|${row.dateSortValue}|${periodo}`
+}
+
+function pickCanonicalPedidoLocation(items) {
+  const recolha = items.find(
+    (item) => item.taskType === 'recolher' && item.contentorId && item.location,
+  )
+  if (recolha) {
+    return {
+      location: recolha.location,
+      locationPrefix: recolha.locationPrefix,
+      locationDetail: recolha.locationDetail,
+    }
+  }
+
+  const withLocation = items.filter((item) => item.location)
+  if (withLocation.length === 0) return null
+
+  const best = withLocation.reduce((current, item) =>
+    item.location.length > current.location.length ? item : current,
+  )
+  return {
+    location: best.location,
+    locationPrefix: best.locationPrefix,
+    locationDetail: best.locationDetail,
+  }
+}
+
+/** Alinha a morada entre recolha + entrega do mesmo pedido (mesma data/período/localização). */
+function enrichMovimentosPedidoLocation(rows) {
+  const groups = new Map()
+
+  for (const row of rows) {
+    const key = buildPedidoGroupKey(row)
+    const list = groups.get(key) ?? []
+    list.push(row)
+    groups.set(key, list)
+  }
+
+  const patchByMovimentoKey = new Map()
+  for (const items of groups.values()) {
+    const canonical = pickCanonicalPedidoLocation(items)
+    if (!canonical?.location) continue
+    for (const item of items) {
+      patchByMovimentoKey.set(item.movimentoKey, canonical)
+    }
+  }
+
+  return rows.map((row) => {
+    const patch = patchByMovimentoKey.get(row.movimentoKey)
+    if (!patch) return row
+    return {
+      ...row,
+      location: patch.location,
+      locationPrefix: patch.locationPrefix ?? row.locationPrefix,
+      locationDetail: patch.locationDetail ?? row.locationDetail,
+    }
+  })
 }
 
 function formatDate(value) {
@@ -102,6 +231,13 @@ function normalizeText(value) {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+}
+
+function normalizePeriodoForStrapi(value) {
+  const s = normalizeText(value)
+  if (s === 'manha') return 'manha'
+  if (s === 'tarde') return 'tarde'
+  return pickString(value) ?? ''
 }
 
 function isEstadoAgendado(value) {
@@ -182,30 +318,40 @@ function coerceMovimentoRow(row, fallback = {}) {
   if (!row || typeof row !== 'object') return null
   const attrs = row.attributes ?? row
   const contentor = unwrapEntity(attrs.contentor)
-  const movimentoId = pickString(attrs.codigo ?? attrs.Codigo ?? attrs.referencia ?? attrs.Referencia)
+  const localizacaoEntity = attrs.localizacao
+  const localizacaoDisplay = pickLocalizacaoDisplay(localizacaoEntity, contentor)
+  const localizacaoId = pickRelationId(localizacaoEntity)
+  const movimentoKey =
+    pickString(attrs.documentId ?? row.documentId ?? attrs.id ?? row.id) ??
+    fallback.movimentoKey ??
+    fallback.id ??
+    'MOV-000'
   const contentorCid = pickString(contentor?.CID ?? contentor?.cid)
   const status = getDateStatus(attrs.data)
   const estado = pickString(attrs.estado) ?? MOVIMENTO_ESTADO_AGENDADO
   const date = formatDate(attrs.data)
   const periodo = pickString(attrs.periodo)
   const scheduledAt = [date, periodo].filter(Boolean).join(' ')
+  const taskType = normalizeTipoMovimento(
+    attrs.tipoMovimento ?? (contentorCid ? MOVIMENTO_TIPO_RECOLHA : MOVIMENTO_TIPO_ENTREGA),
+    fallback.taskType,
+  )
+  const locationText =
+    localizacaoDisplay.location ?? fallback.locationDetail ?? fallback.location ?? null
 
   return {
-    id:
-      contentorCid ??
-      movimentoId ??
-      pickString(attrs.documentId ?? row.documentId ?? attrs.id ?? row.id) ??
-      fallback.id ??
-      'MOV-000',
-    location: pickString(contentor?.localizacao ?? attrs.localizacao) ?? fallback.location,
-    locationPrefix:
-      pickString(contentor?.clienteNome ?? contentor?.cliente ?? attrs.clienteNome) ??
-      fallback.locationPrefix,
-    locationDetail: pickString(contentor?.localizacao ?? attrs.localizacao) ?? fallback.locationDetail,
+    id: contentorCid ?? 'Não definido',
+    movimentoKey,
+    location: locationText,
+    locationPrefix: localizacaoDisplay.locationPrefix ?? fallback.locationPrefix,
+    locationDetail:
+      localizacaoDisplay.locationDetail ?? localizacaoDisplay.location ?? fallback.locationDetail,
+    localizacaoId: localizacaoId ?? fallback.localizacaoId,
+    periodo: normalizePeriodoForStrapi(periodo) || periodo || fallback.periodo,
     status,
     scheduledAt: scheduledAt || pickContentorLitros(contentor, fallback.scheduledAt ?? ''),
     binNumber: pickBinNumber(contentor, fallback.binNumber ?? '01'),
-    taskType: normalizeTipoMovimento(attrs.tipoMovimento, fallback.taskType),
+    taskType,
     contentorId: contentorCid ?? fallback.contentorId,
     qrCode: pickContentorQrCode(contentor, fallback.qrCode ?? contentorCid),
     litrosLabel: pickContentorLitros(contentor, fallback.litrosLabel ?? fallback.scheduledAt ?? ''),
@@ -307,10 +453,12 @@ export async function fetchStrapiClienteMovimentosAgendados(fallbackRows = []) {
     try {
       const rows = await fetchMovimentosRows(base, params)
       if (rows.length > 0) {
-        const pedidos = rows
-          .map((row, index) => coerceMovimentoRow(row, fallbackRows[index]))
-          .filter((item) => item && isEstadoPedidoVisivel(item.estado))
-          .sort((a, b) => a.dateSortValue - b.dateSortValue)
+        const pedidos = enrichMovimentosPedidoLocation(
+          rows
+            .map((row, index) => coerceMovimentoRow(row, fallbackRows[index]))
+            .filter((item) => item && isEstadoPedidoVisivel(item.estado))
+            .sort((a, b) => a.dateSortValue - b.dateSortValue),
+        )
         if (pedidos.length > 0 || !params.toString().includes('filters%5Bestado%5D')) {
           return pedidos
         }
@@ -368,4 +516,216 @@ export async function fetchStrapiClienteContentoresInstalados(fallbackRows = [])
 
   if (lastError) throw lastError
   return []
+}
+
+function resolveRelationRef(ref) {
+  if (ref == null) return undefined
+  const s = String(ref).trim()
+  if (!s) return undefined
+  if (/^\d+$/.test(s)) return Number(s)
+  return s
+}
+
+function buildContentRelationConnect(ref) {
+  const resolved = resolveRelationRef(ref)
+  if (resolved == null) return undefined
+  return { connect: [resolved] }
+}
+
+function buildMovimentoCreatePayload(scalars, localizacaoId, contentorId, withContentor) {
+  const localizacao = buildContentRelationConnect(localizacaoId)
+  if (!localizacao) throw new Error('Localização em falta.')
+
+  /** @type {Record<string, unknown>} */
+  const payload = {
+    ...scalars,
+    localizacao,
+  }
+
+  if (withContentor) {
+    const contentor = buildContentRelationConnect(contentorId)
+    if (!contentor) throw new Error('Contentor em falta.')
+    payload.contentor = contentor
+  }
+
+  return payload
+}
+
+function toDirectRelationPayload(payload) {
+  /** @type {Record<string, unknown>} */
+  const next = { ...payload }
+  for (const field of ['localizacao', 'contentor']) {
+    const value = next[field]
+    if (value && typeof value === 'object' && Array.isArray(value.connect) && value.connect.length > 0) {
+      next[field] = value.connect[0]
+    }
+  }
+  return next
+}
+
+function isTrocarContentorSim(value) {
+  return normalizeText(value) === 'sim'
+}
+
+function formatStrapiErrorJson(errorJson, fallback) {
+  if (!errorJson || typeof errorJson !== 'object') return fallback
+  const err = errorJson.error ?? errorJson
+  const validationErrors = err?.details?.errors
+  if (Array.isArray(validationErrors) && validationErrors.length > 0) {
+    return validationErrors
+      .map((item) => {
+        const path = Array.isArray(item?.path) ? item.path.join('.') : pickString(item?.path)
+        const message = pickString(item?.message) ?? 'Valor inválido.'
+        return path ? `${path}: ${message}` : message
+      })
+      .join(' · ')
+  }
+
+  const detail =
+    err?.message ?? err?.details?.errors?.[0]?.message ?? errorJson?.message
+  return detail ? String(detail) : fallback
+}
+
+function isInvalidKeyError(errorJson) {
+  const msg = String(errorJson?.error?.message ?? '').toLowerCase()
+  return msg.includes('invalid key')
+}
+
+async function parseStrapiMovimentoError(res, fallback) {
+  try {
+    const err = await res.json()
+    return formatStrapiErrorJson(err, fallback)
+  } catch {
+    /* ignore */
+  }
+  return fallback
+}
+
+/**
+ * @param {Record<string, unknown>} data
+ * @returns {Promise<{ ok: true, data: unknown } | { ok: false, status: number, errorJson: unknown }>}
+ */
+async function postStrapiMovimentoRaw(data) {
+  const base = strapiBaseUrl()
+  if (!base) throw new Error('Configura VITE_STRAPI_URL no .env')
+
+  const res = await fetch(`${base}/api/movimentos`, {
+    method: 'POST',
+    headers: {
+      ...authHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ data }),
+  })
+
+  let errorJson = null
+  if (!res.ok) {
+    try {
+      errorJson = await res.json()
+    } catch {
+      errorJson = null
+    }
+    return { ok: false, status: res.status, errorJson }
+  }
+
+  let json = null
+  try {
+    json = await res.json()
+  } catch {
+    json = null
+  }
+  return { ok: true, data: json?.data ?? json }
+}
+
+/**
+ * Cria um movimento com no máximo 2 tentativas (connect → ids diretos).
+ * @param {Record<string, unknown>} data
+ */
+async function postStrapiMovimentoCreate(data) {
+  const primary = await postStrapiMovimentoRaw(data)
+  if (primary.ok) return primary.data
+
+  if (isInvalidKeyError(primary.errorJson)) {
+    const fallback = await postStrapiMovimentoRaw(toDirectRelationPayload(data))
+    if (fallback.ok) return fallback.data
+    throw new Error(
+      formatStrapiErrorJson(
+        fallback.errorJson,
+        `Strapi movimentos: HTTP ${fallback.errorJson?.error?.status ?? 400}`,
+      ),
+    )
+  }
+
+  throw new Error(
+    formatStrapiErrorJson(
+      primary.errorJson,
+      `Strapi movimentos: HTTP ${primary.errorJson?.error?.status ?? 400}`,
+    ),
+  )
+}
+
+/**
+ * @typedef {object} CreateClienteSolicitacaoRecolhaPayload
+ * @property {string} contentorId CID do contentor (ex.: CNT-001)
+ * @property {string} [localizacaoId] ID/documentId da relação Localização
+ * @property {string} localizacao
+ * @property {string} data Data no formato YYYY-MM-DD
+ * @property {string} periodo
+ * @property {string} [observacoes]
+ * @property {string} trocarContentor Sim/Não
+ */
+
+/**
+ * Regista pedido(s) no Strapi (estado `pedido`).
+ * Sempre cria `tipoMovimento: recolha` com contentor; se Trocar Contentor = Sim,
+ * cria também `tipoMovimento: entrega` sem contentor associado.
+ * @param {CreateClienteSolicitacaoRecolhaPayload} payload
+ */
+export async function createStrapiClienteSolicitacaoRecolha(payload) {
+  const contentorCid = pickString(payload.contentorId)
+  if (!contentorCid) throw new Error('Contentor em falta.')
+
+  const data = pickString(payload.data)
+  if (!data) throw new Error('Data em falta.')
+
+  const periodo = normalizePeriodoForStrapi(payload.periodo)
+  if (!periodo) throw new Error('Período em falta.')
+
+  const localizacaoId = pickString(payload.localizacaoId)
+  const observacoes = pickString(payload.observacoes)
+
+  const contentor = await fetchStrapiContentorByCid(contentorCid)
+  if (!contentor?.id) throw new Error('Contentor não encontrado.')
+
+  if (!localizacaoId) {
+    throw new Error('Localização do contentor em falta. Não foi possível associar o pedido.')
+  }
+
+  /** @type {Record<string, unknown>} */
+  const scalars = {
+    estado: MOVIMENTO_ESTADO_PEDIDO,
+    data,
+    periodo,
+    ...(observacoes ? { observacoesCliente: observacoes } : {}),
+  }
+
+  await postStrapiMovimentoCreate(
+    buildMovimentoCreatePayload(
+      { ...scalars, tipoMovimento: MOVIMENTO_TIPO_RECOLHA },
+      localizacaoId,
+      contentor.id,
+      true,
+    ),
+  )
+
+  if (isTrocarContentorSim(payload.trocarContentor)) {
+    await postStrapiMovimentoCreate(
+      buildMovimentoCreatePayload(
+        { ...scalars, tipoMovimento: MOVIMENTO_TIPO_ENTREGA },
+        localizacaoId,
+        null,
+        false,
+      ),
+    )
+  }
 }

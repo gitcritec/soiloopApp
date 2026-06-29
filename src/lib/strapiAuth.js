@@ -242,6 +242,7 @@ export function persistStrapiSession(session) {
   const next = { ...existing }
   if (username) next.username = username
   if (roleLabel) next.roleLabel = roleLabel
+  if (u.id != null) next.id = u.id
   writeStoredUserJson(next)
 }
 
@@ -292,7 +293,15 @@ export function persistStrapiUserCache(user) {
   const next = { ...existing }
   if (username) next.username = username
   if (roleLabel) next.roleLabel = roleLabel
+  if (user.id != null) next.id = user.id
   writeStoredUserJson(next)
+}
+
+/** @returns {number|null} */
+export function getStoredStrapiUserId() {
+  const j = readStoredUserJson()
+  const num = Number(j.id)
+  return Number.isFinite(num) && num > 0 ? num : null
 }
 
 /**
