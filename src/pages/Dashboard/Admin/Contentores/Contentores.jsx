@@ -11,9 +11,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import contentoresHero from '../../../../assets/figma-cliente/contentores-hero.png'
 import ContentorCard from '../../../../components/ContentorCard/ContentorCard.jsx'
 import ContentorQrModal from '../../../../components/ContentorQrModal/ContentorQrModal.jsx'
-import FloatingPrimaryButton from '../../../../components/FloatingPrimaryButton/FloatingPrimaryButton.jsx'
 import LocationMapModal from '../../../../components/LocationMapModal/LocationMapModal.jsx'
-import { IconBarcodeScan } from '../../../../components/icons/icons.jsx'
 import {
   readAdminContentoresEditId,
   readAdminContentoresView,
@@ -244,15 +242,6 @@ export default function Contentores() {
             ))}
           </ul>
         ) : null}
-      </div>
-
-      <div className="admin-contentores__processar">
-        <FloatingPrimaryButton
-          variant="operador"
-          label="Processar"
-          onClick={() => {}}
-          icon={<IconBarcodeScan />}
-        />
       </div>
 
       <ContentorQrModal

@@ -10,35 +10,6 @@
   box-sizing: border-box;
 }
 
-/* FAB «Processar» — Figma 41:1769 (353×54, bottom ~92px) */
-.admin-contentores__processar {
-  position: fixed;
-  left: 50%;
-  z-index: 20;
-  bottom: calc(80px + env(safe-area-inset-bottom, 0px) + 12px);
-  width: 100%;
-  max-width: 353px;
-  padding: 0 20px;
-  box-sizing: border-box;
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-
-.admin-contentores__processar .floating-primary-button-wrap {
-  position: static;
-  width: 100%;
-  max-width: none;
-  padding: 0;
-  pointer-events: none;
-}
-
-.admin-contentores__processar .floating-primary-button {
-  pointer-events: auto;
-  width: 100%;
-  max-width: 353px;
-  min-width: 0;
-}
-
 .admin-contentores__hero-wrap {
   width: 100%;
   height: 128px;

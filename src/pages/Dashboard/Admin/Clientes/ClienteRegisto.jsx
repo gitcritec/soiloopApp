@@ -409,10 +409,7 @@ export default function ClienteRegisto({ clienteToEdit, clienteId, onCancel, onS
                         Coordenadas: {loc.lat.toFixed(5)}, {loc.lng.toFixed(5)}
                       </p>
                     ) : (
-                      <p className="cliente-registo__coords-missing">
-                        Coordenadas por definir (o mapa fica disponível quando o modelo tiver latitude e
-                        longitude)
-                      </p>
+                      <p className="cliente-registo__coords-missing">Coordenadas por definir</p>
                     )}
                     {form.localizacoes.length > 1 ? (
                       <button

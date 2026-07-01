@@ -1,4 +1,4 @@
-import { faLocationCrosshairs, faMagnifyingGlass, faXmark } from '@fortawesome/pro-light-svg-icons'
+import { faLocationCrosshairs, faMagnifyingGlass, faMap, faSatellite, faXmark } from '@fortawesome/pro-light-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { buildGoogleMapsOpenUrl, searchLocationAddress } from '../../lib/locationQuery.js'
@@ -8,6 +8,11 @@ const DEFAULT_LAT = 38.7223
 const DEFAULT_LNG = -9.1393
 const LEAFLET_CSS_ID = 'leaflet-css-cdn'
 const LEAFLET_JS_ID = 'leaflet-js-cdn'
+const OSM_TILES = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+const SATELLITE_TILES =
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+const SATELLITE_LABELS =
+  'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'
 
 let leafletPromise = null
 
@@ -20,6 +25,97 @@ function parseCoord(value) {
 function formatCoord(value) {
   if (value == null || Number.isNaN(value)) return ''
   return String(Math.round(value * 1e6) / 1e6)
+}
+
+function resolveStartCoords(value) {
+  const lat = value?.lat != null ? parseCoord(value.lat) : null
+  const lng = value?.lng != null ? parseCoord(value.lng) : null
+  if (lat != null && lng != null) return { lat, lng }
+  return { lat: DEFAULT_LAT, lng: DEFAULT_LNG }
+}
+
+const GEO_OPTIONS_CACHED = { enableHighAccuracy: false, timeout: 5000, maximumAge: Infinity }
+const GEO_OPTIONS_PRIMARY = { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 }
+const GEO_OPTIONS_FALLBACK = { enableHighAccuracy: false, timeout: 25000, maximumAge: 300000 }
+
+async function isGeoPermissionDenied() {
+  if (!navigator.permissions?.query) return false
+  try {
+    const status = await navigator.permissions.query({ name: 'geolocation' })
+    return status.state === 'denied'
+  } catch {
+    return false
+  }
+}
+
+async function geoErrorMessage(err) {
+  if (typeof window !== 'undefined' && !window.isSecureContext) {
+    return 'O GPS só funciona em HTTPS ou em localhost. Acede pela app em ligação segura.'
+  }
+
+  if (err?.code === 1 && (await isGeoPermissionDenied())) {
+    return 'Permissão de localização negada. Ativa o GPS nas definições do browser.'
+  }
+
+  if (err?.code === 2) {
+    return 'Sinal GPS indisponível. Escolhe a posição no mapa ou tenta novamente.'
+  }
+  if (err?.code === 3) {
+    return 'Tempo esgotado ao obter GPS. Tenta novamente ou escolhe no mapa.'
+  }
+  return 'Não foi possível obter a posição atual. Escolhe no mapa ou tenta novamente.'
+}
+
+function requestCurrentPosition(options) {
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, options)
+  })
+}
+
+function requestPositionViaWatch(options, maxWaitMs = 30000) {
+  return new Promise((resolve, reject) => {
+    let watchId = null
+    let settled = false
+
+    const finish = (fn, value) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      if (watchId != null) navigator.geolocation.clearWatch(watchId)
+      fn(value)
+    }
+
+    const timer = setTimeout(() => finish(reject, { code: 3 }), maxWaitMs)
+
+    watchId = navigator.geolocation.watchPosition(
+      (pos) => finish(resolve, pos),
+      (err) => {
+        if (err?.code === 1) finish(reject, err)
+      },
+      options,
+    )
+  })
+}
+
+async function getCurrentCoords() {
+  const attempts = [
+    () => requestCurrentPosition(GEO_OPTIONS_CACHED),
+    () => requestCurrentPosition(GEO_OPTIONS_PRIMARY),
+    () => requestCurrentPosition(GEO_OPTIONS_FALLBACK),
+    () => requestPositionViaWatch({ enableHighAccuracy: false, maximumAge: 60000 }, 30000),
+    () => requestPositionViaWatch({ enableHighAccuracy: true, maximumAge: 0 }, 30000),
+  ]
+
+  let lastError = { code: 3 }
+  for (const attempt of attempts) {
+    try {
+      return await attempt()
+    } catch (err) {
+      lastError = err
+      if (err?.code === 1 && (await isGeoPermissionDenied())) throw err
+    }
+  }
+  throw lastError
 }
 
 function ensureLeafletLoaded() {
@@ -78,9 +174,37 @@ export default function LocationPickerModal({ isOpen, onClose, value, onConfirm 
   const [geoError, setGeoError] = useState('')
   const [searching, setSearching] = useState(false)
   const [locating, setLocating] = useState(false)
+  const [mapStyle, setMapStyle] = useState('street')
   const mapElementRef = useRef(null)
   const mapRef = useRef(null)
   const markerRef = useRef(null)
+  const streetLayerRef = useRef(null)
+  const satelliteBaseLayerRef = useRef(null)
+  const satelliteLabelsLayerRef = useRef(null)
+
+  const applyMapStyle = useCallback((style) => {
+    const map = mapRef.current
+    const L = window.L
+    if (!map || !L) return
+
+    if (streetLayerRef.current) map.removeLayer(streetLayerRef.current)
+    if (satelliteBaseLayerRef.current) map.removeLayer(satelliteBaseLayerRef.current)
+    if (satelliteLabelsLayerRef.current) map.removeLayer(satelliteLabelsLayerRef.current)
+
+    if (style === 'satellite') {
+      if (!satelliteBaseLayerRef.current) {
+        satelliteBaseLayerRef.current = L.tileLayer(SATELLITE_TILES, { maxZoom: 19 })
+        satelliteLabelsLayerRef.current = L.tileLayer(SATELLITE_LABELS, { maxZoom: 19, opacity: 0.85 })
+      }
+      satelliteBaseLayerRef.current.addTo(map)
+      satelliteLabelsLayerRef.current.addTo(map)
+    } else {
+      if (!streetLayerRef.current) {
+        streetLayerRef.current = L.tileLayer(OSM_TILES, { maxZoom: 19 })
+      }
+      streetLayerRef.current.addTo(map)
+    }
+  }, [])
 
   const applyCoords = useCallback((lat, lng) => {
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
@@ -101,13 +225,15 @@ export default function LocationPickerModal({ isOpen, onClose, value, onConfirm 
 
   useEffect(() => {
     if (!isOpen) return
-    setLatText(formatCoord(value?.lat ?? DEFAULT_LAT))
-    setLngText(formatCoord(value?.lng ?? DEFAULT_LNG))
+    const start = resolveStartCoords(value)
+    setLatText(formatCoord(start.lat))
+    setLngText(formatCoord(start.lng))
     setSearchText('')
     setSearchResults([])
     setMapLoadError('')
     setSearchError('')
     setGeoError('')
+    setMapStyle('street')
   }, [isOpen, value?.lat, value?.lng])
 
   useEffect(() => {
@@ -151,21 +277,21 @@ export default function LocationPickerModal({ isOpen, onClose, value, onConfirm 
             zoomControl: true,
             attributionControl: false,
           })
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-          }).addTo(mapRef.current)
           mapRef.current.on('click', (ev) => {
             applyCoords(ev.latlng.lat, ev.latlng.lng)
           })
         }
 
-        const startLat = value?.lat ?? DEFAULT_LAT
-        const startLng = value?.lng ?? DEFAULT_LNG
-        applyCoords(startLat, startLng)
+        applyMapStyle('street')
 
-        setTimeout(() => {
-          if (!cancelled) mapRef.current?.invalidateSize()
-        }, 0)
+        const start = resolveStartCoords(value)
+        applyCoords(start.lat, start.lng)
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (!cancelled) mapRef.current?.invalidateSize()
+          })
+        })
       })
       .catch((err) => {
         if (!cancelled) {
@@ -176,7 +302,12 @@ export default function LocationPickerModal({ isOpen, onClose, value, onConfirm 
     return () => {
       cancelled = true
     }
-  }, [isOpen, value?.lat, value?.lng, applyCoords])
+  }, [isOpen, value?.lat, value?.lng, applyCoords, applyMapStyle])
+
+  useEffect(() => {
+    if (!isOpen || !mapRef.current) return
+    applyMapStyle(mapStyle)
+  }, [isOpen, mapStyle, applyMapStyle])
 
   useEffect(() => {
     if (!isOpen || !mapRef.current || !markerRef.current) return
@@ -212,29 +343,25 @@ export default function LocationPickerModal({ isOpen, onClose, value, onConfirm 
     setSearchResults([])
   }
 
-  function handleUseCurrentPosition() {
+  async function handleUseCurrentPosition() {
     setGeoError('')
     if (!navigator.geolocation) {
       setGeoError('O dispositivo não suporta localização GPS.')
       return
     }
-
     setLocating(true)
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLocating(false)
-        applyCoords(pos.coords.latitude, pos.coords.longitude)
-      },
-      (err) => {
-        setLocating(false)
-        if (err.code === err.PERMISSION_DENIED) {
-          setGeoError('Permissão de localização negada. Ativa o GPS nas definições do browser.')
-        } else {
-          setGeoError('Não foi possível obter a posição atual.')
-        }
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
-    )
+    try {
+      const pos = await getCurrentCoords()
+      applyCoords(pos.coords.latitude, pos.coords.longitude)
+    } catch (err) {
+      setGeoError(await geoErrorMessage(err))
+    } finally {
+      setLocating(false)
+    }
+  }
+
+  function handleToggleMapStyle() {
+    setMapStyle((prev) => (prev === 'street' ? 'satellite' : 'street'))
   }
 
   function handleConfirm() {
@@ -322,6 +449,19 @@ export default function LocationPickerModal({ isOpen, onClose, value, onConfirm 
         ) : null}
 
         <div className="location-picker-modal__map-wrap">
+          <button
+            type="button"
+            className="location-picker-modal__map-style-btn"
+            onClick={handleToggleMapStyle}
+            aria-pressed={mapStyle === 'satellite'}
+          >
+            <FontAwesomeIcon
+              icon={mapStyle === 'street' ? faSatellite : faMap}
+              className="location-picker-modal__map-style-icon"
+              aria-hidden
+            />
+            {mapStyle === 'street' ? 'Satélite' : 'Mapa'}
+          </button>
           <div ref={mapElementRef} className="location-picker-modal__map" />
         </div>
         {mapLoadError ? (

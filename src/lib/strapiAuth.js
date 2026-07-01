@@ -132,6 +132,12 @@ export function normalizeStrapiUserRole(role) {
   return null
 }
 
+export function isStrapiClienteRoleLabel(label) {
+  if (label == null) return false
+  const s = String(label).trim().toLowerCase()
+  return s === 'cliente' || s === 'client'
+}
+
 /**
  * Indica se o texto da função corresponde a administrador (Strapi Users & Permissions, `role.name`).
  * @param {string|null|undefined} label

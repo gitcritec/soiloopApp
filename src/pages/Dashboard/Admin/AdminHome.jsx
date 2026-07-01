@@ -3,12 +3,7 @@ import SectionTitleWithIcon from '../../../components/SectionTitleWithIcon/Secti
 import CollectionCard from '../../../components/CollectionCard/CollectionCard.jsx'
 import { IconChevronRight } from '../../../components/icons/icons.jsx'
 import { MOCK_ADMIN_PEDIDOS, MOCK_ADMIN_TICKETS } from './mockData.js'
-
-const TICKET_STATUS_LABEL = {
-  'aberto-hoje': 'Aberto',
-  'aberto-amanha': 'Aberto',
-  respondido: 'Respondido',
-}
+import { TICKET_STATUS_LABEL } from '../../../lib/ticketStatus.js'
 
 /** Dashboard admin (pedidos + tickets). */
 export default function AdminHome() {

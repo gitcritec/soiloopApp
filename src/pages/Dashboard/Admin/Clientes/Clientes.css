@@ -160,31 +160,3 @@
   text-decoration: underline;
   cursor: pointer;
 }
-
-.admin-clientes__processar {
-  position: fixed;
-  left: 50%;
-  z-index: 20;
-  bottom: calc(80px + env(safe-area-inset-bottom, 0px) + 12px);
-  width: 100%;
-  max-width: 353px;
-  padding: 0 20px;
-  box-sizing: border-box;
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-
-.admin-clientes__processar .floating-primary-button-wrap {
-  position: static;
-  width: 100%;
-  max-width: none;
-  padding: 0;
-  pointer-events: none;
-}
-
-.admin-clientes__processar .floating-primary-button {
-  pointer-events: auto;
-  width: 100%;
-  max-width: 353px;
-  min-width: 0;
-}

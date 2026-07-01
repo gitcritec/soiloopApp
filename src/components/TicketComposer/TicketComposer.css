@@ -1,0 +1,92 @@
+.ticket-composer {
+  flex-shrink: 0;
+  width: 100%;
+  padding-top: 8px;
+  border-top: 1px solid #e5e9e8;
+  box-sizing: border-box;
+}
+
+.ticket-composer__row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  width: 100%;
+}
+
+.ticket-composer__file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ticket-composer__attach,
+.ticket-composer__send {
+  display: flex;
+  flex: 0 0 40px;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.ticket-composer__attach {
+  background: #f0eeec;
+  color: #40534c;
+}
+
+.ticket-composer__send {
+  background: #1e8f2b;
+  color: #f9f8f9;
+}
+
+.ticket-composer__send:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ticket-composer__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 40px;
+  max-height: 120px;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  border: 1px solid #e5e9e8;
+  border-radius: 20px;
+  background: #fff;
+  font-family: 'Rubik', sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #060e0b;
+  resize: none;
+  outline: none;
+}
+
+.ticket-composer__input:focus {
+  border-color: #1c8767;
+}
+
+.ticket-composer__file-name {
+  margin: 6px 0 0 48px;
+  font-size: 10px;
+  color: #40534c;
+  word-break: break-all;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

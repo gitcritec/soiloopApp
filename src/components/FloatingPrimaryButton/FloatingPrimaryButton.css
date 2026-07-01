@@ -50,11 +50,14 @@
 }
 
 .floating-primary-button-wrap--operador {
-  bottom: 92px;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px) + 12px);
   padding: 0 20px;
+  box-sizing: border-box;
 }
 
 .floating-primary-button--operador {
+  width: 100%;
+  max-width: 353px;
   min-width: 0;
   height: 54px;
   padding: 12px 16px;

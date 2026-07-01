@@ -2,50 +2,51 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   faComments,
   faHouseChimney,
+  faPlus,
   faRecycle,
-  faUsers,
 } from '@fortawesome/pro-light-svg-icons'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import logoSoiloop from '../../../assets/figma-operador/logo-soiloop.png'
-import './Admin.css'
-import AdminDrawerMenu from '../../../components/AdminDrawerMenu/AdminDrawerMenu.jsx'
+import './Cliente.css'
+import ClienteDrawerMenu from './ClienteDrawerMenu.jsx'
 import PageHeader from '../../../components/PageHeader/PageHeader.jsx'
 import FloatingPrimaryButton from '../../../components/FloatingPrimaryButton/FloatingPrimaryButton.jsx'
 import BottomNav from '../../../components/BottomNav/BottomNav.jsx'
-import { IconBarcodeScan, IconContentor } from '../../../components/icons/icons.jsx'
-import AdminHome from './AdminHome.jsx'
-import { readAdminNavId, readAdminShowProcessarButton, setAppHash } from '../../../lib/appRoute.js'
-import Contentores from './Contentores/Contentores.jsx'
-import Clientes from './Clientes/Clientes.jsx'
+import { IconContentor } from '../../../components/icons/icons.jsx'
+import ClienteHome from './ClienteHome.jsx'
 import Tickets from './Tickets/Tickets.jsx'
+import {
+  readClienteNavId,
+  readClienteShowCriarTicketButton,
+  setAppHash,
+} from '../../../lib/appRoute.js'
 
-const ADMIN_BOTTOM_NAV_ITEMS = [
-  { id: 'recolhas', label: 'Recolhas', icon: faRecycle },
+const CLIENTE_BOTTOM_NAV_ITEMS = [
+  { id: 'pedidos', label: 'Pedidos', icon: faRecycle },
   {
     id: 'contentores',
     label: 'Contentores',
     iconNode: <IconContentor className="bottom-nav__icon bottom-nav__icon--contentor" />,
   },
   { id: 'dashboard', label: 'Dashboard', icon: faHouseChimney },
-  { id: 'clientes', label: 'Clientes', icon: faUsers },
   { id: 'tickets', label: 'Tickets', icon: faComments },
 ]
 
 const PLACEHOLDER_LABELS = {
-  recolhas: 'Recolhas',
+  pedidos: 'Pedidos',
+  contentores: 'Contentores',
 }
 
-/**
- * Shell admin: menu lateral, header, barra inferior e vistas por separador.
- */
-export default function Admin({ onLogout, userName, userRole, headerLogoSrc }) {
+/** Shell cliente: header, menu, barra inferior e vistas por separador. */
+export default function Cliente({ onLogout, userName, userRole, headerLogoSrc }) {
   const [menuOpen, setMenuOpen] = useState(false)
-  const [navActiveId, setNavActiveId] = useState(() => readAdminNavId())
-  const [showProcessar, setShowProcessar] = useState(() => readAdminShowProcessarButton())
+  const [navActiveId, setNavActiveId] = useState(() => readClienteNavId())
+  const [showCriarTicket, setShowCriarTicket] = useState(() => readClienteShowCriarTicketButton())
 
   useEffect(() => {
     function syncFromHash() {
-      setNavActiveId(readAdminNavId())
-      setShowProcessar(readAdminShowProcessarButton())
+      setNavActiveId(readClienteNavId())
+      setShowCriarTicket(readClienteShowCriarTicketButton())
     }
     window.addEventListener('hashchange', syncFromHash)
     return () => window.removeEventListener('hashchange', syncFromHash)
@@ -53,40 +54,42 @@ export default function Admin({ onLogout, userName, userRole, headerLogoSrc }) {
 
   const selectNav = useCallback((id) => {
     setNavActiveId(id)
-    setAppHash('admin', id)
-    setShowProcessar(readAdminShowProcessarButton())
+    setAppHash('cliente', id)
+    setShowCriarTicket(readClienteShowCriarTicketButton())
   }, [])
 
   const drawerRoleLabel =
-    typeof userRole === 'string' && userRole.trim() ? userRole.trim() : 'A sincronizar…'
+    typeof userRole === 'string' && userRole.trim() ? userRole.trim() : 'Cliente'
 
   function handleDrawerNavigate(actionId) {
-    if (actionId === 'clientes') selectNav('clientes')
-    else if (actionId === 'recolhas') selectNav('recolhas')
+    if (actionId === 'tickets') selectNav('tickets')
+    else if (actionId === 'pedidos') selectNav('pedidos')
     else if (actionId === 'contentores') selectNav('contentores')
-    else if (actionId === 'tickets') selectNav('tickets')
     else if (actionId === 'gestao') selectNav('dashboard')
   }
 
+  function openCriarTicket() {
+    setAppHash('cliente', 'tickets', 'criar')
+    setShowCriarTicket(false)
+  }
+
   function renderMain() {
-    if (navActiveId === 'contentores') return <Contentores />
-    if (navActiveId === 'clientes') return <Clientes />
     if (navActiveId === 'tickets') return <Tickets />
-    if (navActiveId === 'dashboard') return <AdminHome />
+    if (navActiveId === 'dashboard') return <ClienteHome />
     const label = PLACEHOLDER_LABELS[navActiveId]
     if (label) {
       return (
-        <p className="admin-dashboard__placeholder">
+        <p className="cliente-dashboard__placeholder">
           A secção <strong>{label}</strong> estará disponível em breve.
         </p>
       )
     }
-    return <AdminHome />
+    return <ClienteHome />
   }
 
   return (
-    <div className="admin-dashboard">
-      <AdminDrawerMenu
+    <div className="cliente-dashboard">
+      <ClienteDrawerMenu
         isOpen={menuOpen}
         onClose={() => setMenuOpen(false)}
         userName={userName}
@@ -96,31 +99,31 @@ export default function Admin({ onLogout, userName, userRole, headerLogoSrc }) {
         onNavigate={handleDrawerNavigate}
       />
 
-      <div className="admin-dashboard__header-slot">
+      <div className="cliente-dashboard__header-slot">
         <PageHeader
           variant="floating"
           logoSrc={headerLogoSrc ?? logoSoiloop}
           userName={userName}
           menuOpen={menuOpen}
-          menuAriaControls="admin-drawer-panel"
+          menuAriaControls="cliente-drawer-panel"
           onMenuClick={() => setMenuOpen((o) => !o)}
         />
       </div>
 
-      <main className="admin-dashboard__main">{renderMain()}</main>
+      <main className="cliente-dashboard__main">{renderMain()}</main>
 
-      {showProcessar ? (
+      {showCriarTicket ? (
         <FloatingPrimaryButton
           variant="operador"
-          label="Processar"
-          onClick={() => {}}
-          icon={<IconBarcodeScan />}
+          label="Criar Ticket"
+          onClick={openCriarTicket}
+          icon={<FontAwesomeIcon icon={faPlus} aria-hidden />}
         />
       ) : null}
 
       <BottomNav
         variant="admin"
-        items={ADMIN_BOTTOM_NAV_ITEMS}
+        items={CLIENTE_BOTTOM_NAV_ITEMS}
         activeId={navActiveId}
         onSelect={selectNav}
       />

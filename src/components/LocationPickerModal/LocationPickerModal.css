@@ -197,6 +197,31 @@
   padding: 0 16px;
 }
 
+.location-picker-modal__map-style-btn {
+  position: absolute;
+  top: 10px;
+  right: 26px;
+  z-index: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(249, 248, 249, 0.95);
+  box-shadow: 0 2px 8px rgba(6, 14, 11, 0.15);
+  color: #060e0b;
+  font-family: 'Rubik', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.location-picker-modal__map-style-icon {
+  font-size: 13px;
+}
+
 .location-picker-modal__map {
   display: block;
   width: 100%;

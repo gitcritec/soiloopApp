@@ -1,6 +1,9 @@
 /** IDs válidos da barra inferior admin. */
 export const ADMIN_NAV_IDS = ['recolhas', 'contentores', 'dashboard', 'clientes', 'tickets']
 
+/** IDs válidos da barra inferior cliente. */
+export const CLIENTE_NAV_IDS = ['pedidos', 'contentores', 'dashboard', 'tickets']
+
 /** IDs válidos da barra inferior operador. */
 export const OPERADOR_NAV_IDS = ['movimentos', 'dashboard', 'historico']
 
@@ -14,7 +17,7 @@ export function parseAppHash() {
   if (parts.length < 2) return null
   const profile = parts[0]
   const section = parts[1]
-  if (profile !== 'admin' && profile !== 'operador') return null
+  if (profile !== 'admin' && profile !== 'operador' && profile !== 'cliente') return null
   const sub = parts[2] ?? null
   const idRaw = parts[3] ?? null
   return {
@@ -26,7 +29,7 @@ export function parseAppHash() {
 }
 
 /**
- * @param {'admin'|'operador'} profile
+ * @param {'admin'|'operador'|'cliente'} profile
  * @param {string} section
  * @param {string|null} [sub]
  * @param {string|null} [id]
@@ -39,7 +42,7 @@ export function buildAppHash(profile, section, sub = null, id = null) {
 }
 
 /**
- * @param {'admin'|'operador'} profile
+ * @param {'admin'|'operador'|'cliente'} profile
  * @param {string} section
  * @param {string|null} [sub]
  * @param {string|null} [id]
@@ -95,6 +98,43 @@ export function readAdminClientesEditId() {
   return null
 }
 
+/** @returns {'list'|'detail'|'reply'} */
+export function readAdminTicketsView() {
+  const parsed = parseAppHash()
+  if (parsed?.profile === 'admin' && parsed.section === 'tickets') {
+    if (parsed.sub === 'detalhe' && parsed.id) return 'detail'
+    if (parsed.sub === 'responder' && parsed.id) return 'reply'
+  }
+  return 'list'
+}
+
+/** @returns {string|null} */
+export function readAdminTicketsId() {
+  const parsed = parseAppHash()
+  if (
+    parsed?.profile === 'admin' &&
+    parsed.section === 'tickets' &&
+    (parsed.sub === 'detalhe' || parsed.sub === 'responder') &&
+    parsed.id
+  ) {
+    return parsed.id
+  }
+  return null
+}
+
+/** @returns {boolean} Mostrar FAB «Processar» (listagens admin; ocultar em formulários/detalhe). */
+export function readAdminShowProcessarButton() {
+  const parsed = parseAppHash()
+  if (parsed?.profile !== 'admin') return false
+
+  const section = parsed.section
+  if (section === 'contentores') return readAdminContentoresView() === 'list'
+  if (section === 'clientes') return readAdminClientesView() === 'list'
+  if (section === 'tickets') return readAdminTicketsView() === 'list'
+
+  return ['dashboard', 'recolhas', 'contentores', 'clientes', 'tickets'].includes(section)
+}
+
 /** @returns {string|null} ID do contentor em edição (hash `#/admin/contentores/editar/:id`). */
 export function readAdminContentoresEditId() {
   const parsed = parseAppHash()
@@ -107,6 +147,50 @@ export function readAdminContentoresEditId() {
     return parsed.id
   }
   return null
+}
+
+/** @returns {string} */
+export function readClienteNavId() {
+  const parsed = parseAppHash()
+  if (parsed?.profile === 'cliente' && CLIENTE_NAV_IDS.includes(parsed.section)) {
+    return parsed.section
+  }
+  return 'dashboard'
+}
+
+/** @returns {'list'|'create'|'detail'|'message'|'success'} */
+export function readClienteTicketsView() {
+  const parsed = parseAppHash()
+  if (parsed?.profile === 'cliente' && parsed.section === 'tickets') {
+    if (parsed.sub === 'criar') return 'create'
+    if (parsed.sub === 'detalhe' && parsed.id) return 'detail'
+    if (parsed.sub === 'mensagem' && parsed.id) return 'message'
+    if (parsed.sub === 'sucesso' && parsed.id) return 'success'
+  }
+  return 'list'
+}
+
+/** @returns {string|null} */
+export function readClienteTicketsId() {
+  const parsed = parseAppHash()
+  if (
+    parsed?.profile === 'cliente' &&
+    parsed.section === 'tickets' &&
+    parsed.sub &&
+    ['detalhe', 'mensagem', 'sucesso'].includes(parsed.sub) &&
+    parsed.id
+  ) {
+    return parsed.id
+  }
+  return null
+}
+
+/** @returns {boolean} */
+export function readClienteShowCriarTicketButton() {
+  const parsed = parseAppHash()
+  if (parsed?.profile !== 'cliente') return false
+  if (parsed.section === 'tickets') return readClienteTicketsView() === 'list'
+  return false
 }
 
 /** @returns {string} */

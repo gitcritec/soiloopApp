@@ -1,0 +1,23 @@
+.cliente-home {
+  width: 100%;
+  max-width: 353px;
+  margin: 0 auto;
+}
+
+.cliente-home__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cliente-home__hint {
+  margin: 0;
+  padding: 0 4px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #40534c;
+}
+
+.cliente-home__hint strong {
+  color: #060e0b;
+}

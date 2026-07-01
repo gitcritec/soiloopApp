@@ -203,8 +203,8 @@ function coerceLocalizacaoRow(row, index = 0) {
   const ordem = pickNumberField(attrs.ordem ?? row.ordem) ?? index + 1
   const estadoRaw = attrs.estado ?? row.estado
   const estado = estadoRaw === false ? false : true
-  const lat = pickNumberField(attrs.latitude ?? attrs.lat ?? row.latitude ?? row.lat)
-  const lng = pickNumberField(attrs.longitude ?? attrs.lng ?? row.longitude ?? row.lng)
+  const lat = pickNumberField(attrs.lat ?? row.lat)
+  const lng = pickNumberField(attrs.lng ?? row.lng)
 
   return {
     strapiId: id ?? undefined,
@@ -422,19 +422,45 @@ function userRelationRef(userId) {
 }
 
 /**
+ * @param {ClienteLocalizacaoInput} loc
+ * @param {number} ordem
+ * @returns {{ morada: string, ordem: number, estado: boolean, lat?: number, lng?: number }|null}
+ */
+function buildLocalizacaoData(loc, ordem) {
+  const nome = pickString(loc.nome)
+  if (!nome) return null
+
+  const data = { morada: nome, ordem, estado: true }
+  const lat = loc.lat != null ? pickNumberField(loc.lat) : null
+  const lng = loc.lng != null ? pickNumberField(loc.lng) : null
+  if (lat != null) data.lat = lat
+  if (lng != null) data.lng = lng
+  return data
+}
+
+/**
  * Corpos POST/PUT a tentar (Strapi v4/v5 + relação com User).
  * @param {string} relKey
  * @param {string|number} userId
- * @param {{ morada: string, ordem: number, estado: boolean }} data
+ * @param {{ morada: string, ordem: number, estado: boolean, lat?: number, lng?: number }} data
  */
 function buildLocalizacaoWritePayloads(relKey, userId, data) {
   const ref = userRelationRef(userId)
   const base = { morada: data.morada, ordem: data.ordem, estado: data.estado }
+  if (data.lat != null) base.lat = data.lat
+  if (data.lng != null) base.lng = data.lng
   return [
     { data: { ...base, [relKey]: ref } },
     { data: { ...base, [relKey]: { connect: [ref] } } },
     { data: { ...base, [relKey]: { set: [ref] } } },
   ]
+}
+
+async function updateLocalizacaoRecord(url, data) {
+  const res = await requestLocalizacao('PUT', url, { data })
+  if (!res.ok) {
+    throw new Error(await parseContentApiError(res, 'Não foi possível atualizar uma localização.'))
+  }
 }
 
 /**
@@ -478,7 +504,7 @@ async function requestLocalizacao(method, url, body) {
 
 /**
  * @param {string} userId
- * @param {{ morada: string, ordem: number, estado: boolean }} data
+ * @param {{ morada: string, ordem: number, estado: boolean, lat?: number, lng?: number }} data
  */
 async function createLocalizacaoForUser(userId, data) {
   const base = strapiBaseUrl()
@@ -627,21 +653,11 @@ async function syncLocalizacoesForUser(userId, localizacoes = []) {
 
   for (let i = 0; i < localizacoes.length; i += 1) {
     const loc = localizacoes[i]
-    const nome = pickString(loc.nome)
-    if (!nome) continue
-
-    const ordem = i + 1
-    const data = { morada: nome, ordem, estado: true }
+    const data = buildLocalizacaoData(loc, i + 1)
+    if (!data) continue
 
     if (loc.strapiId && existingById.has(loc.strapiId)) {
-      const putRes = await requestLocalizacao(
-        'PUT',
-        localizacaoCollectionUrl(base, loc.strapiId),
-        { data },
-      )
-      if (!putRes.ok) {
-        throw new Error(await parseContentApiError(putRes, 'Não foi possível atualizar uma localização.'))
-      }
+      await updateLocalizacaoRecord(localizacaoCollectionUrl(base, loc.strapiId), data)
       keepIds.add(loc.strapiId)
     } else {
       toCreate.push(data)
