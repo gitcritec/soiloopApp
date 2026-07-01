@@ -1,0 +1,333 @@
+/* Solicitar recolha — overlay cliente (Figma 166:4503) */
+.solicitar-recolha {
+  position: fixed;
+  top: 80px;
+  left: 0;
+  right: 0;
+  bottom: 70px;
+  z-index: 35;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 20px 20px 12px;
+  box-sizing: border-box;
+  background: #f0eeec;
+  pointer-events: none;
+  visibility: hidden;
+  transition: visibility 0.24s step-end;
+}
+
+.solicitar-recolha--open {
+  pointer-events: auto;
+  visibility: visible;
+  transition: visibility 0s step-start;
+}
+
+.solicitar-recolha__backdrop {
+  position: absolute;
+  inset: 0;
+  background: #f0eeec;
+}
+
+.solicitar-recolha__panel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 353px;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.solicitar-recolha__form {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+}
+
+.solicitar-recolha__card {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+  padding: 16px 12px 12px;
+  box-sizing: border-box;
+  background: #f9f8f9;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.solicitar-recolha__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: #40534c;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.solicitar-recolha__close:hover {
+  opacity: 0.85;
+}
+
+.solicitar-recolha__scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 4px 0 16px;
+}
+
+.solicitar-recolha__title {
+  margin: 0 0 20px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 15px;
+  color: #060e0b;
+}
+
+.solicitar-recolha__alert {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 5px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #8b1e1e;
+  background: #fdeaea;
+  border: 1px solid #f5c2c2;
+  word-break: break-word;
+}
+
+.solicitar-recolha__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.solicitar-recolha__field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.solicitar-recolha__field--locked {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  height: 54px;
+  padding: 0 16px;
+  box-sizing: border-box;
+  border: 1px solid #11b068;
+  border-radius: 5px;
+  background: #c7e8bf;
+  color: #11b068;
+  pointer-events: none;
+  user-select: none;
+}
+
+.solicitar-recolha__locked-value {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 15px;
+  word-break: break-word;
+}
+
+.solicitar-recolha__locked-icon {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  font-size: 16px;
+}
+
+.solicitar-recolha__input,
+.solicitar-recolha__select {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: 54px;
+  padding: 0 16px;
+  box-sizing: border-box;
+  border: 1px solid #e5e9e8;
+  border-radius: 5px;
+  background: #f9f8f9;
+  font-family: 'Rubik', sans-serif;
+  font-size: 12px;
+  line-height: 15px;
+  color: #060e0b;
+  outline: none;
+}
+
+.solicitar-recolha__input:focus,
+.solicitar-recolha__select:focus {
+  border-color: #11b068;
+}
+
+.solicitar-recolha__input:disabled,
+.solicitar-recolha__select:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.solicitar-recolha__field--date {
+  position: relative;
+  height: 54px;
+  box-sizing: border-box;
+  border: 1px solid #e5e9e8;
+  border-radius: 5px;
+  background: #f9f8f9;
+  cursor: pointer;
+}
+
+.solicitar-recolha__field--date .solicitar-recolha__input {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color-scheme: light;
+  cursor: pointer;
+}
+
+.solicitar-recolha__field--date .solicitar-recolha__input--empty {
+  color: transparent;
+}
+
+.solicitar-recolha__field--date .solicitar-recolha__input:focus {
+  outline: none;
+}
+
+.solicitar-recolha__field--date:focus-within {
+  border-color: #11b068;
+}
+
+.solicitar-recolha__field--date .solicitar-recolha__placeholder {
+  z-index: 2;
+}
+
+.solicitar-recolha__input[type='date']::-webkit-calendar-picker-indicator {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.solicitar-recolha__placeholder {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  line-height: 15px;
+  color: #40534c;
+  pointer-events: none;
+}
+
+.solicitar-recolha__select-wrap {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.solicitar-recolha__select {
+  appearance: none;
+  padding-right: 40px;
+  cursor: pointer;
+}
+
+.solicitar-recolha__select--empty {
+  color: #40534c;
+}
+
+.solicitar-recolha__select-icon {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  color: #40534c;
+  pointer-events: none;
+}
+
+.solicitar-recolha__actions {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.solicitar-recolha__submit,
+.solicitar-recolha__discard {
+  min-width: 0;
+  min-height: 54px;
+  padding: 12px 8px;
+  border: none;
+  border-radius: 5px;
+  font-family: 'Rubik', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 15px;
+  cursor: pointer;
+}
+
+.solicitar-recolha__submit {
+  color: #f9f8f9;
+  background: #e5e9e8;
+}
+
+.solicitar-recolha__submit:not(:disabled) {
+  background: #15d67f;
+}
+
+.solicitar-recolha__submit:disabled {
+  color: #f9f8f9;
+  cursor: not-allowed;
+}
+
+.solicitar-recolha__submit:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+
+.solicitar-recolha__discard {
+  color: #f9f8f9;
+  background: #E6193C;
+}
+
+.solicitar-recolha__discard:hover:not(:disabled) {
+  filter: brightness(0.98);
+}
+
+.solicitar-recolha__discard:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}

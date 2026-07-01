@@ -15,7 +15,7 @@ import Operador from './Operador/Operador.jsx'
 import { MOCK_OPERATOR_NAME } from './Operador/mockData.js'
 
 /**
- * Encaminha para o painel Admin ou Operador consoante a role do Strapi (Users & Permissions).
+ * Encaminha para o painel Admin, Cliente ou Operador consoante a role do Strapi.
  */
 export default function Dashboard({ onLogout }) {
   const [headerLogoSrc, setHeaderLogoSrc] = useState(null)

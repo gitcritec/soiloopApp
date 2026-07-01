@@ -686,7 +686,7 @@ export async function fetchStrapiTicketDetail(ticketId) {
 /** Mantém thread/ref ao atualizar estado local (evita flash sem mensagens). */
 export function mergeTicketUpdates(prev, fresh) {
   if (!fresh) return prev
-  if (!prev || prev.id !== fresh.id) return fresh
+  if (!prev || String(prev.id) !== String(fresh.id)) return fresh
 
   const ref = fresh.ref === '—' && prev.ref !== '—' ? prev.ref : fresh.ref
   const keepPrevThread = fresh.replies.length < prev.replies.length
@@ -697,6 +697,21 @@ export function mergeTicketUpdates(prev, fresh) {
     replies: keepPrevThread ? prev.replies : fresh.replies,
     _respostasRaw: keepPrevThread ? prev._respostasRaw : fresh._respostasRaw,
   }
+}
+
+/** @param {Array<{ id: string }>} items @param {string|null|undefined} ticketId */
+export function findTicketById(items, ticketId) {
+  if (!ticketId) return null
+  const key = String(ticketId)
+  return items.find((item) => String(item.id) === key) ?? null
+}
+
+/** @param {Array<{ id: string }>} items @param {{ id: string }} ticket */
+export function upsertTicketInList(items, ticket) {
+  const key = String(ticket.id)
+  const index = items.findIndex((item) => String(item.id) === key)
+  if (index < 0) return [ticket, ...items]
+  return items.map((item, i) => (i === index ? mergeTicketUpdates(item, ticket) : item))
 }
 
 /** @returns {Promise<TicketItem[]>} */

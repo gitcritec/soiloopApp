@@ -178,6 +178,34 @@
   padding: 4px 12px 0;
 }
 
+.admin-ticket-view__chat-head .admin-ticket-view__head {
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0 0;
+}
+
+.admin-ticket-view__head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.admin-ticket-view__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: #e5e9e8;
+  color: #40534c;
+  cursor: pointer;
+}
+
 .admin-ticket-view__ref {
   margin: 0;
   font-size: 28px;
@@ -411,8 +439,23 @@
 .admin-ticket-view__card--chat {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
   min-height: 0;
-  padding: 12px;
+  gap: 8px;
+  padding: 12px 12px 16px;
+  overflow: hidden;
+}
+
+.admin-ticket-view__card--chat .ticket-chat {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-ticket-view__card--chat .ticket-composer {
+  flex-shrink: 0;
 }
 
 .admin-ticket-view__chat-head {

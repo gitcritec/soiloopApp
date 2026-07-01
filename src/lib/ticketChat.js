@@ -32,7 +32,8 @@ export function buildTicketChatMessages(ticket, labels = {}) {
 
   for (const reply of ticket.replies ?? []) {
     const text = String(reply.text ?? '').trim()
-    if (!text) continue
+    const hasAttachment = Boolean(reply.attachmentUrl)
+    if (!text && !hasAttachment) continue
     const author = reply.author === 'admin' ? 'admin' : 'cliente'
     messages.push({
       id: reply.id ?? `r-${messages.length}`,
@@ -43,7 +44,7 @@ export function buildTicketChatMessages(ticket, labels = {}) {
           : labels.selfLabel
             ? selfLabel
             : clientLabel,
-      text,
+      text: text || (reply.attachmentName ? `Anexo: ${reply.attachmentName}` : 'Anexo'),
       at: reply.at ?? '—',
       ts: messages.length + 1,
       attachmentUrl: reply.attachmentUrl ?? null,

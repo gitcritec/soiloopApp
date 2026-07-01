@@ -132,12 +132,6 @@ export function normalizeStrapiUserRole(role) {
   return null
 }
 
-export function isStrapiClienteRoleLabel(label) {
-  if (label == null) return false
-  const s = String(label).trim().toLowerCase()
-  return s === 'cliente' || s === 'client'
-}
-
 /**
  * Indica se o texto da função corresponde a administrador (Strapi Users & Permissions, `role.name`).
  * @param {string|null|undefined} label
@@ -157,30 +151,71 @@ export function isStrapiAdminRoleLabel(label) {
 }
 
 /**
+ * Indica se o texto da função corresponde a cliente.
+ * @param {string|null|undefined} label
+ * @returns {boolean}
+ */
+export function isStrapiClienteRoleLabel(label) {
+  if (label == null) return false
+  const s = String(label).trim().toLowerCase()
+  if (!s) return false
+  return (
+    s === 'cliente' ||
+    s === 'client' ||
+    s === 'customer' ||
+    s === 'utilizador cliente'
+  )
+}
+
+/**
  * Normaliza o JSON de /users/me ou do login (Strapi v4/v5, `data` / `attributes`).
  * @param {unknown} raw
- * @returns {{ username?: string, email?: string, role?: unknown } | null}
+ * @returns {{ id?: string|number, documentId?: string, username?: string, email?: string, role?: unknown } | null}
  */
 function coerceStrapiUserPayload(raw) {
   if (!raw || typeof raw !== 'object') return null
   if (raw.username !== undefined || raw.email !== undefined || raw.role !== undefined) {
-    return { username: raw.username, email: raw.email, role: raw.role }
+    return {
+      id: raw.id,
+      documentId: raw.documentId,
+      username: raw.username,
+      email: raw.email,
+      role: raw.role,
+    }
   }
   const attrs = raw.attributes
   if (attrs && typeof attrs === 'object') {
     if (attrs.username !== undefined || attrs.email !== undefined || attrs.role !== undefined) {
-      return { username: attrs.username, email: attrs.email, role: attrs.role }
+      return {
+        id: raw.id ?? attrs.id,
+        documentId: raw.documentId ?? attrs.documentId,
+        username: attrs.username,
+        email: attrs.email,
+        role: attrs.role,
+      }
     }
   }
   const inner = raw.data
   if (inner && typeof inner === 'object') {
     if (inner.username !== undefined || inner.email !== undefined || inner.role !== undefined) {
-      return { username: inner.username, email: inner.email, role: inner.role }
+      return {
+        id: inner.id,
+        documentId: inner.documentId,
+        username: inner.username,
+        email: inner.email,
+        role: inner.role,
+      }
     }
     const a = inner.attributes
     if (a && typeof a === 'object') {
       if (a.username !== undefined || a.email !== undefined || a.role !== undefined) {
-        return { username: a.username, email: a.email, role: a.role }
+        return {
+          id: inner.id ?? a.id,
+          documentId: inner.documentId ?? a.documentId,
+          username: a.username,
+          email: a.email,
+          role: a.role,
+        }
       }
     }
   }
@@ -207,6 +242,7 @@ export function persistStrapiSession(session) {
   const next = { ...existing }
   if (username) next.username = username
   if (roleLabel) next.roleLabel = roleLabel
+  if (u.id != null) next.id = u.id
   writeStoredUserJson(next)
 }
 
@@ -243,7 +279,7 @@ export function persistStrapiUsername(username) {
 
 /**
  * Atualiza cache local com o objeto utilizador (nome + role).
- * @param {{ username?: string, email?: string, role?: unknown } | null} user
+ * @param {{ id?: string|number, documentId?: string, username?: string, email?: string, role?: unknown } | null} user
  */
 export function persistStrapiUserCache(user) {
   if (!user) return
@@ -257,12 +293,20 @@ export function persistStrapiUserCache(user) {
   const next = { ...existing }
   if (username) next.username = username
   if (roleLabel) next.roleLabel = roleLabel
+  if (user.id != null) next.id = user.id
   writeStoredUserJson(next)
+}
+
+/** @returns {number|null} */
+export function getStoredStrapiUserId() {
+  const j = readStoredUserJson()
+  const num = Number(j.id)
+  return Number.isFinite(num) && num > 0 ? num : null
 }
 
 /**
  * Utilizador autenticado (ex.: após refresh, se ainda existir JWT).
- * @returns {Promise<{ username?: string, email?: string, role?: unknown } | null>}
+ * @returns {Promise<{ id?: string|number, documentId?: string, username?: string, email?: string, role?: unknown } | null>}
  */
 export async function fetchStrapiCurrentUser() {
   const base = strapiBaseUrl()

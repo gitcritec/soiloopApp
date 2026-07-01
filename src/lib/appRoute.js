@@ -2,7 +2,7 @@
 export const ADMIN_NAV_IDS = ['recolhas', 'contentores', 'dashboard', 'clientes', 'tickets']
 
 /** IDs válidos da barra inferior cliente. */
-export const CLIENTE_NAV_IDS = ['pedidos', 'contentores', 'dashboard', 'tickets']
+export const CLIENTE_NAV_IDS = ['dashboard', 'recolhas', 'contentores', 'tickets']
 
 /** IDs válidos da barra inferior operador. */
 export const OPERADOR_NAV_IDS = ['movimentos', 'dashboard', 'historico']
@@ -152,20 +152,28 @@ export function readAdminContentoresEditId() {
 /** @returns {string} */
 export function readClienteNavId() {
   const parsed = parseAppHash()
-  if (parsed?.profile === 'cliente' && CLIENTE_NAV_IDS.includes(parsed.section)) {
-    return parsed.section
-  }
+  if (parsed?.profile !== 'cliente') return 'dashboard'
+  if (parsed.section === 'tickets') return 'tickets'
+  if (CLIENTE_NAV_IDS.includes(parsed.section)) return parsed.section
   return 'dashboard'
+}
+
+/** @returns {string|null} */
+function normalizeClienteTicketsSub(sub) {
+  if (!sub) return null
+  if (sub === 'detalha') return 'detalhe'
+  return sub
 }
 
 /** @returns {'list'|'create'|'detail'|'message'|'success'} */
 export function readClienteTicketsView() {
   const parsed = parseAppHash()
   if (parsed?.profile === 'cliente' && parsed.section === 'tickets') {
-    if (parsed.sub === 'criar') return 'create'
-    if (parsed.sub === 'detalhe' && parsed.id) return 'detail'
-    if (parsed.sub === 'mensagem' && parsed.id) return 'message'
-    if (parsed.sub === 'sucesso' && parsed.id) return 'success'
+    const sub = normalizeClienteTicketsSub(parsed.sub)
+    if (sub === 'criar') return 'create'
+    if (sub === 'detalhe' && parsed.id) return 'detail'
+    if (sub === 'mensagem' && parsed.id) return 'message'
+    if (sub === 'sucesso' && parsed.id) return 'success'
   }
   return 'list'
 }
@@ -173,11 +181,12 @@ export function readClienteTicketsView() {
 /** @returns {string|null} */
 export function readClienteTicketsId() {
   const parsed = parseAppHash()
+  const sub = normalizeClienteTicketsSub(parsed?.sub)
   if (
     parsed?.profile === 'cliente' &&
     parsed.section === 'tickets' &&
-    parsed.sub &&
-    ['detalhe', 'mensagem', 'sucesso'].includes(parsed.sub) &&
+    sub &&
+    ['detalhe', 'mensagem', 'sucesso'].includes(sub) &&
     parsed.id
   ) {
     return parsed.id

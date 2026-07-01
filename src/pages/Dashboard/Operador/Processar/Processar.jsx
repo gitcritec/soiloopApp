@@ -16,7 +16,7 @@ export default function Processar({
   onClose,
   onSelectRecolha,
   onSelectEntrega,
-  onSelectFormulario,
+  onSelectMovimentosRecolha,
 }) {
   useEffect(() => {
     if (!isOpen) return
@@ -109,9 +109,9 @@ export default function Processar({
             </button>
             <button
               type="button"
-              className="processar-screen__action processar-screen__action--formulario"
+              className="processar-screen__action processar-screen__action--movimentos-recolha"
               tabIndex={isOpen ? 0 : -1}
-              onClick={onSelectFormulario}
+              onClick={onSelectMovimentosRecolha}
             >
               <FontAwesomeIcon icon={faMemo} className="processar-screen__action-icon" aria-hidden />
               Preencher Formulário

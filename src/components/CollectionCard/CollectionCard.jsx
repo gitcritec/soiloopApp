@@ -1,21 +1,13 @@
+import { faPen, faRecycle, faTrashCan } from '@fortawesome/pro-light-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import './CollectionCard.css'
-import { faLocationDot as faLocationDotSharp } from '@fortawesome/sharp-light-svg-icons'
-import containerGreen from '../../assets/container-green.svg'
-import containerRed from '../../assets/container-red.svg'
-import containerYellow from '../../assets/container-yellow.svg'
 import { IconCalendarSmall } from '../icons/icons.jsx'
 
 const STATUS_LABEL = {
+  atrasado: 'Atrasado',
   hoje: 'Hoje',
   amanha: 'Amanhã',
   agendada: 'Agendada',
-}
-
-const STATUS_BIN_ART = {
-  hoje: containerRed,
-  amanha: containerYellow,
-  agendada: containerGreen,
 }
 
 const TASK_TYPE_LABEL = {
@@ -33,6 +25,18 @@ function splitScheduledAt(scheduledAt) {
   return { date, time }
 }
 
+function formatPeriod(period) {
+  const value = (period ?? '').trim()
+  if (!value) return ''
+  const normalized = value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+  if (normalized === 'manha') return 'manhã'
+  if (normalized === 'tarde') return 'tarde'
+  return value
+}
+
 export default function CollectionCard({
   collectionId,
   location,
@@ -44,18 +48,22 @@ export default function CollectionCard({
   /** @type {'recolher' | 'entregar'} */
   taskType = 'recolher',
   onLocationClick,
+  onEditClick,
+  onDeleteClick,
+  requestState,
 }) {
   const statusLabel = STATUS_LABEL[status] ?? status
   const taskTypeLabel = TASK_TYPE_LABEL[taskType] ?? taskType
   const { date: datePart, time: timePart } = splitScheduledAt(scheduledAt)
+  const periodLabel = formatPeriod(timePart)
 
   const hasSplitLocation = Boolean(locationPrefix && locationDetail)
-  const binArtSrc = STATUS_BIN_ART[status] ?? containerGreen
+  const stateClass = requestState ? ` collection-card--request-${requestState}` : ''
 
   return (
-    <article className={`collection-card collection-card--status-${status}`}>
+    <article className={`collection-card collection-card--status-${status}${stateClass}`}>
       <div className="collection-card__bin">
-        <img src={binArtSrc} alt="" className="collection-card__bin-icon" width={20} height={24} />
+        <FontAwesomeIcon icon={faRecycle} className="collection-card__bin-icon" aria-hidden />
         <span className="collection-card__bin-number">{binNumber}</span>
       </div>
 
@@ -82,18 +90,28 @@ export default function CollectionCard({
             </span>
           ) : null}
           {datePart ? <span className="collection-card__date">{datePart}</span> : null}
-          {timePart ? <span className="collection-card__time">{timePart}</span> : null}
+          {periodLabel ? (
+            <span className="collection-card__period">Periodo: {periodLabel}</span>
+          ) : null}
         </div>
       </div>
 
       <div className="collection-card__actions">
         <button
           type="button"
-          className="collection-card__btn collection-card__btn--location"
-          aria-label="Ver localização"
-          onClick={onLocationClick}
+          className="collection-card__btn collection-card__btn--edit"
+          aria-label="Editar"
+          onClick={onEditClick ?? onLocationClick}
         >
-          <FontAwesomeIcon icon={faLocationDotSharp} className="collection-card__btn-icon" aria-hidden />
+          <FontAwesomeIcon icon={faPen} className="collection-card__btn-icon" aria-hidden />
+        </button>
+        <button
+          type="button"
+          className="collection-card__btn collection-card__btn--delete"
+          aria-label="Apagar"
+          onClick={onDeleteClick}
+        >
+          <FontAwesomeIcon icon={faTrashCan} className="collection-card__btn-icon" aria-hidden />
         </button>
       </div>
     </article>

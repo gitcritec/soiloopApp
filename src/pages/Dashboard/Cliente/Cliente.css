@@ -1,11 +1,8 @@
 .cliente-dashboard {
-  position: relative;
-  width: 100%;
-  max-width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
-  overflow-x: hidden;
-  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   background: #f0eeec;
   color: #060e0b;
 }
@@ -28,49 +25,267 @@
   max-width: 353px;
 }
 
-.cliente-dashboard__main {
+.cliente-dashboard__menu {
+  position: fixed;
+  top: 82px;
+  left: 50%;
+  z-index: 45;
+  width: calc(100% - 40px);
+  max-width: 353px;
+  padding: 16px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  background: #f9f8f9;
+  box-shadow: 0 14px 36px rgba(6, 14, 11, 0.16);
+  transform: translateX(-50%);
+}
+
+.cliente-dashboard__menu-name {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.cliente-dashboard__menu-role {
+  margin: 4px 0 14px;
+  font-size: 12px;
+  line-height: 15px;
+  color: #40534c;
+}
+
+.cliente-dashboard__menu-logout {
   width: 100%;
+  min-height: 44px;
+  border: none;
+  border-radius: 8px;
+  background: #060e0b;
+  color: #f9f8f9;
+  font-family: 'Rubik', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.cliente-dashboard__main {
+  flex: 1 1 auto;
   max-width: 393px;
   margin: 0 auto;
-  padding: 108px 20px calc(96px + env(safe-area-inset-bottom, 0px) + 24px);
+  padding: 108px 20px 160px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 24px;
-  min-width: 0;
+  width: 100%;
 }
 
-.cliente-dashboard__main:has(.cliente-tickets),
-.cliente-dashboard__main:has(.cliente-home) {
-  gap: 12px;
-  padding-bottom: calc(168px + env(safe-area-inset-bottom, 0px));
+.cliente-dashboard__main--tickets {
+  padding-bottom: var(--cliente-bottom-nav-offset);
+  gap: 0;
 }
 
-.cliente-dashboard__main:has(.cliente-ticket-view),
-.cliente-dashboard__main:has(.cliente-ticket-form),
-.cliente-dashboard__main:has(.cliente-ticket-sucesso) {
-  overflow: hidden;
+/* Chat do ticket: ocupa só o espaço entre header fixo e bottom nav */
+.cliente-dashboard:has(.cliente-ticket-view__card--chat) {
   height: 100dvh;
   max-height: 100dvh;
-  padding-top: 108px;
-  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
-  padding-left: 20px;
-  padding-right: 20px;
-  gap: 0;
-  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.cliente-dashboard__main--tickets:has(.cliente-ticket-view__card--chat) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding-top: var(--cliente-header-offset);
+  padding-bottom: var(--cliente-bottom-nav-offset);
+}
+
+.cliente-dashboard__main--tickets:has(.cliente-ticket-view__card--chat) .cliente-ticket-view {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-.cliente-dashboard__placeholder {
-  margin: 24px 0 0;
-  padding: 0 2px;
-  font-size: 15px;
-  line-height: 1.45;
-  color: #40534c;
-  text-align: center;
+.cliente-dashboard__section {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  width: 100%;
 }
 
-.cliente-dashboard__placeholder strong {
+.cliente-dashboard__section .section-title-with-icon {
+  margin: 0;
+  gap: 12px;
+  max-width: 353px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.cliente-dashboard__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.cliente-dashboard__state {
+  width: 100%;
+  max-width: 353px;
+  margin: 0 auto;
+  padding: 16px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: #f9f8f9;
+  color: #40534c;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.cliente-dashboard__section-contentor-icon {
+  display: block;
+  width: 48px;
+  height: 48px;
+  color: #11b068;
+}
+
+.cliente-contentor-card {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto 114px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 353px;
+  margin: 0 auto;
+  padding: 8px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: #f9f8f9;
+}
+
+.cliente-contentor-card__icon-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cliente-contentor-card__icon {
+  width: 22px;
+  height: 30px;
+  color: #40534c;
+}
+
+.cliente-contentor-card__body {
+  min-width: 0;
+}
+
+.cliente-contentor-card__id {
+  margin: 0;
   color: #060e0b;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 15px;
+}
+
+.cliente-contentor-card__specs,
+.cliente-contentor-card__location {
+  margin: 0;
+  color: #40534c;
+  font-size: 11px;
+  line-height: 13px;
+}
+
+.cliente-contentor-card__specs strong {
+  color: #060e0b;
+  font-weight: 700;
+}
+
+.cliente-contentor-card__badge {
+  justify-self: start;
+  min-width: 80px;
+  padding: 4px 8px 5px;
+  box-sizing: border-box;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 15px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.cliente-contentor-card__badge--reutilizavel {
+  color: #1e8f2b;
+  background: #eeffce;
+}
+
+.cliente-contentor-card__badge--em-recolha {
+  color: #40534c;
+  background: #e5e9e8;
+}
+
+.cliente-contentor-card__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.cliente-contentor-card__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 53px;
+  height: 54px;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.cliente-contentor-card__btn--location {
+  color: #40534c;
+  background: #e5e9e8;
+}
+
+.cliente-contentor-card__btn--recycle {
+  color: #f9f8f9;
+  background: #1e8f2b;
+}
+
+.cliente-dashboard__floating-actions {
+  position: fixed;
+  left: 50%;
+  bottom: calc(64px + env(safe-area-inset-bottom, 0));
+  z-index: 35;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  width: calc(100% - 40px);
+  max-width: 353px;
+  transform: translateX(-50%);
+}
+
+.cliente-dashboard__floating-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 54px;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 6px 16px rgba(6, 14, 11, 0.12);
+  font-family: 'Rubik', sans-serif;
+  font-size: 12px;
+  line-height: 15px;
+  cursor: pointer;
+}
+
+.cliente-dashboard__floating-btn--primary {
+  color: #f9f8f9;
+  background: #15d67f;
+}
+
+.cliente-dashboard__floating-btn--secondary {
+  color: #15d67f;
+  background: #f9f8f9;
 }

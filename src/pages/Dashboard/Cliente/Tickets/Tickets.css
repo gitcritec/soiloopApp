@@ -222,24 +222,19 @@
 .cliente-ticket-view,
 .cliente-ticket-form {
   display: flex;
-  flex: 1 1 0;
   flex-direction: column;
   width: 100%;
   max-width: 353px;
   min-width: 0;
-  min-height: 0;
   margin: 0 auto;
   box-sizing: border-box;
-  overflow: hidden;
 }
 
 .cliente-ticket-view__card,
 .cliente-ticket-form__card {
   display: flex;
-  flex: 1 1 0;
   flex-direction: column;
   min-width: 0;
-  min-height: 0;
   padding: 12px;
   box-sizing: border-box;
   background: #f9f8f9;
@@ -302,10 +297,31 @@
 
 .cliente-ticket-view__head {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  padding: 4px 12px 0;
+  padding: 4px 0 0;
+}
+
+.cliente-ticket-view__head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.cliente-ticket-view__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: #e5e9e8;
+  color: #40534c;
+  cursor: pointer;
 }
 
 .cliente-ticket-view__ref {
@@ -416,19 +432,35 @@
 .cliente-ticket-view__card--chat {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
   min-height: 0;
-  padding: 12px;
+  gap: 8px;
+  padding: 12px 12px 16px;
+  overflow: hidden;
+}
+
+.cliente-ticket-view__card--chat .ticket-composer {
+  flex-shrink: 0;
+}
+
+.cliente-ticket-view__card--chat .ticket-chat {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .cliente-ticket-view__chat-head {
   flex-shrink: 0;
   margin-bottom: 4px;
-  padding-bottom: 8px;
+  padding: 0 0 8px;
   border-bottom: 1px solid #e5e9e8;
 }
 
 .cliente-ticket-view__chat-subject {
   margin: 6px 0 0;
+  padding: 0;
   font-size: 13px;
   font-weight: 600;
   color: #060e0b;
@@ -436,6 +468,7 @@
 
 .cliente-ticket-view__chat-meta {
   margin: 4px 0 0;
+  padding: 0;
   font-size: 10px;
   line-height: 1.35;
   color: #5c6d66;

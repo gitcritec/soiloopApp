@@ -11,8 +11,10 @@ import {
   closeStrapiTicket,
   fetchStrapiTicketDetail,
   fetchStrapiTickets,
+  findTicketById,
   mergeTicketUpdates,
   replyStrapiTicket,
+  upsertTicketInList,
 } from '../../../../lib/strapiTickets.js'
 import {
   readAdminTicketsId,
@@ -37,6 +39,7 @@ export default function Tickets() {
   const [actionError, setActionError] = useState(null)
   const [search, setSearch] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [detailLoading, setDetailLoading] = useState(false)
 
   const loadList = useCallback(() => {
     setLoading(true)
@@ -67,9 +70,11 @@ export default function Tickets() {
   }, [])
 
   const activeTicket = useMemo(
-    () => items.find((item) => item.id === activeId) ?? null,
+    () => findTicketById(items, activeId),
     [items, activeId],
   )
+
+  const isDetailRoute = (view === 'detail' || view === 'reply') && Boolean(activeId)
 
   const filteredItems = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -112,7 +117,7 @@ export default function Tickets() {
       const updated = await replyStrapiTicket(activeTicket.id, { text, file })
       setItems((prev) =>
         prev.map((item) =>
-          item.id === updated.id ? mergeTicketUpdates(item, updated) : item,
+          String(item.id) === String(updated.id) ? mergeTicketUpdates(item, updated) : item,
         ),
       )
     } catch (err) {
@@ -127,17 +132,37 @@ export default function Tickets() {
     setActionError(null)
     try {
       const updated = await closeStrapiTicket(activeTicket.id)
-      setItems((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
+      setItems((prev) => prev.map((item) => (String(item.id) === String(updated.id) ? updated : item)))
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Não foi possível fechar o ticket.')
     }
   }
 
   useEffect(() => {
-    if ((view === 'detail' || view === 'reply') && activeId && !loading && !activeTicket) {
+    if (!isDetailRoute || activeTicket) return undefined
+
+    let cancelled = false
+    setDetailLoading(true)
+
+    fetchStrapiTicketDetail(activeId)
+      .then((fresh) => {
+        if (cancelled || !fresh) return
+        setItems((prev) => upsertTicketInList(prev, fresh))
+      })
+      .finally(() => {
+        if (!cancelled) setDetailLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isDetailRoute, activeId, activeTicket])
+
+  useEffect(() => {
+    if (isDetailRoute && activeId && !loading && !detailLoading && !activeTicket) {
       goToList()
     }
-  }, [view, activeId, activeTicket, loading, goToList])
+  }, [isDetailRoute, activeId, activeTicket, loading, detailLoading, goToList])
 
   useEffect(() => {
     if (view !== 'detail' || !activeId) return undefined
@@ -155,7 +180,7 @@ export default function Tickets() {
         if (cancelled || !fresh) return
         setItems((prev) =>
           prev.map((item) => {
-            if (item.id !== fresh.id) return item
+            if (String(item.id) !== String(fresh.id)) return item
             return mergeTicketUpdates(item, fresh)
           }),
         )
@@ -197,6 +222,14 @@ export default function Tickets() {
       openDetail(activeId)
     }
   }, [view, activeId, openDetail])
+
+  if (isDetailRoute && (loading || detailLoading) && !activeTicket) {
+    return (
+      <p className="admin-tickets__status" role="status">
+        A carregar ticket…
+      </p>
+    )
+  }
 
   if (view === 'detail' && activeTicket) {
     return (

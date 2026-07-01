@@ -1,4 +1,4 @@
-import { faArrowLeft } from '@fortawesome/pro-light-svg-icons'
+import { faXmark } from '@fortawesome/pro-light-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import TicketChat from '../../../../components/TicketChat/TicketChat.jsx'
 import TicketComposer from '../../../../components/TicketComposer/TicketComposer.jsx'
@@ -19,11 +19,6 @@ export default function TicketDetalhe({
 
   return (
     <div className="admin-ticket-view">
-      <button type="button" className="admin-ticket-view__back" onClick={onBack}>
-        <FontAwesomeIcon icon={faArrowLeft} className="admin-ticket-view__back-icon" aria-hidden />
-        Voltar à lista
-      </button>
-
       {error ? (
         <p className="admin-ticket-view__error" role="alert">
           {error}
@@ -34,11 +29,21 @@ export default function TicketDetalhe({
         <header className="admin-ticket-view__chat-head">
           <div className="admin-ticket-view__head">
             <h1 className="admin-ticket-view__ref">#{ticket.ref}</h1>
-            <span
-              className={`admin-ticket-card__badge admin-ticket-card__badge--${ticket.status}`}
-            >
-              {TICKET_STATUS_LABEL[ticket.status]}
-            </span>
+            <div className="admin-ticket-view__head-actions">
+              <span
+                className={`admin-ticket-card__badge admin-ticket-card__badge--${ticket.status}`}
+              >
+                {TICKET_STATUS_LABEL[ticket.status]}
+              </span>
+              <button
+                type="button"
+                className="admin-ticket-view__close"
+                aria-label="Fechar"
+                onClick={onBack}
+              >
+                <FontAwesomeIcon icon={faXmark} aria-hidden />
+              </button>
+            </div>
           </div>
           <p className="admin-ticket-view__chat-subject">{ticket.title}</p>
           <p className="admin-ticket-view__chat-meta">

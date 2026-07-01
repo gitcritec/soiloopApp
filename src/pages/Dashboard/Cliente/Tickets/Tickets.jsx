@@ -10,8 +10,10 @@ import { IconChevronRight } from '../../../../components/icons/icons.jsx'
 import {
   fetchStrapiTicketDetail,
   fetchStrapiTicketsMine,
+  findTicketById,
   mergeTicketUpdates,
   sendClienteTicketMessage,
+  upsertTicketInList,
 } from '../../../../lib/strapiTickets.js'
 import { TICKET_STATUS_LABEL } from '../../../../lib/ticketStatus.js'
 import {
@@ -35,6 +37,7 @@ export default function Tickets() {
   const [search, setSearch] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [successRef, setSuccessRef] = useState(null)
+  const [detailLoading, setDetailLoading] = useState(false)
 
   const loadList = useCallback(() => {
     setLoading(true)
@@ -56,14 +59,18 @@ export default function Tickets() {
       setView(readClienteTicketsView())
       setActiveId(readClienteTicketsId())
     }
+    syncFromHash()
     window.addEventListener('hashchange', syncFromHash)
     return () => window.removeEventListener('hashchange', syncFromHash)
   }, [])
 
   const activeTicket = useMemo(
-    () => items.find((item) => item.id === activeId) ?? null,
+    () => findTicketById(items, activeId),
     [items, activeId],
   )
+
+  const isDetailRoute =
+    (view === 'detail' || view === 'message' || view === 'success') && Boolean(activeId)
 
   const filteredItems = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -106,11 +113,11 @@ export default function Tickets() {
     setActionError(null)
     try {
       const updated = await sendClienteTicketMessage(activeTicket.id, { text, file })
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === updated.id ? mergeTicketUpdates(item, updated) : item,
-        ),
-      )
+        setItems((prev) =>
+          prev.map((item) =>
+            String(item.id) === String(updated.id) ? mergeTicketUpdates(item, updated) : item,
+          ),
+        )
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Não foi possível enviar a mensagem.')
     } finally {
@@ -119,10 +126,24 @@ export default function Tickets() {
   }
 
   useEffect(() => {
-    if ((view === 'detail' || view === 'message' || view === 'success') && activeId && !loading && !activeTicket) {
-      goToList()
+    if (!isDetailRoute || activeTicket) return undefined
+
+    let cancelled = false
+    setDetailLoading(true)
+
+    fetchStrapiTicketDetail(activeId)
+      .then((fresh) => {
+        if (cancelled || !fresh) return
+        setItems((prev) => upsertTicketInList(prev, fresh))
+      })
+      .finally(() => {
+        if (!cancelled) setDetailLoading(false)
+      })
+
+    return () => {
+      cancelled = true
     }
-  }, [view, activeId, activeTicket, loading, goToList])
+  }, [isDetailRoute, activeId, activeTicket])
 
   useEffect(() => {
     if (view === 'message' && activeId) {
@@ -146,7 +167,7 @@ export default function Tickets() {
         if (cancelled || !fresh) return
         setItems((prev) =>
           prev.map((item) => {
-            if (item.id !== fresh.id) return item
+            if (String(item.id) !== String(fresh.id)) return item
             return mergeTicketUpdates(item, fresh)
           }),
         )
@@ -183,6 +204,14 @@ export default function Tickets() {
     }
   }, [view, activeId])
 
+  if (isDetailRoute && (loading || detailLoading) && !activeTicket) {
+    return (
+      <p className="cliente-tickets__status" role="status">
+        A carregar ticket…
+      </p>
+    )
+  }
+
   if (view === 'create') {
     return <TicketCriar onCancel={goToList} onSuccess={handleCreateSuccess} />
   }
@@ -210,8 +239,25 @@ export default function Tickets() {
     )
   }
 
+  if (isDetailRoute && !loading && !detailLoading && !activeTicket) {
+    return (
+      <div className="cliente-tickets">
+        <p className="cliente-tickets__status cliente-tickets__status--error" role="alert">
+          Não foi possível abrir este ticket.
+        </p>
+        <button type="button" className="cliente-ticket-view__back" onClick={goToList}>
+          Voltar à lista
+        </button>
+      </div>
+    )
+  }
+
   if (view === 'message' && activeId) {
-    return null
+    return (
+      <p className="cliente-tickets__status" role="status">
+        A carregar ticket…
+      </p>
+    )
   }
 
   return (
