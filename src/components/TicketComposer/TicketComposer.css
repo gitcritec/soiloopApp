@@ -6,6 +6,11 @@
   box-sizing: border-box;
 }
 
+.ticket-composer--embedded {
+  padding: 0;
+  border-top: none;
+}
+
 .ticket-composer__row {
   display: flex;
   align-items: flex-end;

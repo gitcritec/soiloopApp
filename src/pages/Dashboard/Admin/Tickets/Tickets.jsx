@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   faMagnifyingGlass,
-  faShuffle,
-  faSliders,
 } from '@fortawesome/pro-light-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import ticketsHero from '../../../../assets/figma-cliente/tickets-hero.svg'
@@ -272,12 +270,6 @@ export default function Tickets() {
             aria-label="Pesquisar tickets"
           />
         </label>
-        <button type="button" className="admin-tickets__tool-btn" aria-label="Ordenar">
-          <FontAwesomeIcon icon={faShuffle} className="admin-tickets__tool-icon" aria-hidden />
-        </button>
-        <button type="button" className="admin-tickets__tool-btn" aria-label="Filtrar">
-          <FontAwesomeIcon icon={faSliders} className="admin-tickets__tool-icon" aria-hidden />
-        </button>
       </div>
 
       {loading ? (

@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   faMagnifyingGlass,
   faPlus,
-  faShuffle,
-  faSliders,
 } from '@fortawesome/pro-light-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import clientesHero from '../../../../assets/figma-cliente/ListaCliente.png'
@@ -139,12 +137,6 @@ export default function Clientes() {
             aria-label="Pesquisar clientes"
           />
         </label>
-        <button type="button" className="admin-clientes__tool-btn" aria-label="Ordenar">
-          <FontAwesomeIcon icon={faShuffle} className="admin-clientes__tool-icon" aria-hidden />
-        </button>
-        <button type="button" className="admin-clientes__tool-btn" aria-label="Filtrar">
-          <FontAwesomeIcon icon={faSliders} className="admin-clientes__tool-icon" aria-hidden />
-        </button>
         <button
           type="button"
           className="admin-clientes__add"

@@ -40,6 +40,8 @@
   box-shadow: 0 -4px 24px rgba(6, 14, 11, 0.12);
   transform: translateY(100%);
   transition: transform 0.28s ease-out;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .location-picker-modal--open .location-picker-modal__sheet {
@@ -87,6 +89,10 @@
   background: #e5e9e8;
   color: #40534c;
   cursor: pointer;
+}
+
+.location-picker-modal__search-area {
+  flex-shrink: 0;
 }
 
 .location-picker-modal__search-row {
@@ -138,7 +144,12 @@
 }
 
 .location-picker-modal__results {
-  margin: 6px 16px 0;
+  position: absolute;
+  top: 4px;
+  left: 16px;
+  right: 16px;
+  z-index: 1000;
+  margin: 0;
   padding: 0;
   list-style: none;
   border: 1px solid #e5e9e8;
@@ -146,6 +157,7 @@
   background: #fff;
   max-height: 160px;
   overflow: auto;
+  box-shadow: 0 8px 24px rgba(6, 14, 11, 0.2);
 }
 
 .location-picker-modal__result-btn {
@@ -167,7 +179,8 @@
 }
 
 .location-picker-modal__map-toolbar {
-  padding: 10px 16px 0;
+  padding: 10px 16px 10px;
+  flex-shrink: 0;
 }
 
 .location-picker-modal__geo-btn {
@@ -194,14 +207,15 @@
 .location-picker-modal__map-wrap {
   position: relative;
   flex-shrink: 0;
-  padding: 0 16px;
+  padding: 4px 16px 0;
+  overflow: visible;
 }
 
 .location-picker-modal__map-style-btn {
   position: absolute;
   top: 10px;
   right: 26px;
-  z-index: 500;
+  z-index: 1001;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -223,6 +237,8 @@
 }
 
 .location-picker-modal__map {
+  position: relative;
+  z-index: 1;
   display: block;
   width: 100%;
   height: min(40vh, 280px);
@@ -230,6 +246,7 @@
   border: 1px solid #e5e9e8;
   border-radius: 12px;
   background: #e5e9e8;
+  isolation: isolate;
 }
 
 .location-picker-modal__coords {

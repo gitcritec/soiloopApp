@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
-import { faArrowLeft, faPaperclip } from '@fortawesome/pro-light-svg-icons'
+import { useEffect, useState } from 'react'
+import { faArrowLeft } from '@fortawesome/pro-light-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import TicketComposer from '../../../../components/TicketComposer/TicketComposer.jsx'
 import { fetchStrapiClienteDetail } from '../../../../lib/strapiClientes.js'
 import { createStrapiTicket, getStrapiCurrentUserId } from '../../../../lib/strapiTickets.js'
 import { TICKET_PRIORIDADE_OPTIONS } from '../../../../lib/ticketStatus.js'
@@ -17,7 +18,6 @@ export default function TicketCriar({ onCancel, onSuccess }) {
   const [attachmentName, setAttachmentName] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
-  const fileInputRef = useRef(null)
 
   useEffect(() => {
     let cancelled = false
@@ -34,9 +34,8 @@ export default function TicketCriar({ onCancel, onSuccess }) {
     }
   }, [])
 
-  function handleFileChange(event) {
-    const file = event.target.files?.[0]
-    setAttachmentFile(file ?? null)
+  function handleAttachmentChange(file) {
+    setAttachmentFile(file)
     setAttachmentName(file ? file.name : '')
   }
 
@@ -127,36 +126,20 @@ export default function TicketCriar({ onCancel, onSuccess }) {
             </select>
           </label>
 
-          <label className="cliente-ticket-form__field">
+          <div className="cliente-ticket-form__field">
             <span className="cliente-ticket-form__label">Mensagem*</span>
-            <textarea
-              className="cliente-ticket-form__textarea"
+            <TicketComposer
+              embedded
+              showSend={false}
               value={mensagem}
-              onChange={(e) => setMensagem(e.target.value)}
-              placeholder="Descreva o problema ou pedido"
-              disabled={submitting}
-              required
+              onChange={setMensagem}
+              onAttachmentChange={handleAttachmentChange}
+              attachmentName={attachmentName}
+              submitting={submitting}
+              placeholder="Escreva a sua mensagem"
+              inputId="cliente-ticket-criar-msg"
             />
-          </label>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="cliente-ticket-form__file-input"
-            onChange={handleFileChange}
-            tabIndex={-1}
-            aria-hidden="true"
-          />
-          <button
-            type="button"
-            className="cliente-ticket-form__attach"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={submitting}
-          >
-            <FontAwesomeIcon icon={faPaperclip} className="cliente-ticket-form__attach-icon" aria-hidden />
-            Anexar Ficheiro
-          </button>
-          {attachmentName ? <p className="cliente-ticket-form__file-name">{attachmentName}</p> : null}
+          </div>
         </form>
 
         <div className="cliente-ticket-form__actions">

@@ -206,11 +206,11 @@ export default function LocationPickerModal({ isOpen, onClose, value, onConfirm 
     }
   }, [])
 
-  const applyCoords = useCallback((lat, lng) => {
+  const applyCoords = useCallback((lat, lng, { clearSearch = false } = {}) => {
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
     setLatText(formatCoord(lat))
     setLngText(formatCoord(lng))
-    setSearchResults([])
+    if (clearSearch) setSearchResults([])
     if (mapRef.current) {
       const currentZoom = mapRef.current.getZoom()
       const nextZoom = Number.isFinite(currentZoom) ? Math.max(currentZoom, 15) : 15
@@ -278,7 +278,7 @@ export default function LocationPickerModal({ isOpen, onClose, value, onConfirm 
             attributionControl: false,
           })
           mapRef.current.on('click', (ev) => {
-            applyCoords(ev.latlng.lat, ev.latlng.lng)
+            applyCoords(ev.latlng.lat, ev.latlng.lng, { clearSearch: true })
           })
         }
 
@@ -338,9 +338,8 @@ export default function LocationPickerModal({ isOpen, onClose, value, onConfirm 
   }
 
   function handlePickResult(result) {
-    applyCoords(result.lat, result.lng)
+    applyCoords(result.lat, result.lng, { clearSearch: true })
     setSearchText(result.label.split(',')[0] ?? result.label)
-    setSearchResults([])
   }
 
   async function handleUseCurrentPosition() {
@@ -352,7 +351,7 @@ export default function LocationPickerModal({ isOpen, onClose, value, onConfirm 
     setLocating(true)
     try {
       const pos = await getCurrentCoords()
-      applyCoords(pos.coords.latitude, pos.coords.longitude)
+      applyCoords(pos.coords.latitude, pos.coords.longitude, { clearSearch: true })
     } catch (err) {
       setGeoError(await geoErrorMessage(err))
     } finally {
@@ -402,36 +401,27 @@ export default function LocationPickerModal({ isOpen, onClose, value, onConfirm 
           </button>
         </header>
 
-        <form className="location-picker-modal__search-row" onSubmit={handleSearch}>
-          <input
-            type="search"
-            className="location-picker-modal__search-input"
-            value={searchText}
-            onChange={(e) => {
-              setSearchText(e.target.value)
-              setSearchError('')
-            }}
-            placeholder="Pesquisar morada ou local…"
-            aria-label="Pesquisar morada"
-          />
-          <button type="submit" className="location-picker-modal__search-btn" disabled={searching}>
-            <FontAwesomeIcon icon={faMagnifyingGlass} aria-hidden />
-          </button>
-        </form>
-        {searchError ? (
-          <p className="location-picker-modal__inline-msg location-picker-modal__inline-msg--error">{searchError}</p>
-        ) : null}
-        {searchResults.length > 0 ? (
-          <ul className="location-picker-modal__results">
-            {searchResults.map((result) => (
-              <li key={`${result.lat}-${result.lng}-${result.label}`}>
-                <button type="button" className="location-picker-modal__result-btn" onClick={() => handlePickResult(result)}>
-                  {result.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
+        <div className="location-picker-modal__search-area">
+          <form className="location-picker-modal__search-row" onSubmit={handleSearch}>
+            <input
+              type="search"
+              className="location-picker-modal__search-input"
+              value={searchText}
+              onChange={(e) => {
+                setSearchText(e.target.value)
+                setSearchError('')
+              }}
+              placeholder="Pesquisar morada ou local…"
+              aria-label="Pesquisar morada"
+            />
+            <button type="submit" className="location-picker-modal__search-btn" disabled={searching}>
+              <FontAwesomeIcon icon={faMagnifyingGlass} aria-hidden />
+            </button>
+          </form>
+          {searchError ? (
+            <p className="location-picker-modal__inline-msg location-picker-modal__inline-msg--error">{searchError}</p>
+          ) : null}
+        </div>
 
         <div className="location-picker-modal__map-toolbar">
           <button
@@ -449,6 +439,17 @@ export default function LocationPickerModal({ isOpen, onClose, value, onConfirm 
         ) : null}
 
         <div className="location-picker-modal__map-wrap">
+          {searchResults.length > 0 ? (
+            <ul className="location-picker-modal__results">
+              {searchResults.map((result) => (
+                <li key={`${result.lat}-${result.lng}-${result.label}`}>
+                  <button type="button" className="location-picker-modal__result-btn" onClick={() => handlePickResult(result)}>
+                    {result.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
           <button
             type="button"
             className="location-picker-modal__map-style-btn"
