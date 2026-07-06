@@ -77,3 +77,34 @@ export const MOCK_CLIENT_CONTAINERS = [
     taskType: 'recolher',
   },
 ]
+
+export const MOCK_CLIENT_HISTORICO = [
+  {
+    id: 'REQ-999',
+    locationPrefix: 'Sede',
+    locationDetail: 'Águeda',
+    status: 'finalizado',
+    historicoScheduledAt: '30/04/2026 10:20',
+    scheduledAt: '30/04/2026 10:20',
+    binNumber: '04',
+    taskType: 'recolher',
+    estado: 'concluido',
+    estadoKey: 'concluido',
+    dataIso: '2026-04-30',
+    dateSortValue: new Date('2026-04-30').getTime(),
+  },
+  {
+    id: 'REQ-998',
+    locationPrefix: 'Polo 4',
+    locationDetail: 'Aveiro',
+    status: 'finalizado',
+    historicoScheduledAt: '30/04/2026 10:20',
+    scheduledAt: '30/04/2026 10:20',
+    binNumber: '02',
+    taskType: 'entregar',
+    estado: 'concluido',
+    estadoKey: 'concluido',
+    dataIso: '2026-04-30',
+    dateSortValue: new Date('2026-04-30').getTime(),
+  },
+]

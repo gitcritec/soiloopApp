@@ -32,11 +32,19 @@ import {
 } from '../../../lib/appRoute.js'
 import { formatLocationQuery } from '../../../lib/locationQuery.js'
 import {
+  canDeleteMovimentoCliente,
+  canEditMovimentoCliente,
   createStrapiClienteSolicitacaoRecolha,
+  deleteStrapiMovimentosBatch,
   fetchStrapiClienteContentoresInstalados,
   fetchStrapiClienteMovimentosAgendados,
+  getPedidoGroupMovimentoKeys,
+  updateStrapiMovimentosBatch,
 } from '../../../lib/strapiMovimentos.js'
 import SolicitarRecolha from './SolicitarRecolha/SolicitarRecolha.jsx'
+import EditarPedido from './EditarPedido/EditarPedido.jsx'
+import ApagarPedido from './ApagarPedido/ApagarPedido.jsx'
+import HistoricoPedidos from './HistoricoPedidos/HistoricoPedidos.jsx'
 import {
   MOCK_CLIENT_CONTAINERS,
   MOCK_CLIENT_NAME,
@@ -135,6 +143,8 @@ export default function Cliente({
   const [clientContainersLoading, setClientContainersLoading] = useState(true)
   const [clientContainersError, setClientContainersError] = useState(false)
   const [recolhaContext, setRecolhaContext] = useState(null)
+  const [editPedidoContext, setEditPedidoContext] = useState(null)
+  const [deletePedidoContext, setDeletePedidoContext] = useState(null)
 
   useEffect(() => {
     function syncFromHash() {
@@ -200,8 +210,8 @@ export default function Cliente({
     if (actionId === 'tickets') selectNav('tickets')
     else if (actionId === 'pedidos') selectNav('recolhas')
     else if (actionId === 'contentores') selectNav('contentores')
-    else if (actionId === 'gestao' || actionId === 'historico' || actionId === 'recolhas')
-      selectNav('dashboard')
+    else if (actionId === 'historico') selectNav('historico')
+    else if (actionId === 'gestao' || actionId === 'recolhas') selectNav('dashboard')
   }
 
   function openCriarTicket() {
@@ -218,20 +228,7 @@ export default function Cliente({
     setRecolhaContext(null)
   }
 
-  function openCollectionLocation(item) {
-    const query = formatLocationQuery(item)
-    if (!query) return
-    setLocationMap({
-      query,
-      title: item.id,
-      subtitle: query,
-    })
-  }
-
-  async function handleSolicitarRecolhaSubmit(payload) {
-    await createStrapiClienteSolicitacaoRecolha(payload)
-    closeSolicitarRecolha()
-
+  function reloadClientDashboardData() {
     setClientRequestsLoading(true)
     setClientRequestsError(false)
     fetchStrapiClienteMovimentosAgendados(MOCK_CLIENT_REQUESTS)
@@ -253,6 +250,61 @@ export default function Cliente({
       .finally(() => setClientContainersLoading(false))
   }
 
+  function openEditPedido(item) {
+    setEditPedidoContext(item)
+  }
+
+  function closeEditPedido() {
+    setEditPedidoContext(null)
+  }
+
+  function openDeletePedido(item) {
+    setDeletePedidoContext(item)
+  }
+
+  function closeDeletePedido() {
+    setDeletePedidoContext(null)
+  }
+
+  async function handleEditPedidoSubmit(payload) {
+    /** @type {{ data: string, periodo?: string, estado?: string }} */
+    const updatePayload = {
+      data: payload.data,
+      periodo: payload.periodo,
+    }
+    if (payload.resetToApproval) {
+      updatePayload.estado = 'pedido'
+    }
+    const keys = payload.movimentoKeys?.length ? payload.movimentoKeys : []
+    await updateStrapiMovimentosBatch(keys, updatePayload)
+    closeEditPedido()
+    reloadClientDashboardData()
+  }
+
+  async function handleDeletePedidoConfirm() {
+    if (!deletePedidoContext) return
+    const keys = getPedidoGroupMovimentoKeys(deletePedidoContext)
+    await deleteStrapiMovimentosBatch(keys)
+    closeDeletePedido()
+    reloadClientDashboardData()
+  }
+
+  function openCollectionLocation(item) {
+    const query = formatLocationQuery(item)
+    if (!query) return
+    setLocationMap({
+      query,
+      title: item.id,
+      subtitle: query,
+    })
+  }
+
+  async function handleSolicitarRecolhaSubmit(payload) {
+    await createStrapiClienteSolicitacaoRecolha(payload)
+    closeSolicitarRecolha()
+    reloadClientDashboardData()
+  }
+
   const drawerRoleLabel =
     typeof userRole === 'string' && userRole.trim() ? userRole.trim() : 'Cliente'
 
@@ -261,6 +313,7 @@ export default function Cliente({
 
   function renderMain() {
     if (navActiveId === 'tickets') return <Tickets />
+    if (navActiveId === 'historico') return <HistoricoPedidos />
 
     return (
       <>
@@ -298,6 +351,10 @@ export default function Cliente({
                       binNumber={item.binNumber}
                       taskType={item.taskType}
                       requestState={item.estadoKey}
+                      showEdit={canEditMovimentoCliente(item)}
+                      showDelete={canDeleteMovimentoCliente(item)}
+                      onEditClick={() => openEditPedido(item)}
+                      onDeleteClick={() => openDeletePedido(item)}
                       onLocationClick={() => openCollectionLocation(item)}
                     />
                   ))
@@ -385,7 +442,11 @@ export default function Cliente({
         />
       </div>
 
-      <main className={`cliente-dashboard__main${navActiveId === 'tickets' ? ' cliente-dashboard__main--tickets' : ''}`}>
+      <main
+        className={`cliente-dashboard__main${
+          navActiveId === 'tickets' ? ' cliente-dashboard__main--tickets' : ''
+        }${navActiveId === 'historico' ? ' cliente-dashboard__main--historico' : ''}`}
+      >
         {renderMain()}
       </main>
 
@@ -410,6 +471,21 @@ export default function Cliente({
         containerItem={recolhaContext}
         onClose={closeSolicitarRecolha}
         onSubmit={handleSolicitarRecolhaSubmit}
+      />
+
+      <EditarPedido
+        isOpen={Boolean(editPedidoContext)}
+        movimentoItem={editPedidoContext}
+        resetToApproval={editPedidoContext?.estadoKey === 'agendado'}
+        onClose={closeEditPedido}
+        onSubmit={handleEditPedidoSubmit}
+      />
+
+      <ApagarPedido
+        isOpen={Boolean(deletePedidoContext)}
+        movimentoItem={deletePedidoContext}
+        onClose={closeDeletePedido}
+        onConfirm={handleDeletePedidoConfirm}
       />
     </div>
   )
