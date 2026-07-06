@@ -16,6 +16,11 @@
   opacity: 0.58;
 }
 
+.collection-card--no-actions {
+  grid-template-columns: 28px 1fr;
+  padding-right: 16px;
+}
+
 .collection-card__bin {
   display: flex;
   flex-direction: column;
@@ -220,6 +225,21 @@
 .collection-card--status-agendada .collection-card__badge {
   background: #eeffce;
   color: #1e8f2b;
+}
+
+.collection-card--status-finalizado .collection-card__bin-number,
+.collection-card--status-finalizado .collection-card__bin-icon,
+.collection-card--status-finalizado .collection-card__meta {
+  color: #40534c;
+}
+
+.collection-card--status-finalizado .collection-card__badge {
+  background: #40534c;
+  color: #f9f8f9;
+}
+
+.collection-card--status-finalizado .collection-card__badge-icon {
+  display: none;
 }
 
 .collection-card__meta .collection-card__task-type--recolher {

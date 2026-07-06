@@ -44,6 +44,7 @@ import {
 import SolicitarRecolha from './SolicitarRecolha/SolicitarRecolha.jsx'
 import EditarPedido from './EditarPedido/EditarPedido.jsx'
 import ApagarPedido from './ApagarPedido/ApagarPedido.jsx'
+import HistoricoPedidos from './HistoricoPedidos/HistoricoPedidos.jsx'
 import {
   MOCK_CLIENT_CONTAINERS,
   MOCK_CLIENT_NAME,
@@ -209,8 +210,8 @@ export default function Cliente({
     if (actionId === 'tickets') selectNav('tickets')
     else if (actionId === 'pedidos') selectNav('recolhas')
     else if (actionId === 'contentores') selectNav('contentores')
-    else if (actionId === 'gestao' || actionId === 'historico' || actionId === 'recolhas')
-      selectNav('dashboard')
+    else if (actionId === 'historico') selectNav('historico')
+    else if (actionId === 'gestao' || actionId === 'recolhas') selectNav('dashboard')
   }
 
   function openCriarTicket() {
@@ -312,6 +313,7 @@ export default function Cliente({
 
   function renderMain() {
     if (navActiveId === 'tickets') return <Tickets />
+    if (navActiveId === 'historico') return <HistoricoPedidos />
 
     return (
       <>
@@ -440,7 +442,11 @@ export default function Cliente({
         />
       </div>
 
-      <main className={`cliente-dashboard__main${navActiveId === 'tickets' ? ' cliente-dashboard__main--tickets' : ''}`}>
+      <main
+        className={`cliente-dashboard__main${
+          navActiveId === 'tickets' ? ' cliente-dashboard__main--tickets' : ''
+        }${navActiveId === 'historico' ? ' cliente-dashboard__main--historico' : ''}`}
+      >
         {renderMain()}
       </main>
 

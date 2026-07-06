@@ -3,6 +3,7 @@ import { fetchStrapiContentorByCid } from './strapiContentores.js'
 
 const MOVIMENTO_ESTADO_AGENDADO = 'agendado'
 const MOVIMENTO_ESTADO_PEDIDO = 'pedido'
+const MOVIMENTO_ESTADO_CONCLUIDO = 'concluido'
 const MOVIMENTO_TIPO_RECOLHA = 'recolha'
 const MOVIMENTO_TIPO_ENTREGA = 'entrega'
 
@@ -223,6 +224,29 @@ function formatDate(value) {
   return `${day}/${month}/${year}`
 }
 
+function formatDateTime(value) {
+  const raw = pickString(value)
+  if (!raw) return ''
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime())) return raw
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const year = d.getFullYear()
+  const hours = String(d.getHours()).padStart(2, '0')
+  const minutes = String(d.getMinutes()).padStart(2, '0')
+  return `${day}/${month}/${year} ${hours}:${minutes}`
+}
+
+function pickHistoricoScheduledAt(attrs, dateLabel, periodo) {
+  const updated = formatDateTime(attrs.updatedAt ?? attrs.publishedAt)
+  if (updated) return updated
+  if (dateLabel && periodo) {
+    const periodTime = normalizeText(periodo) === 'tarde' ? '14:00' : '10:00'
+    return `${dateLabel} ${periodTime}`
+  }
+  return dateLabel
+}
+
 function parseDateOnly(value) {
   const raw = pickString(value)
   if (!raw) return null
@@ -295,9 +319,20 @@ function isEstadoPedidoVisivel(value) {
   return isEstadoAgendado(value) || isEstadoPedido(value)
 }
 
+function isEstadoConcluido(value) {
+  const s = normalizeText(value)
+  return (
+    s === MOVIMENTO_ESTADO_CONCLUIDO ||
+    s === 'concluida' ||
+    s === 'finalizado' ||
+    s === 'finalizada'
+  )
+}
+
 function normalizeEstadoKey(value) {
   if (isEstadoPedido(value)) return MOVIMENTO_ESTADO_PEDIDO
   if (isEstadoAgendado(value)) return MOVIMENTO_ESTADO_AGENDADO
+  if (isEstadoConcluido(value)) return MOVIMENTO_ESTADO_CONCLUIDO
   return normalizeText(value)
 }
 
@@ -430,6 +465,8 @@ function coerceMovimentoRow(row, fallback = {}) {
     estadoKey: normalizeEstadoKey(estado),
     dateSortValue: getDateSortValue(attrs.data),
     dataIso: pickDataIso(attrs.data) || pickDataIso(fallback.dataIso),
+    historicoScheduledAt:
+      pickHistoricoScheduledAt(attrs, date, periodo) || fallback.historicoScheduledAt || '',
   }
 }
 
@@ -495,6 +532,19 @@ function createAllMovimentosParams(withPopulate = true) {
   return addMovimentosCommonParams(params)
 }
 
+function addHistoricoSortParams(params) {
+  params.set('sort', 'data:desc')
+  params.set('pagination[pageSize]', '100')
+  return params
+}
+
+function createEstadoMovimentosParamsHistorico(estado, withPopulate = true) {
+  const params = new URLSearchParams()
+  params.set('filters[estado][$eq]', estado)
+  if (withPopulate) params.set('populate', '*')
+  return addHistoricoSortParams(params)
+}
+
 /**
  * Lista movimentos nos estados "agendado" e "pedido".
  * @param {Array<object>} [fallbackRows]
@@ -535,6 +585,43 @@ export async function fetchStrapiClienteMovimentosAgendados(fallbackRows = []) {
           return pedidos
         }
       }
+    } catch (err) {
+      lastError = err
+    }
+  }
+
+  if (lastError) throw lastError
+  return []
+}
+
+/**
+ * Lista movimentos concluídos, ordenados por data (mais recentes primeiro).
+ * @param {Array<object>} [fallbackRows]
+ */
+export async function fetchStrapiClienteMovimentosHistorico(fallbackRows = []) {
+  const base = strapiBaseUrl()
+  if (!base) return []
+
+  const attempts = [
+    createEstadoMovimentosParamsHistorico('concluido', true),
+    createEstadoMovimentosParamsHistorico('Concluido', true),
+    createEstadoMovimentosParamsHistorico('concluído', true),
+    createEstadoMovimentosParamsHistorico('Concluído', true),
+    createEstadoMovimentosParamsHistorico('concluido', false),
+    createEstadoMovimentosParamsHistorico('Concluido', false),
+  ]
+
+  let lastError = null
+  for (const params of attempts) {
+    try {
+      const rows = await fetchMovimentosRows(base, params)
+      const historico = enrichMovimentosPedidoGroups(
+        rows
+          .map((row, index) => coerceMovimentoRow(row, fallbackRows[index]))
+          .filter((item) => item && isEstadoConcluido(item.estado))
+          .sort((a, b) => b.dateSortValue - a.dateSortValue),
+      )
+      if (historico.length > 0) return historico
     } catch (err) {
       lastError = err
     }

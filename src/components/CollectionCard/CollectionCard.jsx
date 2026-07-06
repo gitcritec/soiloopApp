@@ -8,6 +8,7 @@ const STATUS_LABEL = {
   hoje: 'Hoje',
   amanha: 'Amanhã',
   agendada: 'Agendada',
+  finalizado: 'Finalizado',
 }
 
 const TASK_TYPE_LABEL = {
@@ -52,20 +53,27 @@ export default function CollectionCard({
   onDeleteClick,
   showEdit = true,
   showDelete = true,
+  hideTaskType = false,
+  showFullDateTime = false,
+  badgeLabel,
   requestState,
 }) {
-  const statusLabel = STATUS_LABEL[status] ?? status
+  const statusLabel = badgeLabel ?? STATUS_LABEL[status] ?? status
   const taskTypeLabel = TASK_TYPE_LABEL[taskType] ?? taskType
   const { date: datePart, time: timePart } = splitScheduledAt(scheduledAt)
   const periodLabel = formatPeriod(timePart)
+  const historicoDateLabel = showFullDateTime ? (scheduledAt ?? '').trim() : ''
 
   const hasSplitLocation = Boolean(locationPrefix && locationDetail)
   const stateClass = requestState ? ` collection-card--request-${requestState}` : ''
   const hasEditAction = showEdit && Boolean(onEditClick || onLocationClick)
   const hasDeleteAction = showDelete && Boolean(onDeleteClick)
+  const hasActions = hasEditAction || hasDeleteAction
 
   return (
-    <article className={`collection-card collection-card--status-${status}${stateClass}`}>
+    <article
+      className={`collection-card collection-card--status-${status}${stateClass}${hasActions ? '' : ' collection-card--no-actions'}`}
+    >
       <div className="collection-card__bin">
         <FontAwesomeIcon icon={faRecycle} className="collection-card__bin-icon" aria-hidden />
         <span className="collection-card__bin-number">{binNumber}</span>
@@ -86,21 +94,29 @@ export default function CollectionCard({
             <span className="collection-card__badge-text">{statusLabel}</span>
             <IconCalendarSmall className="collection-card__badge-icon" aria-hidden="true" />
           </span>
-          {taskType ? (
+          {hideTaskType || !taskType ? null : (
             <span
               className={`collection-card__task-type collection-card__task-type--${taskType}`}
             >
               {taskTypeLabel}
             </span>
-          ) : null}
-          {datePart ? <span className="collection-card__date">{datePart}</span> : null}
-          {periodLabel ? (
-            <span className="collection-card__period">Periodo: {periodLabel}</span>
-          ) : null}
+          )}
+          {showFullDateTime ? (
+            historicoDateLabel ? (
+              <span className="collection-card__date">{historicoDateLabel}</span>
+            ) : null
+          ) : (
+            <>
+              {datePart ? <span className="collection-card__date">{datePart}</span> : null}
+              {periodLabel ? (
+                <span className="collection-card__period">Periodo: {periodLabel}</span>
+              ) : null}
+            </>
+          )}
         </div>
       </div>
 
-      {hasEditAction || hasDeleteAction ? (
+      {hasActions ? (
         <div className="collection-card__actions">
           {hasEditAction ? (
             <button
