@@ -50,6 +50,8 @@ export default function CollectionCard({
   onLocationClick,
   onEditClick,
   onDeleteClick,
+  showEdit = true,
+  showDelete = true,
   requestState,
 }) {
   const statusLabel = STATUS_LABEL[status] ?? status
@@ -59,6 +61,8 @@ export default function CollectionCard({
 
   const hasSplitLocation = Boolean(locationPrefix && locationDetail)
   const stateClass = requestState ? ` collection-card--request-${requestState}` : ''
+  const hasEditAction = showEdit && Boolean(onEditClick || onLocationClick)
+  const hasDeleteAction = showDelete && Boolean(onDeleteClick)
 
   return (
     <article className={`collection-card collection-card--status-${status}${stateClass}`}>
@@ -96,24 +100,30 @@ export default function CollectionCard({
         </div>
       </div>
 
-      <div className="collection-card__actions">
-        <button
-          type="button"
-          className="collection-card__btn collection-card__btn--edit"
-          aria-label="Editar"
-          onClick={onEditClick ?? onLocationClick}
-        >
-          <FontAwesomeIcon icon={faPen} className="collection-card__btn-icon" aria-hidden />
-        </button>
-        <button
-          type="button"
-          className="collection-card__btn collection-card__btn--delete"
-          aria-label="Apagar"
-          onClick={onDeleteClick}
-        >
-          <FontAwesomeIcon icon={faTrashCan} className="collection-card__btn-icon" aria-hidden />
-        </button>
-      </div>
+      {hasEditAction || hasDeleteAction ? (
+        <div className="collection-card__actions">
+          {hasEditAction ? (
+            <button
+              type="button"
+              className="collection-card__btn collection-card__btn--edit"
+              aria-label="Editar"
+              onClick={onEditClick ?? onLocationClick}
+            >
+              <FontAwesomeIcon icon={faPen} className="collection-card__btn-icon" aria-hidden />
+            </button>
+          ) : null}
+          {hasDeleteAction ? (
+            <button
+              type="button"
+              className="collection-card__btn collection-card__btn--delete"
+              aria-label="Apagar"
+              onClick={onDeleteClick}
+            >
+              <FontAwesomeIcon icon={faTrashCan} className="collection-card__btn-icon" aria-hidden />
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </article>
   )
 }

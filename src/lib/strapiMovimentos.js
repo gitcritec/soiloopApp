@@ -108,9 +108,35 @@ function pickLocalizacaoDisplay(localizacaoEntity, contentor) {
   return { location: null, locationPrefix: null, locationDetail: null }
 }
 
-function buildPedidoGroupKey(row) {
+function buildPedidoLocGroupKey(row) {
   const periodo = normalizeText(row.periodo ?? row.scheduledAt?.split(/\s+/).pop())
   return `${row.localizacaoId ?? 'none'}|${row.dateSortValue}|${periodo}`
+}
+
+function buildPedidoContainerGroupKey(contentorId, dateSortValue, periodo) {
+  const periodoNorm = normalizeText(periodo)
+  return `${contentorId ?? 'none'}|${dateSortValue}|${periodoNorm}`
+}
+
+function pickPedidoGroupContentorId(items) {
+  const recolha = items.find(
+    (item) =>
+      item.taskType === 'recolher' &&
+      item.contentorId &&
+      item.contentorId !== 'Não definido',
+  )
+  if (recolha?.contentorId) return recolha.contentorId
+  const withId = items.find((item) => item.id && item.id !== 'Não definido')
+  return withId?.contentorId ?? withId?.id ?? null
+}
+
+function buildPedidoGroupTasks(siblings) {
+  return siblings.map((item) => ({
+    movimentoKey: item.movimentoKey,
+    taskType: item.taskType,
+    label: item.taskType === 'entregar' ? 'Entrega de contentor' : 'Recolha de contentor',
+    collectionId: item.id,
+  }))
 }
 
 function pickCanonicalPedidoLocation(items) {
@@ -138,36 +164,52 @@ function pickCanonicalPedidoLocation(items) {
   }
 }
 
-/** Alinha a morada entre recolha + entrega do mesmo pedido (mesma data/período/localização). */
-function enrichMovimentosPedidoLocation(rows) {
+/** Alinha morada e metadados de grupo (recolha + entrega: contentor + data + período). */
+function enrichMovimentosPedidoGroups(rows) {
   const groups = new Map()
 
   for (const row of rows) {
-    const key = buildPedidoGroupKey(row)
+    const key = buildPedidoLocGroupKey(row)
     const list = groups.get(key) ?? []
     list.push(row)
     groups.set(key, list)
   }
 
-  const patchByMovimentoKey = new Map()
-  for (const items of groups.values()) {
-    const canonical = pickCanonicalPedidoLocation(items)
-    if (!canonical?.location) continue
-    for (const item of items) {
-      patchByMovimentoKey.set(item.movimentoKey, canonical)
-    }
-  }
-
   return rows.map((row) => {
-    const patch = patchByMovimentoKey.get(row.movimentoKey)
-    if (!patch) return row
+    const siblings = groups.get(buildPedidoLocGroupKey(row)) ?? [row]
+    const canonical = pickCanonicalPedidoLocation(siblings)
+    const contentorId = pickPedidoGroupContentorId(siblings)
+    const periodo = normalizeText(row.periodo ?? row.scheduledAt?.split(/\s+/).pop())
+    const pedidoGroupKey = buildPedidoContainerGroupKey(contentorId, row.dateSortValue, periodo)
+    const pedidoGroupMovimentoKeys = siblings.map((item) => item.movimentoKey).filter(Boolean)
+    const pedidoGroupTasks = buildPedidoGroupTasks(siblings)
+
     return {
       ...row,
-      location: patch.location,
-      locationPrefix: patch.locationPrefix ?? row.locationPrefix,
-      locationDetail: patch.locationDetail ?? row.locationDetail,
+      pedidoGroupKey,
+      pedidoGroupMovimentoKeys,
+      pedidoGroupTasks,
+      pedidoGroupContentorId: contentorId,
+      pedidoGroupSiblingCount: siblings.length,
+      ...(canonical?.location
+        ? {
+            location: canonical.location,
+            locationPrefix: canonical.locationPrefix ?? row.locationPrefix,
+            locationDetail: canonical.locationDetail ?? row.locationDetail,
+          }
+        : {}),
     }
   })
+}
+
+/** @param {object} item */
+export function getPedidoGroupMovimentoKeys(item) {
+  const keys = item?.pedidoGroupMovimentoKeys
+  if (Array.isArray(keys) && keys.length > 0) {
+    return keys.filter(Boolean)
+  }
+  const single = pickString(item?.movimentoKey)
+  return single ? [single] : []
 }
 
 function formatDate(value) {
@@ -310,6 +352,35 @@ function getTodayEndSortValue() {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).getTime()
 }
 
+function pickDataIso(value) {
+  const raw = pickString(value)
+  if (!raw) return ''
+  const isoMatch = raw.match(/^(\d{4}-\d{2}-\d{2})/)
+  if (isoMatch) return isoMatch[1]
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime())) return ''
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+/** Data estritamente posterior a hoje (fim do dia). */
+export function isMovimentoDateAfterToday(dateSortValue) {
+  return Number.isFinite(dateSortValue) && dateSortValue > getTodayEndSortValue()
+}
+
+export function canDeleteMovimentoCliente(item) {
+  if (!item) return false
+  if (item.estadoKey === MOVIMENTO_ESTADO_PEDIDO) return true
+  return isMovimentoDateAfterToday(item.dateSortValue)
+}
+
+export function canEditMovimentoCliente(item) {
+  if (!item) return false
+  return item.estadoKey === MOVIMENTO_ESTADO_PEDIDO || item.estadoKey === MOVIMENTO_ESTADO_AGENDADO
+}
+
 /**
  * @param {unknown} row
  * @param {Partial<import('../pages/Dashboard/Cliente/mockData.js').MockClientRequest>} [fallback]
@@ -358,6 +429,7 @@ function coerceMovimentoRow(row, fallback = {}) {
     estado,
     estadoKey: normalizeEstadoKey(estado),
     dateSortValue: getDateSortValue(attrs.data),
+    dataIso: pickDataIso(attrs.data) || pickDataIso(fallback.dataIso),
   }
 }
 
@@ -453,7 +525,7 @@ export async function fetchStrapiClienteMovimentosAgendados(fallbackRows = []) {
     try {
       const rows = await fetchMovimentosRows(base, params)
       if (rows.length > 0) {
-        const pedidos = enrichMovimentosPedidoLocation(
+        const pedidos = enrichMovimentosPedidoGroups(
           rows
             .map((row, index) => coerceMovimentoRow(row, fallbackRows[index]))
             .filter((item) => item && isEstadoPedidoVisivel(item.estado))
@@ -728,4 +800,102 @@ export async function createStrapiClienteSolicitacaoRecolha(payload) {
       ),
     )
   }
+}
+
+/**
+ * @param {string} movimentoKey documentId ou id do movimento
+ * @param {{ data?: string, periodo?: string, estado?: string }} payload
+ */
+export async function updateStrapiMovimento(movimentoKey, payload) {
+  const key = pickString(movimentoKey)
+  if (!key) throw new Error('Movimento em falta.')
+
+  const base = strapiBaseUrl()
+  if (!base) throw new Error('Configura VITE_STRAPI_URL no .env')
+
+  /** @type {Record<string, unknown>} */
+  const data = {}
+  const nextData = pickString(payload.data)
+  const nextPeriodo = normalizePeriodoForStrapi(payload.periodo)
+  const nextEstado = pickString(payload.estado)
+
+  if (nextData) data.data = nextData
+  if (nextPeriodo) data.periodo = nextPeriodo
+  if (nextEstado) data.estado = nextEstado
+
+  if (Object.keys(data).length === 0) {
+    throw new Error('Nada para atualizar.')
+  }
+
+  const res = await fetch(`${base}/api/movimentos/${encodeURIComponent(key)}`, {
+    method: 'PUT',
+    headers: {
+      ...authHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ data }),
+  })
+
+  if (!res.ok) {
+    let errorJson = null
+    try {
+      errorJson = await res.json()
+    } catch {
+      errorJson = null
+    }
+    throw new Error(formatStrapiErrorJson(errorJson, `Strapi movimentos: HTTP ${res.status}`))
+  }
+
+  let json = null
+  try {
+    json = await res.json()
+  } catch {
+    json = null
+  }
+  return json?.data ?? json
+}
+
+/**
+ * @param {string[]} movimentoKeys
+ * @param {{ data?: string, periodo?: string, estado?: string }} payload
+ */
+export async function updateStrapiMovimentosBatch(movimentoKeys, payload) {
+  const keys = [...new Set((movimentoKeys ?? []).map((key) => pickString(key)).filter(Boolean))]
+  if (keys.length === 0) throw new Error('Movimento em falta.')
+  await Promise.all(keys.map((key) => updateStrapiMovimento(key, payload)))
+}
+
+/**
+ * @param {string} movimentoKey documentId ou id do movimento
+ */
+export async function deleteStrapiMovimento(movimentoKey) {
+  const key = pickString(movimentoKey)
+  if (!key) throw new Error('Movimento em falta.')
+
+  const base = strapiBaseUrl()
+  if (!base) throw new Error('Configura VITE_STRAPI_URL no .env')
+
+  const res = await fetch(`${base}/api/movimentos/${encodeURIComponent(key)}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+
+  if (!res.ok) {
+    let errorJson = null
+    try {
+      errorJson = await res.json()
+    } catch {
+      errorJson = null
+    }
+    throw new Error(formatStrapiErrorJson(errorJson, `Strapi movimentos: HTTP ${res.status}`))
+  }
+}
+
+/**
+ * @param {string[]} movimentoKeys
+ */
+export async function deleteStrapiMovimentosBatch(movimentoKeys) {
+  const keys = [...new Set((movimentoKeys ?? []).map((key) => pickString(key)).filter(Boolean))]
+  if (keys.length === 0) throw new Error('Movimento em falta.')
+  await Promise.all(keys.map((key) => deleteStrapiMovimento(key)))
 }
