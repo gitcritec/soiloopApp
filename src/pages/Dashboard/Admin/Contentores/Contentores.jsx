@@ -18,6 +18,7 @@ import {
   setAppHash,
 } from '../../../../lib/appRoute.js'
 import { fetchStrapiContentores } from '../../../../lib/strapiContentores.js'
+import { formatLocationQuery } from '../../../../lib/locationQuery.js'
 import ContentorRegisto from './ContentorRegisto.jsx'
 import './Contentores.css'
 
@@ -220,18 +221,27 @@ export default function Contentores() {
                 <ContentorCard
                   cid={item.cid}
                   litros={item.litros}
-                  localizacao={item.localizacao}
-                  cliente={item.numeroEgar || ''}
+                  localizacao={item.localizacaoAtualMorada || item.localizacao}
+                  cliente={item.clienteAtualLabel || '—'}
                   estado={item.estado}
                   estadoLabel={item.estadoLabel}
                   onEditClick={() => openEdit(item)}
                   onLocationClick={() => {
-                    const loc = item.localizacao?.trim()
-                    if (!loc || loc === '—') return
+                    const locationLabel =
+                      item.locationDetail ||
+                      item.localizacaoAtualMorada ||
+                      item.localizacao ||
+                      ''
+                    const query = formatLocationQuery({
+                      location: locationLabel,
+                      lat: item.localizacaoAtualLat,
+                      lng: item.localizacaoAtualLng,
+                    })
+                    if (!query) return
                     setLocationMap({
-                      query: loc,
-                      title: item.cid,
-                      subtitle: loc,
+                      query,
+                      title: item.clienteAtualLabel || item.cid,
+                      subtitle: locationLabel || query,
                     })
                   }}
                   onScanClick={() =>

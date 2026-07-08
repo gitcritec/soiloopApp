@@ -4,10 +4,13 @@
  */
 
 import { createContentorQrcodePngBlob } from './contentorQrcodeImage.js'
-import { STRAPI_JWT_STORAGE_KEY } from './strapiAuth.js'
+import { getStoredStrapiUserRefs, STRAPI_JWT_STORAGE_KEY } from './strapiAuth.js'
 
 /** Valores do enum `estado` no Strapi. */
 export const CONTENTOR_ESTADOS = ['Novo', 'Usado', 'Danificado']
+
+/** Valores do enum `situacao` no Strapi. */
+export const CONTENTOR_SITUACOES = ['Armazem', 'Cliente', 'EmTransito']
 
 function strapiBaseUrl() {
   const raw = import.meta.env.VITE_STRAPI_URL
@@ -68,6 +71,16 @@ function pickString(value) {
   if (value == null) return null
   const s = String(value).trim()
   return s || null
+}
+
+/** @param {unknown} value */
+function pickNumberField(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string' && value.trim()) {
+    const n = Number(value.replace(',', '.'))
+    return Number.isFinite(n) ? n : null
+  }
+  return null
 }
 
 /** @param {unknown} value */
@@ -211,6 +224,115 @@ function extractCapacidadeId(capacidade) {
   return extractStrapiEntityId(capacidade) ?? ''
 }
 
+function unwrapEntity(entity) {
+  if (!entity || typeof entity !== 'object') return null
+  const data = entity.data
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    return { ...data, ...(data.attributes ?? {}) }
+  }
+  return { ...entity, ...(entity.attributes ?? {}) }
+}
+
+function pickRelationId(entity) {
+  const unwrapped = unwrapEntity(entity)
+  if (!unwrapped) return null
+  return pickString(unwrapped.documentId ?? unwrapped.id)
+}
+
+function pickUserRelationRefs(userEntity) {
+  const user = unwrapEntity(userEntity)
+  if (!user) return { userId: null, userDocumentId: null }
+  return {
+    userId: pickString(user.id),
+    userDocumentId: pickString(user.documentId),
+  }
+}
+
+function pickUserDisplayName(userEntity) {
+  const user = unwrapEntity(userEntity)
+  if (!user) return ''
+  return pickString(user.username) ?? pickString(user.email) ?? ''
+}
+
+const LOCALIZACAO_MORADA_KEYS = ['morada', 'endereco', 'localizacao', 'descricao', 'titulo', 'title']
+const LOCALIZACAO_NOME_KEYS = ['nome', 'name', 'designacao', 'denominacao', 'label']
+
+function includesIgnoreCase(haystack, needle) {
+  if (!haystack || !needle) return false
+  return haystack.toLowerCase().includes(needle.toLowerCase())
+}
+
+/** @param {Record<string, unknown>|null|undefined} obj @param {string[]} keys */
+function pickFirstStringField(obj, keys) {
+  if (!obj || typeof obj !== 'object') return null
+  for (const key of keys) {
+    const value = pickString(obj[key])
+    if (value) return value
+  }
+  return null
+}
+
+function joinLocalizacaoParts(morada, nome) {
+  const m = morada?.trim()
+  const n = nome?.trim()
+  if (m && n) {
+    if (includesIgnoreCase(m, n)) {
+      return { location: n, locationPrefix: null, locationDetail: n }
+    }
+    return {
+      location: n,
+      locationPrefix: m,
+      locationDetail: n,
+    }
+  }
+  if (m) return { location: m, locationPrefix: null, locationDetail: m }
+  if (n) return { location: n, locationPrefix: null, locationDetail: n }
+  return { location: null, locationPrefix: null, locationDetail: null }
+}
+
+/**
+ * @param {unknown} localizacaoEntity
+ * @param {string|null|undefined} fallbackText
+ */
+function pickLocalizacaoAtualDisplay(localizacaoEntity, fallbackText) {
+  const fromText = pickString(fallbackText)
+  const loc = unwrapEntity(localizacaoEntity)
+  if (!loc) {
+    return fromText
+      ? { location: fromText, locationPrefix: null, locationDetail: fromText }
+      : { location: null, locationPrefix: null, locationDetail: null }
+  }
+
+  const moradaLike = pickFirstStringField(loc, LOCALIZACAO_MORADA_KEYS)
+  const nome = pickFirstStringField(loc, LOCALIZACAO_NOME_KEYS)
+  if (moradaLike && nome && includesIgnoreCase(moradaLike, nome)) {
+    return { location: nome, locationPrefix: null, locationDetail: nome }
+  }
+  if (moradaLike && !nome) {
+    return { location: moradaLike, locationPrefix: null, locationDetail: moradaLike }
+  }
+  const joined = joinLocalizacaoParts(moradaLike, nome)
+  if (joined.location) return joined
+  if (fromText) {
+    return { location: fromText, locationPrefix: null, locationDetail: fromText }
+  }
+  return { location: null, locationPrefix: null, locationDetail: null }
+}
+
+function belongsToCurrentUser(userId, userDocumentId, currentUserRefs) {
+  if (!(currentUserRefs instanceof Set) || currentUserRefs.size === 0) return false
+  const refs = [userId, userDocumentId].filter(Boolean).map(String)
+  return refs.some((ref) => currentUserRefs.has(ref))
+}
+
+function appendContentorPopulateParams(params) {
+  params.set('populate[capacidade]', 'true')
+  params.set('populate[qrcode]', 'true')
+  params.set('populate[localizacaoAtual]', 'true')
+  params.set('populate[clienteAtual]', 'true')
+  return params
+}
+
 /**
  * @param {unknown} row
  * @returns {import('./strapiContentores.js').ContentorItem|null}
@@ -228,17 +350,40 @@ function coerceContentorRow(row) {
   const qrcodeUrl = pickMediaUrl(qrcodeMedia, base)
   const estadoRaw = pickString(attrs.estado ?? row.estado)
   const estado = normalizeContentorEstado(estadoRaw)
+  const situacaoRaw = pickString(attrs.situacao ?? row.situacao)
+  const situacao = normalizeContentorEstado(situacaoRaw)
   const dataRaw = attrs.data ?? row.data
   const capacidadeRaw = attrs.capacidade ?? row.capacidade
   const capacidadeId = extractCapacidadeId(capacidadeRaw)
   const litros = normalizeCapacidadeLitros(capacidadeRaw)
+  const clienteAtualRaw = attrs.clienteAtual ?? row.clienteAtual
+  const { userId: clienteAtualId, userDocumentId: clienteAtualDocumentId } =
+    pickUserRelationRefs(clienteAtualRaw)
+  const localizacaoAtualRaw = attrs.localizacaoAtual ?? row.localizacaoAtual
+  const localizacaoAtualId = pickRelationId(localizacaoAtualRaw)
+  const localizacaoAtualDisplay = pickLocalizacaoAtualDisplay(localizacaoAtualRaw, localizacao)
+  const localizacaoAtualEntity = unwrapEntity(localizacaoAtualRaw)
+  const localizacaoAtualLat = pickNumberField(localizacaoAtualEntity?.lat)
+  const localizacaoAtualLng = pickNumberField(localizacaoAtualEntity?.lng)
+  const clienteAtualLabel = pickUserDisplayName(clienteAtualRaw)
 
   if (!cid && id == null) return null
 
   return {
     id: id != null ? String(id) : cid ?? '',
     cid: cid ?? '—',
-    localizacao: localizacao ?? '—',
+    localizacao: localizacao ?? localizacaoAtualDisplay.location ?? '—',
+    localizacaoAtualId: localizacaoAtualId ?? '',
+    localizacaoAtualMorada: localizacaoAtualDisplay.locationDetail ?? localizacaoAtualDisplay.location ?? '',
+    locationPrefix: localizacaoAtualDisplay.locationPrefix,
+    locationDetail: localizacaoAtualDisplay.locationDetail ?? localizacao ?? '',
+    clienteAtualId: clienteAtualId ?? '',
+    clienteAtualDocumentId: clienteAtualDocumentId ?? '',
+    clienteAtualLabel,
+    localizacaoAtualLat,
+    localizacaoAtualLng,
+    situacao,
+    situacaoLabel: situacaoRaw ?? '',
     numeroEgar: numeroEgar ?? '',
     qrcodeUrl: qrcodeUrl ?? '',
     estado,
@@ -256,6 +401,17 @@ function coerceContentorRow(row) {
  * @property {string} id
  * @property {string} cid
  * @property {string} localizacao
+ * @property {string} localizacaoAtualId
+ * @property {string} localizacaoAtualMorada
+ * @property {string|null} locationPrefix
+ * @property {string|null} locationDetail
+ * @property {string} clienteAtualId
+ * @property {string} clienteAtualDocumentId
+ * @property {string} clienteAtualLabel
+ * @property {number|null} localizacaoAtualLat
+ * @property {number|null} localizacaoAtualLng
+ * @property {string|null} situacao
+ * @property {string} situacaoLabel
  * @property {string} numeroEgar
  * @property {string} qrcodeUrl URL da imagem QR no Strapi (media)
  * @property {'novo'|'usado'|'danificado'|null} estado
@@ -268,6 +424,182 @@ function coerceContentorRow(row) {
  */
 
 /**
+ * @typedef {object} ClienteContentorCardItem
+ * @property {string} id CID do contentor
+ * @property {string} contentorId
+ * @property {string} [strapiId]
+ * @property {string} [qrCode]
+ * @property {string} [litrosLabel]
+ * @property {string|null} [location]
+ * @property {string|null} [locationPrefix]
+ * @property {string|null} [locationDetail]
+ * @property {string} [localizacaoId]
+ * @property {string} [clienteLabel]
+ * @property {number|null} [lat]
+ * @property {number|null} [lng]
+ * @property {string} estadoLabel
+ * @property {boolean} [emRecolha]
+ * @property {boolean} [canRequestPickup]
+ * @property {string} [status]
+ * @property {string} [scheduledAt]
+ */
+
+/**
+ * Mapeia um contentor Strapi para o cartão «Meus Contentores» do cliente.
+ * @param {ContentorItem} contentor
+ * @param {Partial<ClienteContentorCardItem>} [fallback]
+ * @param {Partial<ClienteContentorCardItem>|null} [pendingRecolha]
+ * @returns {ClienteContentorCardItem|null}
+ */
+export function mapContentorToClienteCard(contentor, fallback = {}, pendingRecolha = null) {
+  if (!contentor?.cid || contentor.cid === '—') return null
+
+  const locationPrefix = contentor.locationPrefix ?? fallback.locationPrefix ?? null
+  const locationDetail =
+    contentor.locationDetail ??
+    contentor.localizacaoAtualMorada ??
+    contentor.localizacao ??
+    fallback.locationDetail ??
+    null
+  const location =
+    locationDetail ||
+    fallback.location ||
+    locationPrefix
+
+  let estadoLabel = 'Reutilizável'
+  if ((contentor.estadoLabel ?? '').toLowerCase() === 'danificado') {
+    estadoLabel = 'Danificado'
+  }
+  const emRecolha = Boolean(pendingRecolha)
+
+  const scheduledAt = pickCardDisplayDate(pendingRecolha, contentor, fallback)
+
+  return {
+    id: contentor.cid,
+    contentorId: contentor.cid,
+    strapiId: contentor.id,
+    qrCode: fallback.qrCode ?? contentor.cid,
+    litrosLabel:
+      contentor.litrosLabel?.replace(/\s+L$/, 'L') ??
+      fallback.litrosLabel ??
+      (contentor.litros != null ? `${contentor.litros}L` : ''),
+    location,
+    locationPrefix,
+    locationDetail,
+    localizacaoId: contentor.localizacaoAtualId || fallback.localizacaoId || '',
+    clienteLabel: contentor.clienteAtualLabel || fallback.clienteLabel || '',
+    lat: contentor.localizacaoAtualLat ?? fallback.lat ?? null,
+    lng: contentor.localizacaoAtualLng ?? fallback.lng ?? null,
+    estadoLabel,
+    emRecolha,
+    canRequestPickup: !emRecolha,
+    status: pendingRecolha?.status ?? fallback.status,
+    scheduledAt,
+  }
+}
+
+function pickCardDisplayDate(pendingRecolha, contentor, fallback) {
+  if (pendingRecolha?.dataIso) {
+    return formatContentorDate(pendingRecolha.dataIso)
+  }
+  const pendingText = pickString(pendingRecolha?.scheduledAt)
+  if (pendingText) {
+    const match = pendingText.match(/\d{2}\/\d{2}\/\d{4}/)
+    if (match) return match[0]
+  }
+  if (contentor.data) return contentor.data
+  const fallbackText = pickString(fallback?.scheduledAt)
+  if (fallbackText) {
+    const match = fallbackText.match(/\d{2}\/\d{2}\/\d{4}/)
+    if (match) return match[0]
+  }
+  return ''
+}
+
+function isClienteSituacao(situacaoLabel) {
+  const s = pickString(situacaoLabel)
+  if (!s) return false
+  return s.toLowerCase().replace(/\s+/g, '') === 'cliente'
+}
+
+/**
+ * Lista contentores atribuídos ao cliente autenticado (`clienteAtual` + `situacao: Cliente`).
+ * @returns {Promise<ContentorItem[]>}
+ */
+export async function fetchStrapiClienteContentores() {
+  const base = strapiBaseUrl()
+  if (!base) return []
+
+  const currentUserRefs = getStoredStrapiUserRefs()
+  if (currentUserRefs.size === 0) return []
+
+  const numericId = [...currentUserRefs].find((ref) => /^\d+$/.test(ref))
+  const documentId = [...currentUserRefs].find((ref) => !/^\d+$/.test(ref))
+
+  /** @type {Record<string, string>[]} */
+  const filterAttempts = [
+    ...(numericId
+      ? [
+          {
+            'filters[situacao][$eq]': 'Cliente',
+            'filters[clienteAtual][id][$eq]': numericId,
+          },
+          { 'filters[clienteAtual][id][$eq]': numericId },
+        ]
+      : []),
+    ...(documentId
+      ? [
+          {
+            'filters[situacao][$eq]': 'Cliente',
+            'filters[clienteAtual][documentId][$eq]': documentId,
+          },
+          { 'filters[clienteAtual][documentId][$eq]': documentId },
+        ]
+      : []),
+    { 'filters[situacao][$eq]': 'Cliente' },
+    {},
+  ]
+
+  /** @type {Map<string, ContentorItem>} */
+  const byCid = new Map()
+  let lastError = null
+
+  for (const filters of filterAttempts) {
+    try {
+      const params = appendContentorPopulateParams(new URLSearchParams())
+      params.set('sort', 'CID:asc')
+      params.set('pagination[pageSize]', '100')
+      for (const [key, value] of Object.entries(filters)) {
+        if (value != null && value !== '') params.set(key, value)
+      }
+
+      const url = `${base}/api/contentores?${params.toString()}`
+      const res = await fetch(url, { headers: authHeaders() })
+      if (!res.ok) {
+        throw new Error(`Strapi contentores: HTTP ${res.status}`)
+      }
+      const json = await res.json()
+      const rows = parseStrapiListRows(json)
+      for (const row of rows) {
+        const item = coerceContentorRow(row)
+        if (!item) continue
+        if (!belongsToCurrentUser(item.clienteAtualId, item.clienteAtualDocumentId, currentUserRefs)) {
+          continue
+        }
+        if (!isClienteSituacao(item.situacaoLabel)) continue
+        byCid.set(item.cid, item)
+      }
+      if (byCid.size > 0) break
+    } catch (err) {
+      lastError = err
+    }
+  }
+
+  if (byCid.size === 0 && lastError) throw lastError
+  return [...byCid.values()].sort((a, b) => a.cid.localeCompare(b.cid, 'pt'))
+}
+
+/**
  * Lista contentores com capacidade populada.
  * @returns {Promise<ContentorItem[]>}
  */
@@ -275,9 +607,7 @@ export async function fetchStrapiContentores() {
   const base = strapiBaseUrl()
   if (!base) return []
 
-  const params = new URLSearchParams()
-  params.set('populate[capacidade]', 'true')
-  params.set('populate[qrcode]', 'true')
+  const params = appendContentorPopulateParams(new URLSearchParams())
   params.set('sort', 'CID:asc')
   params.set('pagination[pageSize]', '100')
 
@@ -304,10 +634,8 @@ export async function fetchStrapiContentorByCid(cid) {
   const base = strapiBaseUrl()
   if (!base) return null
 
-  const params = new URLSearchParams()
+  const params = appendContentorPopulateParams(new URLSearchParams())
   params.set('filters[CID][$eq]', code)
-  params.set('populate[capacidade]', 'true')
-  params.set('populate[qrcode]', 'true')
   params.set('pagination[pageSize]', '1')
 
   const url = `${base}/api/contentores?${params.toString()}`

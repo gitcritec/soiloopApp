@@ -10,6 +10,12 @@
   box-sizing: border-box;
 }
 
+.cliente-tickets .section-title-with-icon {
+  margin: 0;
+  gap: 13px;
+  width: 100%;
+}
+
 .cliente-tickets__hero-wrap {
   width: 100%;
   height: 120px;
@@ -70,6 +76,27 @@
   color: #5c6d66;
 }
 
+.cliente-tickets__tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 53px;
+  min-height: 54px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: #f9f8f9;
+  color: #40534c;
+  font-size: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.cliente-tickets__tool-btn--add {
+  color: #f9f8f9;
+  background: #1e8f2b;
+}
+
 .cliente-tickets__list {
   list-style: none;
   margin: 0;
@@ -121,21 +148,14 @@
   white-space: nowrap;
 }
 
-.cliente-ticket-card__client {
+.cliente-ticket-card__location {
   margin: 0 0 4px;
   font-size: 12px;
-  line-height: 1.3;
+  line-height: 1.25;
+  color: #40534c;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.cliente-ticket-card__client-label {
-  color: #40534c;
-}
-
-.cliente-ticket-card__client-value {
-  color: #060e0b;
 }
 
 .cliente-ticket-card__ref {
@@ -171,7 +191,7 @@
 
 .cliente-ticket-card__badge--aberto-amanha {
   background: #fff6d6;
-  color: #c9a100;
+  color: #f1ba00;
 }
 
 .cliente-ticket-card__badge--respondido {
@@ -184,7 +204,7 @@
   color: #40534c;
 }
 
-.cliente-ticket-card__chevron {
+.cliente-ticket-card__action {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -199,9 +219,9 @@
   flex-shrink: 0;
 }
 
-.cliente-ticket-card__chevron-icon {
-  width: 18px;
-  height: 18px;
+.cliente-ticket-card__action-icon {
+  width: 16px;
+  height: 16px;
 }
 
 /* Detalhe, criar, mensagem, sucesso */

@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { faClock } from '@fortawesome/pro-light-svg-icons'
 import CollectionCard from '../../../../components/CollectionCard/CollectionCard.jsx'
 import SectionTitleWithIcon from '../../../../components/SectionTitleWithIcon/SectionTitleWithIcon.jsx'
-import { fetchStrapiClienteMovimentosHistorico } from '../../../../lib/strapiMovimentos.js'
+import {
+  collapseMovimentosPedidoCards,
+  fetchStrapiClienteMovimentosHistorico,
+} from '../../../../lib/strapiMovimentos.js'
 import { MOCK_CLIENT_HISTORICO } from '../mockData.js'
 
 /**
@@ -29,6 +32,8 @@ export default function HistoricoPedidos() {
     loadHistorico()
   }, [loadHistorico])
 
+  const displayItems = useMemo(() => collapseMovimentosPedidoCards(items), [items])
+
   return (
     <section className="cliente-dashboard__section" aria-labelledby="cliente-sec-historico">
       <SectionTitleWithIcon
@@ -47,14 +52,18 @@ export default function HistoricoPedidos() {
             Não foi possível carregar o histórico.
           </p>
         ) : null}
-        {!loading && !error && items.length === 0 ? (
+        {!loading && !error && displayItems.length === 0 ? (
           <p className="cliente-dashboard__state">Não existem pedidos concluídos.</p>
         ) : null}
         {!loading && !error
-          ? items.map((item) => (
+          ? displayItems.map((item) => (
               <CollectionCard
-                key={item.movimentoKey ?? `${item.id}-${item.taskType}-${item.historicoScheduledAt}`}
-                collectionId={item.id}
+                key={
+                  item.pedidoDisplayMode === 'trocar'
+                    ? `trocar-${item.pedidoGroupKey}`
+                    : item.movimentoKey ?? `${item.id}-${item.taskType}-${item.historicoScheduledAt}`
+                }
+                collectionId={item.pedidoGroupContentorId ?? item.id}
                 location={item.location}
                 locationPrefix={item.locationPrefix}
                 locationDetail={item.locationDetail}

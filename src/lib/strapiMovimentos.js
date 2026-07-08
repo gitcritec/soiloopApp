@@ -1,5 +1,6 @@
-import { STRAPI_JWT_STORAGE_KEY } from './strapiAuth.js'
-import { fetchStrapiContentorByCid } from './strapiContentores.js'
+import { STRAPI_JWT_STORAGE_KEY, getStoredStrapiUserRefs } from './strapiAuth.js'
+import { fetchStrapiContentorByCid, fetchStrapiClienteContentores, mapContentorToClienteCard } from './strapiContentores.js'
+import { normalizePeriodoForStrapi } from './movimentoPeriodo.js'
 
 const MOVIMENTO_ESTADO_AGENDADO = 'agendado'
 const MOVIMENTO_ESTADO_PEDIDO = 'pedido'
@@ -51,6 +52,38 @@ function pickRelationId(entity) {
   return pickString(unwrapped.documentId ?? unwrapped.id)
 }
 
+function pickClienteRelationRefs(clienteEntity) {
+  const cliente = unwrapEntity(clienteEntity)
+  if (!cliente) {
+    return { clienteId: null, clienteDocumentId: null }
+  }
+  return {
+    clienteId: pickString(cliente.id),
+    clienteDocumentId: pickString(cliente.documentId),
+  }
+}
+
+function movimentoBelongsToCliente(item, currentClienteIds) {
+  if (!item || !(currentClienteIds instanceof Set) || currentClienteIds.size === 0) {
+    return false
+  }
+  const refs = [item.clienteId, item.clienteDocumentId].filter(Boolean).map(String)
+  if (refs.length > 0) {
+    return refs.some((ref) => currentClienteIds.has(ref))
+  }
+  // Movimentos da API do cliente sem relação `cliente` preenchida (legado / permissões).
+  return true
+}
+
+function movimentoBelongsToOtherCliente(item, currentClienteIds) {
+  if (!item || !(currentClienteIds instanceof Set) || currentClienteIds.size === 0) {
+    return false
+  }
+  const refs = [item.clienteId, item.clienteDocumentId].filter(Boolean).map(String)
+  if (refs.length === 0) return false
+  return !refs.some((ref) => currentClienteIds.has(ref))
+}
+
 const LOCALIZACAO_MORADA_KEYS = ['morada', 'endereco', 'localizacao', 'descricao', 'titulo', 'title']
 const LOCALIZACAO_NOME_KEYS = ['nome', 'name', 'designacao', 'denominacao', 'label']
 
@@ -73,10 +106,10 @@ function joinLocalizacaoParts(morada, nome) {
   const n = nome?.trim()
   if (m && n) {
     if (includesIgnoreCase(m, n)) {
-      return { location: m, locationPrefix: null, locationDetail: m }
+      return { location: n, locationPrefix: null, locationDetail: n }
     }
     return {
-      location: `${m} ${n}`.trim(),
+      location: n,
       locationPrefix: m,
       locationDetail: n,
     }
@@ -99,7 +132,10 @@ function pickLocalizacaoDisplay(localizacaoEntity, contentor) {
   if (loc) {
     const moradaLike = pickFirstStringField(loc, LOCALIZACAO_MORADA_KEYS)
     const nome = pickFirstStringField(loc, LOCALIZACAO_NOME_KEYS)
-    if (moradaLike && (!nome || includesIgnoreCase(moradaLike, nome))) {
+    if (moradaLike && nome && includesIgnoreCase(moradaLike, nome)) {
+      return { location: nome, locationPrefix: null, locationDetail: nome }
+    }
+    if (moradaLike && !nome) {
       return { location: moradaLike, locationPrefix: null, locationDetail: moradaLike }
     }
     const joined = joinLocalizacaoParts(moradaLike, nome)
@@ -213,6 +249,66 @@ export function getPedidoGroupMovimentoKeys(item) {
   return single ? [single] : []
 }
 
+function isPedidoTrocarGroup(items) {
+  if (!Array.isArray(items) || items.length < 2) return false
+  const types = new Set(items.map((item) => item.taskType))
+  return types.has('recolher') && types.has('entregar')
+}
+
+function pickRecolhaFromPedidoGroup(items) {
+  return (
+    items.find((item) => item.taskType === 'recolher') ??
+    items.find((item) => item.contentorId && item.contentorId !== 'Não definido') ??
+    items[0]
+  )
+}
+
+function buildTrocarDisplayCard(siblings) {
+  const recolha = pickRecolhaFromPedidoGroup(siblings)
+  const contentorId =
+    recolha.pedidoGroupContentorId ?? recolha.contentorId ?? recolha.id ?? 'Não definido'
+
+  return {
+    ...recolha,
+    id: contentorId,
+    taskType: 'trocar',
+    pedidoDisplayMode: 'trocar',
+    pedidoGroupMovimentoKeys: siblings.map((item) => item.movimentoKey).filter(Boolean),
+    pedidoGroupTasks: buildPedidoGroupTasks(siblings),
+    pedidoGroupContentorId: contentorId,
+    pedidoGroupSiblingCount: siblings.length,
+  }
+}
+
+/**
+ * Agrupa par recolha+entrega (trocar contentor) num único card de listagem.
+ * @param {Array<object>} rows
+ */
+export function collapseMovimentosPedidoCards(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return []
+
+  const groups = new Map()
+  const groupOrder = []
+
+  for (const row of rows) {
+    const key =
+      row.pedidoGroupKey ??
+      pickString(row.movimentoKey) ??
+      `${row.id ?? 'item'}|${row.dateSortValue}|${row.taskType}`
+    if (!groups.has(key)) {
+      groups.set(key, [])
+      groupOrder.push(key)
+    }
+    groups.get(key).push(row)
+  }
+
+  return groupOrder.map((key) => {
+    const siblings = groups.get(key) ?? []
+    if (isPedidoTrocarGroup(siblings)) return buildTrocarDisplayCard(siblings)
+    return siblings[0]
+  })
+}
+
 function formatDate(value) {
   const raw = pickString(value)
   if (!raw) return ''
@@ -241,7 +337,9 @@ function pickHistoricoScheduledAt(attrs, dateLabel, periodo) {
   const updated = formatDateTime(attrs.updatedAt ?? attrs.publishedAt)
   if (updated) return updated
   if (dateLabel && periodo) {
-    const periodTime = normalizeText(periodo) === 'tarde' ? '14:00' : '10:00'
+    const p = normalizeText(periodo)
+    if (p === 'indiferente') return dateLabel
+    const periodTime = p === 'tarde' ? '14:00' : '10:00'
     return `${dateLabel} ${periodTime}`
   }
   return dateLabel
@@ -297,13 +395,6 @@ function normalizeText(value) {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-}
-
-function normalizePeriodoForStrapi(value) {
-  const s = normalizeText(value)
-  if (s === 'manha') return 'manha'
-  if (s === 'tarde') return 'tarde'
-  return pickString(value) ?? ''
 }
 
 function isEstadoAgendado(value) {
@@ -427,6 +518,7 @@ function coerceMovimentoRow(row, fallback = {}) {
   const localizacaoEntity = attrs.localizacao
   const localizacaoDisplay = pickLocalizacaoDisplay(localizacaoEntity, contentor)
   const localizacaoId = pickRelationId(localizacaoEntity)
+  const { clienteId, clienteDocumentId } = pickClienteRelationRefs(attrs.cliente)
   const movimentoKey =
     pickString(attrs.documentId ?? row.documentId ?? attrs.id ?? row.id) ??
     fallback.movimentoKey ??
@@ -453,6 +545,8 @@ function coerceMovimentoRow(row, fallback = {}) {
     locationDetail:
       localizacaoDisplay.locationDetail ?? localizacaoDisplay.location ?? fallback.locationDetail,
     localizacaoId: localizacaoId ?? fallback.localizacaoId,
+    clienteId: clienteId ?? fallback.clienteId,
+    clienteDocumentId: clienteDocumentId ?? fallback.clienteDocumentId,
     periodo: normalizePeriodoForStrapi(periodo) || periodo || fallback.periodo,
     status,
     scheduledAt: scheduledAt || pickContentorLitros(contentor, fallback.scheduledAt ?? ''),
@@ -467,28 +561,95 @@ function coerceMovimentoRow(row, fallback = {}) {
     dataIso: pickDataIso(attrs.data) || pickDataIso(fallback.dataIso),
     historicoScheduledAt:
       pickHistoricoScheduledAt(attrs, date, periodo) || fallback.historicoScheduledAt || '',
+    completedAtSortValue: getDateSortValue(attrs.updatedAt ?? attrs.publishedAt ?? attrs.data),
   }
 }
 
-function createContentorCardFromMovimentos(items, fallback = {}) {
-  const sorted = [...items].sort((a, b) => a.dateSortValue - b.dateSortValue)
-  const todayEnd = getTodayEndSortValue()
-  const effectiveItems = sorted.filter(
-    (item) => !isEstadoPedido(item.estado) && item.dateSortValue <= todayEnd,
-  )
-  const lastEffective = effectiveItems[effectiveItems.length - 1]
-  if (!lastEffective || lastEffective.taskType !== 'entregar') return null
+function getMovimentoTimelineSortValue(item) {
+  const completed = item?.completedAtSortValue
+  if (Number.isFinite(completed)) return completed
+  return item?.dateSortValue ?? Number.POSITIVE_INFINITY
+}
 
-  const hasPendingPickup = sorted.some(
-    (item) => item.taskType === 'recolher' && isEstadoPedidoVisivel(item.estado),
+function pickLastConcluidoMovimento(items) {
+  const concluidos = items.filter((item) => isEstadoConcluido(item.estado))
+  if (concluidos.length === 0) return null
+  return [...concluidos].sort(
+    (a, b) => getMovimentoTimelineSortValue(a) - getMovimentoTimelineSortValue(b),
+  ).at(-1)
+}
+
+function pickPendingRecolhaMovimento(items, currentClienteIds) {
+  const pending = items.filter(
+    (item) =>
+      item.taskType === 'recolher' &&
+      isEstadoPedidoVisivel(item.estado) &&
+      movimentoBelongsToCliente(item, currentClienteIds),
   )
+  if (pending.length === 0) return null
+  return [...pending].sort(
+    (a, b) => getMovimentoTimelineSortValue(a) - getMovimentoTimelineSortValue(b),
+  ).at(-1)
+}
+
+/**
+ * Contentor instalado no cliente quando o último movimento concluído do contentor
+ * é uma entrega associada a este cliente. Recolha concluída posterior remove o contentor.
+ */
+function pickInstalledContentorMovimento(items, currentClienteIds) {
+  const lastConcluido = pickLastConcluidoMovimento(items)
+  if (!lastConcluido) return null
+  if (lastConcluido.taskType === 'recolher') return null
+  if (movimentoBelongsToOtherCliente(lastConcluido, currentClienteIds)) return null
+  if (!movimentoBelongsToCliente(lastConcluido, currentClienteIds)) return null
+
+  return lastConcluido
+}
+
+function resolveContentorDisplayMovimento(items, currentClienteIds) {
+  const lastConcluido = pickLastConcluidoMovimento(items)
+  const pendingRecolha = pickPendingRecolhaMovimento(items, currentClienteIds)
+  const installedMovimento = pickInstalledContentorMovimento(items, currentClienteIds)
+
+  if (lastConcluido?.taskType === 'recolher') return null
+
+  if (
+    lastConcluido?.taskType === 'entregar' &&
+    movimentoBelongsToOtherCliente(lastConcluido, currentClienteIds)
+  ) {
+    return null
+  }
+
+  if (installedMovimento) {
+    return { movimento: installedMovimento, hasPendingPickup: Boolean(pendingRecolha) }
+  }
+
+  if (pendingRecolha) {
+    return { movimento: pendingRecolha, hasPendingPickup: true }
+  }
+
+  return null
+}
+
+function createContentorCardFromMovimentos(items, fallback = {}, currentClienteIds) {
+  if (!items?.length) return null
+  if (!(currentClienteIds instanceof Set) || currentClienteIds.size === 0) return null
+
+  const resolved = resolveContentorDisplayMovimento(items, currentClienteIds)
+  if (!resolved) return null
+
+  const { movimento: displayMovimento, hasPendingPickup } = resolved
 
   return {
     ...fallback,
-    ...lastEffective,
-    id: lastEffective.contentorId ?? lastEffective.id ?? fallback.id,
-    qrCode: lastEffective.qrCode ?? fallback.qrCode ?? lastEffective.contentorId,
-    litrosLabel: lastEffective.litrosLabel ?? fallback.litrosLabel ?? lastEffective.scheduledAt,
+    ...displayMovimento,
+    id: displayMovimento.contentorId ?? displayMovimento.id ?? fallback.id,
+    qrCode:
+      displayMovimento.qrCode ?? fallback.qrCode ?? displayMovimento.contentorId,
+    litrosLabel:
+      displayMovimento.litrosLabel ??
+      fallback.litrosLabel ??
+      displayMovimento.scheduledAt,
     estadoLabel: hasPendingPickup ? 'Em recolha' : 'Reutilizável',
     canRequestPickup: !hasPendingPickup,
   }
@@ -632,49 +793,75 @@ export async function fetchStrapiClienteMovimentosHistorico(fallbackRows = []) {
 }
 
 /**
- * Lista contentores instalados no cliente a partir dos movimentos.
- * Um contentor está instalado quando o último movimento efetivo é uma entrega
- * e ainda não existe uma recolha efetiva posterior.
+ * Recolhas pendentes do cliente indexadas por CID do contentor.
+ * @returns {Promise<Map<string, ReturnType<typeof coerceMovimentoRow>>>}
+ */
+async function fetchStrapiClientePendingRecolhasByContentor() {
+  const base = strapiBaseUrl()
+  /** @type {Map<string, NonNullable<ReturnType<typeof coerceMovimentoRow>>>} */
+  const byContentor = new Map()
+  if (!base) return byContentor
+
+  const currentClienteIds = getStoredStrapiUserRefs()
+  if (currentClienteIds.size === 0) return byContentor
+
+  const attempts = [
+    createEstadoMovimentosParams('pedido', true),
+    createEstadoMovimentosParams('agendado', true),
+    createEstadoMovimentosParams('Pedido', true),
+    createEstadoMovimentosParams('Agendado', true),
+  ]
+
+  /** @type {Map<string, NonNullable<ReturnType<typeof coerceMovimentoRow>>>} */
+  const merged = new Map()
+
+  for (const params of attempts) {
+    try {
+      const rows = await fetchMovimentosRows(base, params)
+      for (const row of rows) {
+        const item = coerceMovimentoRow(row)
+        if (!item?.contentorId || item.contentorId === 'Não definido') continue
+        if (item.taskType !== 'recolher') continue
+        if (!movimentoBelongsToCliente(item, currentClienteIds)) continue
+        merged.set(item.movimentoKey, item)
+      }
+    } catch {
+      /* tenta próximo estado */
+    }
+  }
+
+  for (const item of merged.values()) {
+    const cid = pickString(item.contentorId)
+    if (!cid) continue
+    const existing = byContentor.get(cid)
+    if (!existing || item.dateSortValue < existing.dateSortValue) {
+      byContentor.set(cid, item)
+    }
+  }
+
+  return byContentor
+}
+
+/**
+ * Lista contentores do cliente a partir da entidade Contentor (`clienteAtual`, `situacao`).
+ * Enriquece com recolhas pendentes dos movimentos (estado «Em recolha»).
  * @param {Array<object>} [fallbackRows]
  */
 export async function fetchStrapiClienteContentoresInstalados(fallbackRows = []) {
   const base = strapiBaseUrl()
   if (!base) return []
 
-  const attempts = [
-    createAllMovimentosParams(true),
-    createAllMovimentosParams(false),
-  ]
+  const [contentores, pendingByCid] = await Promise.all([
+    fetchStrapiClienteContentores(),
+    fetchStrapiClientePendingRecolhasByContentor(),
+  ])
 
-  let lastError = null
-  for (const params of attempts) {
-    try {
-      const rows = await fetchMovimentosRows(base, params)
-      if (rows.length === 0) continue
-
-      const grouped = new Map()
-      rows
-        .map((row, index) => coerceMovimentoRow(row, fallbackRows[index]))
-        .filter(Boolean)
-        .forEach((item) => {
-          const key = item.contentorId ?? item.id
-          if (!key) return
-          const current = grouped.get(key) ?? []
-          current.push(item)
-          grouped.set(key, current)
-        })
-
-      return Array.from(grouped.values())
-        .map((items, index) => createContentorCardFromMovimentos(items, fallbackRows[index]))
-        .filter(Boolean)
-        .sort((a, b) => a.id.localeCompare(b.id, 'pt'))
-    } catch (err) {
-      lastError = err
-    }
-  }
-
-  if (lastError) throw lastError
-  return []
+  return contentores
+    .map((contentor, index) =>
+      mapContentorToClienteCard(contentor, fallbackRows[index], pendingByCid.get(contentor.cid) ?? null),
+    )
+    .filter(Boolean)
+    .sort((a, b) => a.id.localeCompare(b.id, 'pt'))
 }
 
 function resolveRelationRef(ref) {
@@ -708,6 +895,14 @@ function buildMovimentoCreatePayload(scalars, localizacaoId, contentorId, withCo
   }
 
   return payload
+}
+
+function appendCapacidadeObservacoes(observacoes, capacidadeLabel) {
+  const label = pickString(capacidadeLabel)
+  if (!label) return pickString(observacoes) ?? ''
+  const line = `Capacidade solicitada: ${label}`
+  const base = pickString(observacoes)
+  return base ? `${base}\n${line}` : line
 }
 
 function toDirectRelationPayload(payload) {
@@ -887,6 +1082,52 @@ export async function createStrapiClienteSolicitacaoRecolha(payload) {
       ),
     )
   }
+}
+
+/**
+ * @typedef {object} CreateClienteSolicitacaoContentorPayload
+ * @property {string} localizacaoId ID/documentId da relação Localização
+ * @property {string} [localizacao]
+ * @property {string} data Data no formato YYYY-MM-DD
+ * @property {string} periodo
+ * @property {string} [observacoes]
+ * @property {string} capacidadeId ID Strapi da capacidade (referência interna)
+ * @property {string} [capacidadeLabel] Ex.: "800 L" — gravado em observacoesCliente
+ */
+
+/**
+ * Regista pedido de entrega de novo contentor (estado `pedido`, sem contentor associado).
+ * @param {CreateClienteSolicitacaoContentorPayload} payload
+ */
+export async function createStrapiClienteSolicitacaoContentor(payload) {
+  const data = pickString(payload.data)
+  if (!data) throw new Error('Data em falta.')
+
+  const periodo = normalizePeriodoForStrapi(payload.periodo)
+  if (!periodo) throw new Error('Período em falta.')
+
+  const capacidadeId = pickString(payload.capacidadeId)
+  if (!capacidadeId) throw new Error('Capacidade em falta.')
+
+  const localizacaoId = pickString(payload.localizacaoId)
+  if (!localizacaoId) {
+    throw new Error('Localização em falta. Não foi possível associar o pedido.')
+  }
+
+  const observacoes = appendCapacidadeObservacoes(payload.observacoes, payload.capacidadeLabel)
+
+  /** @type {Record<string, unknown>} */
+  const scalars = {
+    estado: MOVIMENTO_ESTADO_PEDIDO,
+    data,
+    periodo,
+    tipoMovimento: MOVIMENTO_TIPO_ENTREGA,
+    ...(observacoes ? { observacoesCliente: observacoes } : {}),
+  }
+
+  await postStrapiMovimentoCreate(
+    buildMovimentoCreatePayload(scalars, localizacaoId, null, false),
+  )
 }
 
 /**

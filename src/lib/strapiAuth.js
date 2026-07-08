@@ -304,6 +304,17 @@ export function getStoredStrapiUserId() {
   return Number.isFinite(num) && num > 0 ? num : null
 }
 
+/** IDs do utilizador autenticado (numérico + documentId) para comparar relações. */
+export function getStoredStrapiUserRefs() {
+  const j = readStoredUserJson()
+  const refs = new Set()
+  if (j.id != null && String(j.id).trim()) refs.add(String(j.id).trim())
+  if (j.documentId != null && String(j.documentId).trim()) {
+    refs.add(String(j.documentId).trim())
+  }
+  return refs
+}
+
 /**
  * Utilizador autenticado (ex.: após refresh, se ainda existir JWT).
  * @returns {Promise<{ id?: string|number, documentId?: string, username?: string, email?: string, role?: unknown } | null>}
