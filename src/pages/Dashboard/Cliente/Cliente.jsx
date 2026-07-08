@@ -343,9 +343,7 @@ export default function Cliente({
                           : item.movimentoKey ?? `${item.id}-${item.taskType}-${item.scheduledAt}`
                       }
                       collectionId={item.pedidoGroupContentorId ?? item.id}
-                      location={item.location}
-                      locationPrefix={item.locationPrefix}
-                      locationDetail={item.locationDetail}
+                      location={item.locationDetail || item.location || ''}
                       status={item.status}
                       scheduledAt={item.scheduledAt}
                       binNumber={item.binNumber}
@@ -380,6 +378,7 @@ export default function Cliente({
             recolhasAgendadas={MOCK_CLIENT_STATS.recolhasAgendadas}
             contentoresRecolhidos={MOCK_CLIENT_STATS.contentoresRecolhidos}
             kmPercorridos={MOCK_CLIENT_STATS.kmPercorridos}
+            contentoresLabel="recolhidos"
           />
         ) : null}
       </>

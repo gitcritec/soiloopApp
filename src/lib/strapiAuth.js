@@ -3,6 +3,8 @@
  * @see https://docs.strapi.io/dev-docs/plugins/users-permissions
  */
 
+import { ensureAppHashProfile } from './appRoute.js'
+
 function strapiBaseUrl() {
   const raw = import.meta.env.VITE_STRAPI_URL
   if (!raw || typeof raw !== 'string') return ''
@@ -168,6 +170,35 @@ export function isStrapiClienteRoleLabel(label) {
 }
 
 /**
+ * Indica se o texto da função corresponde a operador.
+ * @param {string|null|undefined} label
+ * @returns {boolean}
+ */
+export function isStrapiOperadorRoleLabel(label) {
+  if (label == null) return false
+  const s = String(label).trim().toLowerCase()
+  if (!s) return false
+  return (
+    s === 'operador' ||
+    s === 'operator' ||
+    s === 'operador de recolha' ||
+    s === 'operador recolha'
+  )
+}
+
+/**
+ * Perfil do dashboard conforme a role Strapi.
+ * @param {string|null|undefined} label
+ * @returns {'admin'|'cliente'|'operador'}
+ */
+export function resolveDashboardProfile(label) {
+  if (isStrapiAdminRoleLabel(label)) return 'admin'
+  if (isStrapiOperadorRoleLabel(label)) return 'operador'
+  if (isStrapiClienteRoleLabel(label)) return 'cliente'
+  return 'operador'
+}
+
+/**
  * Normaliza o JSON de /users/me ou do login (Strapi v4/v5, `data` / `attributes`).
  * @param {unknown} raw
  * @returns {{ id?: string|number, documentId?: string, username?: string, email?: string, role?: unknown } | null}
@@ -243,6 +274,9 @@ export function persistStrapiSession(session) {
   if (username) next.username = username
   if (roleLabel) next.roleLabel = roleLabel
   if (u.id != null) next.id = u.id
+  if (u.documentId != null && String(u.documentId).trim()) {
+    next.documentId = String(u.documentId).trim()
+  }
   writeStoredUserJson(next)
 }
 
@@ -254,7 +288,13 @@ export function persistStrapiSession(session) {
 export async function persistStrapiSessionAndHydrateUser(session) {
   persistStrapiSession(session)
   const u = await fetchStrapiCurrentUser()
-  if (u) persistStrapiUserCache(u)
+  if (u) {
+    persistStrapiUserCache(u)
+    const profile = resolveDashboardProfile(
+      normalizeStrapiUserRole(u.role) ?? getStoredStrapiRoleLabel(),
+    )
+    ensureAppHashProfile(profile)
+  }
 }
 
 /** @returns {string|null} */
@@ -294,7 +334,22 @@ export function persistStrapiUserCache(user) {
   if (username) next.username = username
   if (roleLabel) next.roleLabel = roleLabel
   if (user.id != null) next.id = user.id
+  if (user.documentId != null && String(user.documentId).trim()) {
+    next.documentId = String(user.documentId).trim()
+  }
   writeStoredUserJson(next)
+}
+
+/**
+ * Garante id/documentId do utilizador antes de filtrar relações no Strapi.
+ * @returns {Promise<Set<string>>}
+ */
+export async function ensureStoredStrapiUserRefs() {
+  const refs = getStoredStrapiUserRefs()
+  if (refs.size > 0) return refs
+  const user = await fetchStrapiCurrentUser()
+  if (user) persistStrapiUserCache(user)
+  return getStoredStrapiUserRefs()
 }
 
 /** @returns {number|null} */

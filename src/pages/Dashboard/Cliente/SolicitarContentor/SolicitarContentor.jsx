@@ -29,12 +29,14 @@ export default function SolicitarContentor({ isOpen, onClose, onSubmit }) {
   const [capsError, setCapsError] = useState('')
   const [localizacaoId, setLocalizacaoId] = useState('')
   const [localizacaoLabel, setLocalizacaoLabel] = useState('')
+  const [localizacoes, setLocalizacoes] = useState([])
   const [loadingContext, setLoadingContext] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
   const dateInputRef = useRef(null)
 
   const hasLocalizacao = Boolean(localizacaoId)
+  const hasMultiplasLocalizacoes = localizacoes.length > 1
   const ready = hasLocalizacao && capacidades.length > 0 && !loadingContext && !loadingCaps
 
   const canSubmit = useMemo(() => {
@@ -61,6 +63,9 @@ export default function SolicitarContentor({ isOpen, onClose, onSubmit }) {
       setSubmitting(false)
       setFormError('')
       setCapsError('')
+      setLocalizacoes([])
+      setLocalizacaoId('')
+      setLocalizacaoLabel('')
       return
     }
 
@@ -93,7 +98,8 @@ export default function SolicitarContentor({ isOpen, onClose, onSubmit }) {
           setForm(emptyForm())
         }
 
-        const locs = detail?.localizacoes ?? []
+        const locs = (detail?.localizacoes ?? []).filter((loc) => loc.estado !== false)
+        setLocalizacoes(locs)
         const first = locs[0]
         if (first?.strapiId) {
           setLocalizacaoId(String(first.strapiId))
@@ -146,6 +152,13 @@ export default function SolicitarContentor({ isOpen, onClose, onSubmit }) {
 
   function updateField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
+    setFormError('')
+  }
+
+  function handleLocalizacaoChange(nextId) {
+    setLocalizacaoId(nextId)
+    const loc = localizacoes.find((item) => String(item.strapiId) === String(nextId))
+    setLocalizacaoLabel(loc?.nome || loc?.morada || '')
     setFormError('')
   }
 
@@ -231,6 +244,39 @@ export default function SolicitarContentor({ isOpen, onClose, onSubmit }) {
               </div>
 
               <div className="solicitar-recolha__fields">
+                {!loadingContext && hasLocalizacao && !hasMultiplasLocalizacoes ? (
+                  <div className="solicitar-recolha__field solicitar-recolha__field--locked">
+                    <span className="solicitar-recolha__locked-value">{localizacaoLabel || '—'}</span>
+                    <FontAwesomeIcon icon={faChevronDown} className="solicitar-recolha__locked-icon" aria-hidden />
+                  </div>
+                ) : null}
+
+                {!loadingContext && hasMultiplasLocalizacoes ? (
+                  <label className="solicitar-recolha__field">
+                    <span className="solicitar-recolha__select-wrap">
+                      <select
+                        className={`solicitar-recolha__select${localizacaoId ? '' : ' solicitar-recolha__select--empty'}`}
+                        value={localizacaoId}
+                        onChange={(e) => handleLocalizacaoChange(e.target.value)}
+                        disabled={!ready}
+                        required
+                        tabIndex={isOpen ? 0 : -1}
+                        aria-label="Local de entrega"
+                      >
+                        <option value="" disabled>
+                          Local de entrega*
+                        </option>
+                        {localizacoes.map((loc) => (
+                          <option key={loc.strapiId} value={loc.strapiId ?? ''}>
+                            {loc.nome || loc.morada}
+                          </option>
+                        ))}
+                      </select>
+                      <FontAwesomeIcon icon={faChevronDown} className="solicitar-recolha__select-icon" aria-hidden />
+                    </span>
+                  </label>
+                ) : null}
+
                 <label
                   className="solicitar-recolha__field solicitar-recolha__field--date"
                   onClick={openDatePicker}

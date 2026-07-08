@@ -1012,3 +1012,202 @@ export async function updateStrapiContentor(documentId, payload) {
   if (!item) throw new Error('Resposta inválida ao atualizar contentor.')
   return item
 }
+
+function resolveContentorRelationRef(ref) {
+  if (ref == null) return null
+  const s = String(ref).trim()
+  if (!s) return null
+  if (/^\d+$/.test(s)) return Number(s)
+  return s
+}
+
+function toDirectContentorRelationPayload(payload) {
+  /** @type {Record<string, unknown>} */
+  const next = { ...payload }
+  for (const field of ['localizacaoAtual', 'clienteAtual', 'capacidade']) {
+    const value = next[field]
+    if (value && typeof value === 'object' && Array.isArray(value.connect) && value.connect.length > 0) {
+      next[field] = value.connect[0]
+    }
+  }
+  return next
+}
+
+async function putStrapiContentorRaw(documentId, data) {
+  const base = strapiBaseUrl()
+  if (!base) throw new Error('Configura VITE_STRAPI_URL no .env')
+
+  const res = await fetch(`${base}/api/contentores/${encodeURIComponent(documentId)}`, {
+    method: 'PUT',
+    headers: {
+      ...authHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ data }),
+  })
+
+  if (!res.ok) {
+    let errorJson = null
+    try {
+      errorJson = await res.json()
+    } catch {
+      errorJson = null
+    }
+    return { ok: false, status: res.status, errorJson }
+  }
+
+  let json = null
+  try {
+    json = await res.json()
+  } catch {
+    json = null
+  }
+  const row = json?.data ?? json
+  return { ok: true, data: coerceContentorRow(row) }
+}
+
+function formatContentorApiError(errorJson, fallback) {
+  if (!errorJson || typeof errorJson !== 'object') return fallback
+  const err = errorJson.error ?? errorJson
+  const detail =
+    err?.message ?? err?.details?.errors?.[0]?.message ?? errorJson?.message
+  return detail ? String(detail) : fallback
+}
+
+function isInvalidContentorKeyError(errorJson) {
+  const msg = String(errorJson?.error?.message ?? '').toLowerCase()
+  return msg.includes('invalid key')
+}
+
+/**
+ * @param {string} documentId
+ * @param {Record<string, unknown>} data
+ */
+async function putStrapiContentorUpdate(documentId, data) {
+  const primary = await putStrapiContentorRaw(documentId, data)
+  if (primary.ok) return primary.data
+
+  if (isInvalidContentorKeyError(primary.errorJson)) {
+    const fallback = await putStrapiContentorRaw(documentId, toDirectContentorRelationPayload(data))
+    if (fallback.ok) return fallback.data
+    throw new Error(
+      formatContentorApiError(
+        fallback.errorJson,
+        `Strapi contentores: HTTP ${fallback.errorJson?.error?.status ?? 400}`,
+      ),
+    )
+  }
+
+  if (primary.status === 403) {
+    throw new Error(
+      'Sem permissão para atualizar contentores. No Strapi: Settings → Users & Permissions → Roles → Authenticated → Contentor → ativa «update».',
+    )
+  }
+
+  throw new Error(
+    formatContentorApiError(primary.errorJson, `Strapi contentores: HTTP ${primary.status ?? 400}`),
+  )
+}
+
+/**
+ * @param {{ localizacaoAtualId?: string|null, clienteAtualId?: string|null, estado?: string|null, localizacao?: string|null }} fields
+ */
+function buildContentorEntregaUpdateVariants(fields) {
+  const loc = resolveContentorRelationRef(fields.localizacaoAtualId)
+  const cli = resolveContentorRelationRef(fields.clienteAtualId)
+  const estado = pickString(fields.estado)
+  const localizacao = pickString(fields.localizacao)
+
+  /** @type {Record<string, unknown>[]} */
+  const variants = []
+
+  const scalar = { situacao: 'Cliente' }
+  if (estado) scalar.estado = estado
+  if (localizacao) scalar.localizacao = localizacao
+
+  if (loc && cli) {
+    variants.push({
+      ...scalar,
+      localizacaoAtual: { connect: [loc] },
+      clienteAtual: { connect: [cli] },
+    })
+    variants.push({
+      ...scalar,
+      localizacaoAtual: loc,
+      clienteAtual: cli,
+    })
+  }
+
+  variants.push({
+    ...scalar,
+    ...(loc ? { localizacaoAtual: loc } : {}),
+    ...(cli ? { clienteAtual: cli } : {}),
+  })
+
+  return variants
+}
+
+/**
+ * @param {{ estado?: string|null, localizacao?: string|null }} [fields]
+ */
+function buildContentorRecolhaUpdateVariants(fields = {}) {
+  const estado = pickString(fields.estado)
+  const localizacao = pickString(fields.localizacao)
+
+  const scalar = { situacao: 'Armazem' }
+  if (estado) scalar.estado = estado
+  if (localizacao) scalar.localizacao = localizacao
+
+  return [
+    { ...scalar, localizacaoAtual: null, clienteAtual: null },
+    { ...scalar, localizacaoAtual: { disconnect: true }, clienteAtual: { disconnect: true } },
+    { ...scalar, localizacaoAtual: { set: null }, clienteAtual: { set: null } },
+  ]
+}
+
+/**
+ * Atualiza situação do contentor após entrega no cliente.
+ * @param {string} documentId
+ * @param {{ localizacaoAtualId: string, clienteAtualId: string, estado?: string, localizacao?: string }} payload
+ */
+export async function applyStrapiContentorAfterEntrega(documentId, payload) {
+  const key = pickString(documentId)
+  if (!key) throw new Error('Contentor em falta.')
+
+  const localizacaoAtualId = pickString(payload.localizacaoAtualId)
+  const clienteAtualId = pickString(payload.clienteAtualId)
+  if (!localizacaoAtualId) throw new Error('Localização do movimento em falta.')
+  if (!clienteAtualId) throw new Error('Cliente do movimento em falta.')
+
+  const variants = buildContentorEntregaUpdateVariants(payload)
+  let lastError = null
+  for (const data of variants) {
+    try {
+      return await putStrapiContentorUpdate(key, data)
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error('Não foi possível atualizar o contentor.')
+    }
+  }
+  throw lastError ?? new Error('Não foi possível atualizar o contentor após a entrega.')
+}
+
+/**
+ * Atualiza situação do contentor após recolha (volta ao armazém).
+ * @param {string} documentId
+ * @param {{ estado?: string, localizacao?: string }} [payload]
+ */
+export async function applyStrapiContentorAfterRecolha(documentId, payload = {}) {
+  const key = pickString(documentId)
+  if (!key) throw new Error('Contentor em falta.')
+
+  const variants = buildContentorRecolhaUpdateVariants(payload)
+  let lastError = null
+  for (const data of variants) {
+    try {
+      return await putStrapiContentorUpdate(key, data)
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error('Não foi possível atualizar o contentor.')
+    }
+  }
+  throw lastError ?? new Error('Não foi possível atualizar o contentor após a recolha.')
+}

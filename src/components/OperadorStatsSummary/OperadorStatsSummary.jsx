@@ -6,9 +6,13 @@ import './OperadorStatsSummary.css'
 export default function OperadorStatsSummary({
   recolhasHoje,
   recolhasAgendadas,
+  contentoresAtivos,
   contentoresRecolhidos,
   kmPercorridos,
+  contentoresLabel = 'ativos',
+  activityLabel = 'Recolhas',
 }) {
+  const contentoresValue = contentoresAtivos ?? contentoresRecolhidos
   return (
     <section className="operador-stats-summary" aria-labelledby="operador-stats-heading">
       <div className="operador-stats-summary__heading">
@@ -26,7 +30,7 @@ export default function OperadorStatsSummary({
             <FontAwesomeIcon icon={faRecycle} className="operador-stats-summary__tile-fa" aria-hidden />
             <p className="operador-stats-summary__tile-value">{recolhasHoje}</p>
             <div className="operador-stats-summary__tile-label">
-              <span className="operador-stats-summary__tile-label-strong">Recolhas</span>
+              <span className="operador-stats-summary__tile-label-strong">{activityLabel}</span>
               <span>hoje</span>
             </div>
           </div>
@@ -34,16 +38,16 @@ export default function OperadorStatsSummary({
             <FontAwesomeIcon icon={faRecycle} className="operador-stats-summary__tile-fa" aria-hidden />
             <p className="operador-stats-summary__tile-value">{recolhasAgendadas}</p>
             <div className="operador-stats-summary__tile-label">
-              <span className="operador-stats-summary__tile-label-strong">Recolhas</span>
+              <span className="operador-stats-summary__tile-label-strong">{activityLabel}</span>
               <span>agendadas</span>
             </div>
           </div>
           <div className="operador-stats-summary__tile operador-stats-summary__tile--green">
             <FontAwesomeIcon icon={faLeaf} className="operador-stats-summary__tile-fa" aria-hidden />
-            <p className="operador-stats-summary__tile-value">{contentoresRecolhidos}</p>
+            <p className="operador-stats-summary__tile-value">{contentoresValue}</p>
             <div className="operador-stats-summary__tile-label operador-stats-summary__tile-label--green-stack">
               <span className="operador-stats-summary__tile-line-reg">Contentores</span>
-              <span className="operador-stats-summary__tile-line-bold">recolhidos</span>
+              <span className="operador-stats-summary__tile-line-bold">{contentoresLabel}</span>
             </div>
           </div>
           <div className="operador-stats-summary__tile operador-stats-summary__tile--yellow">
