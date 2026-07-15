@@ -1,23 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  faArrowDownToBracket,
-  faArrowUpFromBracket,
   faMagnifyingGlass,
   faPlus,
-  faShuffle,
-  faSliders,
 } from '@fortawesome/pro-light-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import contentoresHero from '../../../../assets/figma-cliente/contentores-hero.png'
 import ContentorCard from '../../../../components/ContentorCard/ContentorCard.jsx'
 import ContentorQrModal from '../../../../components/ContentorQrModal/ContentorQrModal.jsx'
-import LocationMapModal from '../../../../components/LocationMapModal/LocationMapModal.jsx'
 import {
+  readAdminContentoresDetailId,
   readAdminContentoresEditId,
   readAdminContentoresView,
   setAppHash,
 } from '../../../../lib/appRoute.js'
 import { fetchStrapiContentores } from '../../../../lib/strapiContentores.js'
+import ContentorDetalhe from './ContentorDetalhe.jsx'
 import ContentorRegisto from './ContentorRegisto.jsx'
 import './Contentores.css'
 
@@ -25,12 +22,12 @@ import './Contentores.css'
 export default function Contentores() {
   const [view, setView] = useState(() => readAdminContentoresView())
   const [editingId, setEditingId] = useState(() => readAdminContentoresEditId())
+  const [detailId, setDetailId] = useState(() => readAdminContentoresDetailId())
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [search, setSearch] = useState('')
   const [qrPreview, setQrPreview] = useState(null)
-  const [locationMap, setLocationMap] = useState(null)
 
   const loadList = useCallback(() => {
     setLoading(true)
@@ -56,6 +53,7 @@ export default function Contentores() {
       const nextView = readAdminContentoresView()
       setView(nextView)
       setEditingId(nextView === 'edit' ? readAdminContentoresEditId() : null)
+      setDetailId(nextView === 'detail' ? readAdminContentoresDetailId() : null)
     }
     window.addEventListener('hashchange', syncViewFromHash)
     return () => window.removeEventListener('hashchange', syncViewFromHash)
@@ -65,7 +63,7 @@ export default function Contentores() {
     const q = search.trim().toLowerCase()
     if (!q) return items
     return items.filter((item) => {
-      const haystack = [item.cid, item.localizacao, item.estadoLabel, item.litrosLabel]
+      const haystack = [item.cid, item.localizacao, item.clienteAtualNome, item.estadoLabel, item.litrosLabel]
         .filter(Boolean)
         .join(' ')
         .toLowerCase()
@@ -76,19 +74,29 @@ export default function Contentores() {
   function goToList() {
     setView('list')
     setEditingId(null)
+    setDetailId(null)
     setAppHash('admin', 'contentores')
   }
 
   function openCreate() {
     setEditingId(null)
+    setDetailId(null)
     setView('create')
     setAppHash('admin', 'contentores', 'criar')
   }
 
   function openEdit(item) {
+    setDetailId(null)
     setEditingId(item.id)
     setView('edit')
     setAppHash('admin', 'contentores', 'editar', item.id)
+  }
+
+  function openDetail(item) {
+    setEditingId(null)
+    setDetailId(item.id)
+    setView('detail')
+    setAppHash('admin', 'contentores', 'detalhe', item.id)
   }
 
   const editingItem = useMemo(() => {
@@ -99,6 +107,16 @@ export default function Contentores() {
   function handleRegistoSuccess() {
     goToList()
     loadList()
+  }
+
+  if (view === 'detail' && detailId) {
+    return (
+      <ContentorDetalhe
+        contentorId={detailId}
+        onBack={goToList}
+        onEdit={openEdit}
+      />
+    )
   }
 
   if (view === 'create') {
@@ -150,25 +168,6 @@ export default function Contentores() {
           />
         </div>
 
-        <div className="admin-contentores__flow-actions">
-          <button type="button" className="admin-contentores__flow-btn admin-contentores__flow-btn--entrada">
-            <FontAwesomeIcon icon={faArrowDownToBracket} className="admin-contentores__flow-icon" aria-hidden />
-            <span>Entrada</span>
-          </button>
-          <button type="button" className="admin-contentores__flow-btn admin-contentores__flow-btn--saida">
-            <FontAwesomeIcon icon={faArrowUpFromBracket} className="admin-contentores__flow-icon" aria-hidden />
-            <span>Saída</span>
-          </button>
-          <button
-            type="button"
-            className="admin-contentores__add"
-            aria-label="Adicionar contentor"
-            onClick={openCreate}
-          >
-            <FontAwesomeIcon icon={faPlus} className="admin-contentores__add-icon" aria-hidden />
-          </button>
-        </div>
-
         <div className="admin-contentores__toolbar">
           <label className="admin-contentores__search">
             <FontAwesomeIcon icon={faMagnifyingGlass} className="admin-contentores__search-icon" aria-hidden />
@@ -181,11 +180,13 @@ export default function Contentores() {
               aria-label="Pesquisar contentores"
             />
           </label>
-          <button type="button" className="admin-contentores__tool-btn" aria-label="Ordenar">
-            <FontAwesomeIcon icon={faShuffle} className="admin-contentores__tool-icon" aria-hidden />
-          </button>
-          <button type="button" className="admin-contentores__tool-btn" aria-label="Filtrar">
-            <FontAwesomeIcon icon={faSliders} className="admin-contentores__tool-icon" aria-hidden />
+          <button
+            type="button"
+            className="admin-contentores__add"
+            aria-label="Adicionar contentor"
+            onClick={openCreate}
+          >
+            <FontAwesomeIcon icon={faPlus} className="admin-contentores__add-icon" aria-hidden />
           </button>
         </div>
 
@@ -221,19 +222,13 @@ export default function Contentores() {
                   cid={item.cid}
                   litros={item.litros}
                   localizacao={item.localizacao}
-                  cliente={item.numeroEgar || ''}
+                  cliente={item.clienteAtualNome || ''}
+                  situacao={item.situacao}
+                  situacaoLabel={item.situacaoLabel}
                   estado={item.estado}
                   estadoLabel={item.estadoLabel}
                   onEditClick={() => openEdit(item)}
-                  onLocationClick={() => {
-                    const loc = item.localizacao?.trim()
-                    if (!loc || loc === '—') return
-                    setLocationMap({
-                      query: loc,
-                      title: item.cid,
-                      subtitle: loc,
-                    })
-                  }}
+                  onViewClick={() => openDetail(item)}
                   onScanClick={() =>
                     setQrPreview({ cid: item.cid, qrcodeImageUrl: item.qrcodeUrl })
                   }
@@ -249,14 +244,6 @@ export default function Contentores() {
         cid={qrPreview?.cid ?? ''}
         qrcodeImageUrl={qrPreview?.qrcodeImageUrl ?? ''}
         onClose={() => setQrPreview(null)}
-      />
-
-      <LocationMapModal
-        isOpen={Boolean(locationMap)}
-        query={locationMap?.query ?? ''}
-        title={locationMap?.title}
-        subtitle={locationMap?.subtitle}
-        onClose={() => setLocationMap(null)}
       />
     </>
   )

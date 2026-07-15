@@ -13,10 +13,20 @@ import FloatingPrimaryButton from '../../../components/FloatingPrimaryButton/Flo
 import BottomNav from '../../../components/BottomNav/BottomNav.jsx'
 import { IconBarcodeScan, IconContentor } from '../../../components/icons/icons.jsx'
 import AdminHome from './AdminHome.jsx'
-import { readAdminNavId, readAdminShowProcessarButton, setAppHash } from '../../../lib/appRoute.js'
+import {
+  readAdminNavId,
+  readAdminSection,
+  readAdminShowProcessarButton,
+  setAppHash,
+} from '../../../lib/appRoute.js'
 import Contentores from './Contentores/Contentores.jsx'
 import Clientes from './Clientes/Clientes.jsx'
 import Tickets from './Tickets/Tickets.jsx'
+import Recolhas from './Recolhas/Recolhas.jsx'
+import Admins from './Admins/Admins.jsx'
+import Operadores from './Operadores/Operadores.jsx'
+import Perfil from '../../Perfil/Perfil.jsx'
+import Definicoes from './Definicoes/Definicoes.jsx'
 
 const ADMIN_BOTTOM_NAV_ITEMS = [
   { id: 'recolhas', label: 'Recolhas', icon: faRecycle },
@@ -30,20 +40,23 @@ const ADMIN_BOTTOM_NAV_ITEMS = [
   { id: 'tickets', label: 'Tickets', icon: faComments },
 ]
 
-const PLACEHOLDER_LABELS = {
-  recolhas: 'Recolhas',
-}
-
 /**
  * Shell admin: menu lateral, header, barra inferior e vistas por separador.
  */
 export default function Admin({ onLogout, userName, userRole, headerLogoSrc }) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [displayName, setDisplayName] = useState(userName)
+  const [mainSection, setMainSection] = useState(() => readAdminSection())
   const [navActiveId, setNavActiveId] = useState(() => readAdminNavId())
   const [showProcessar, setShowProcessar] = useState(() => readAdminShowProcessarButton())
 
   useEffect(() => {
+    setDisplayName(userName)
+  }, [userName])
+
+  useEffect(() => {
     function syncFromHash() {
+      setMainSection(readAdminSection())
       setNavActiveId(readAdminNavId())
       setShowProcessar(readAdminShowProcessarButton())
     }
@@ -52,6 +65,7 @@ export default function Admin({ onLogout, userName, userRole, headerLogoSrc }) {
   }, [])
 
   const selectNav = useCallback((id) => {
+    setMainSection(id)
     setNavActiveId(id)
     setAppHash('admin', id)
     setShowProcessar(readAdminShowProcessarButton())
@@ -66,21 +80,37 @@ export default function Admin({ onLogout, userName, userRole, headerLogoSrc }) {
     else if (actionId === 'contentores') selectNav('contentores')
     else if (actionId === 'tickets') selectNav('tickets')
     else if (actionId === 'gestao') selectNav('dashboard')
+    else if (actionId === 'admins') {
+      setMainSection('admins')
+      setAppHash('admin', 'admins')
+      setShowProcessar(readAdminShowProcessarButton())
+    } else if (actionId === 'operadores') {
+      setMainSection('operadores')
+      setAppHash('admin', 'operadores')
+      setShowProcessar(readAdminShowProcessarButton())
+    } else if (actionId === 'perfil') {
+      setMainSection('perfil')
+      setAppHash('admin', 'perfil')
+      setShowProcessar(false)
+    } else if (actionId === 'definicoes') {
+      setMainSection('definicoes')
+      setAppHash('admin', 'definicoes')
+      setShowProcessar(false)
+    }
   }
 
   function renderMain() {
-    if (navActiveId === 'contentores') return <Contentores />
-    if (navActiveId === 'clientes') return <Clientes />
-    if (navActiveId === 'tickets') return <Tickets />
-    if (navActiveId === 'dashboard') return <AdminHome />
-    const label = PLACEHOLDER_LABELS[navActiveId]
-    if (label) {
-      return (
-        <p className="admin-dashboard__placeholder">
-          A secção <strong>{label}</strong> estará disponível em breve.
-        </p>
-      )
+    if (mainSection === 'perfil') {
+      return <Perfil profileKind="admin" onUserUpdated={setDisplayName} />
     }
+    if (mainSection === 'definicoes') return <Definicoes />
+    if (mainSection === 'recolhas') return <Recolhas />
+    if (mainSection === 'contentores') return <Contentores />
+    if (mainSection === 'clientes') return <Clientes />
+    if (mainSection === 'tickets') return <Tickets />
+    if (mainSection === 'admins') return <Admins />
+    if (mainSection === 'operadores') return <Operadores />
+    if (mainSection === 'dashboard') return <AdminHome />
     return <AdminHome />
   }
 
@@ -89,7 +119,7 @@ export default function Admin({ onLogout, userName, userRole, headerLogoSrc }) {
       <AdminDrawerMenu
         isOpen={menuOpen}
         onClose={() => setMenuOpen(false)}
-        userName={userName}
+        userName={displayName}
         userRole={drawerRoleLabel}
         avatarSrc={headerLogoSrc ?? logoSoiloop}
         onLogout={onLogout ?? (() => {})}
@@ -100,9 +130,10 @@ export default function Admin({ onLogout, userName, userRole, headerLogoSrc }) {
         <PageHeader
           variant="floating"
           logoSrc={headerLogoSrc ?? logoSoiloop}
-          userName={userName}
+          userName={displayName}
           menuOpen={menuOpen}
           menuAriaControls="admin-drawer-panel"
+          onLogoClick={() => selectNav('dashboard')}
           onMenuClick={() => setMenuOpen((o) => !o)}
         />
       </div>

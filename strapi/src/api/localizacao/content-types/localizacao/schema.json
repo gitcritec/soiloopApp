@@ -1,0 +1,36 @@
+{
+  "kind": "collectionType",
+  "collectionName": "localizacaos",
+  "info": {
+    "singularName": "localizacao",
+    "pluralName": "localizacaos",
+    "displayName": "Localização"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "morada": {
+      "type": "text"
+    },
+    "ordem": {
+      "type": "integer"
+    },
+    "estado": {
+      "type": "boolean"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "localizacaos"
+    },
+    "lat": {
+      "type": "float"
+    },
+    "lng": {
+      "type": "float"
+    }
+  }
+}

@@ -1,6 +1,5 @@
-import { faBarcodeRead } from '@fortawesome/pro-light-svg-icons'
+import { faBarcodeRead, faEye } from '@fortawesome/pro-light-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faLocationDot as faLocationDotSharp } from '@fortawesome/sharp-light-svg-icons'
 import { IconContentor } from '../icons/icons.jsx'
 import { contentorCardBadges, formatContentorQrLabel } from './contentorBadge.js'
 import './ContentorCard.css'
@@ -15,14 +14,19 @@ export default function ContentorCard({
   cliente,
   estado,
   estadoLabel,
-  onLocationClick,
+  situacao,
+  situacaoLabel,
+  onViewClick,
   onScanClick,
   onEditClick,
 }) {
   const cidText = cid?.trim() || '—'
   const qrLabel = formatContentorQrLabel(cid)
   const litrosText = litros != null ? `${litros}L` : '—'
-  const badges = contentorCardBadges(localizacao, estadoLabel, estado)
+  const localizacaoText =
+    localizacao?.trim() && localizacao !== '—' ? localizacao.trim() : '—'
+  const clienteText = cliente?.trim() ? cliente.trim() : '—'
+  const badges = contentorCardBadges(situacaoLabel, estadoLabel, situacao, estado)
 
   return (
     <article className="contentor-card">
@@ -47,11 +51,8 @@ export default function ContentorCard({
               <span className="contentor-card__litros">{litrosText}</span>
             </p>
             <div className="contentor-card__meta">
-              <p className="contentor-card__meta-line contentor-card__meta-line--loc">Localização</p>
-              <p className="contentor-card__meta-line contentor-card__meta-line--cli">Cliente</p>
-              <span className="contentor-card__sr-only">
-                {[localizacao, cliente].filter((v) => v && v !== '—').join(' · ')}
-              </span>
+              <p className="contentor-card__meta-line contentor-card__meta-line--loc">{localizacaoText}</p>
+              <p className="contentor-card__meta-line contentor-card__meta-line--cli">{clienteText}</p>
             </div>
           </div>
         </div>
@@ -69,11 +70,11 @@ export default function ContentorCard({
       <div className="contentor-card__actions">
         <button
           type="button"
-          className="contentor-card__btn contentor-card__btn--location"
-          aria-label="Ver localização"
-          onClick={onLocationClick}
+          className="contentor-card__btn contentor-card__btn--view"
+          aria-label="Ver mais"
+          onClick={onViewClick}
         >
-          <FontAwesomeIcon icon={faLocationDotSharp} className="contentor-card__btn-icon" aria-hidden />
+          <FontAwesomeIcon icon={faEye} className="contentor-card__btn-icon" aria-hidden />
         </button>
         <button
           type="button"

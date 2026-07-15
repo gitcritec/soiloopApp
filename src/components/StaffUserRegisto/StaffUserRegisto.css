@@ -1,0 +1,192 @@
+.staff-user-registo__loading {
+  margin: 24px 0 0;
+  padding: 0 2px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #40534c;
+}
+
+.staff-user-registo {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  width: 100%;
+  max-width: 353px;
+  min-width: 0;
+  min-height: 0;
+  margin: 0 auto;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.staff-user-registo__form {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.staff-user-registo__card {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 12px;
+  box-sizing: border-box;
+  background: #f9f8f9;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* Campos no topo; botões fixos no fundo do cartão */
+.staff-user-registo__scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  max-width: 329px;
+  margin: 0 auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.staff-user-registo__scroll > * + * {
+  margin-top: 16px;
+}
+
+.staff-user-registo__title {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #060e0b;
+  padding: 0 16px;
+}
+
+.staff-user-registo__error {
+  margin: 0 16px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #8b1e1e;
+  background: #fdeaea;
+  border: 1px solid #f5c2c2;
+}
+
+.staff-user-registo__notice {
+  margin: 0 16px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #1f5b34;
+  background: #e8f5e4;
+  border: 1px solid #c7e8bf;
+}
+
+.staff-user-registo__hint {
+  margin: 0;
+  padding: 0 16px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #5c6d66;
+}
+
+.staff-user-registo__invite {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 0 4px;
+  margin-top: 4px;
+}
+
+.staff-user-registo__invite .staff-user-registo__hint {
+  padding: 0 16px;
+}
+
+.staff-user-registo__invite-feedback {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.staff-user-registo__invite-feedback .staff-user-registo__error,
+.staff-user-registo__invite-feedback .staff-user-registo__notice {
+  margin: 0 16px;
+}
+
+.staff-user-registo__btn--invite {
+  width: calc(100% - 32px);
+  margin: 0 16px;
+}
+
+.staff-user-registo__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 16px;
+}
+
+.staff-user-registo__label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #40534c;
+}
+
+.staff-user-registo__input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  border: none;
+  border-radius: 5px;
+  background: #fff;
+  font-family: 'Rubik', sans-serif;
+  font-size: 12px;
+  color: #060e0b;
+  outline: none;
+}
+
+.staff-user-registo__actions {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  width: 100%;
+  max-width: 329px;
+  margin: auto auto 0;
+  padding-top: 16px;
+}
+
+.staff-user-registo__btn {
+  min-width: 0;
+  min-height: 54px;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Rubik', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.staff-user-registo__btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.staff-user-registo__btn--ghost {
+  background: #e8e6e4;
+  color: #40534c;
+}
+
+.staff-user-registo__btn--primary {
+  background: #40534c;
+  color: #fff;
+}

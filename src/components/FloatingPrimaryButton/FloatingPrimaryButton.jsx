@@ -1,6 +1,6 @@
 import './FloatingPrimaryButton.css'
 
-export default function FloatingPrimaryButton({ label, onClick, icon, variant = 'default' }) {
+export default function FloatingPrimaryButton({ label, onClick, icon, variant = 'default', disabled = false }) {
   const isOperador = variant === 'operador'
 
   return (
@@ -11,6 +11,7 @@ export default function FloatingPrimaryButton({ label, onClick, icon, variant = 
         type="button"
         className={`floating-primary-button${isOperador ? ' floating-primary-button--operador' : ''}`}
         onClick={onClick}
+        disabled={disabled}
       >
         {icon ? (
           <span className="floating-primary-button__icon" aria-hidden="true">

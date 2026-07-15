@@ -1,10 +1,10 @@
 import {
   faCircleInfo,
   faComments,
-  faGear,
   faHouseChimney,
   faPowerOff,
   faRecycle,
+  faUser,
   faXmark,
 } from '@fortawesome/pro-light-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -111,11 +111,11 @@ export default function ClienteDrawerMenu({
         </nav>
 
         <nav className="operator-drawer__nav operator-drawer__nav--secondary" aria-label="Conta e sessão">
-          <button type="button" className="operator-drawer__item" onClick={() => { onClose(); onNavigate?.('definicoes') }}>
+          <button type="button" className="operator-drawer__item" onClick={() => { onClose(); onNavigate?.('perfil') }}>
             <span className="operator-drawer__item-icon" aria-hidden="true">
-              <FontAwesomeIcon icon={faGear} />
+              <FontAwesomeIcon icon={faUser} />
             </span>
-            <span className="operator-drawer__item-label">Definições</span>
+            <span className="operator-drawer__item-label">Perfil</span>
           </button>
           <button type="button" className="operator-drawer__item" onClick={() => { onClose(); onNavigate?.('ajuda') }}>
             <span className="operator-drawer__item-icon" aria-hidden="true">

@@ -1,6 +1,12 @@
 /** IDs válidos da barra inferior admin. */
 export const ADMIN_NAV_IDS = ['recolhas', 'contentores', 'dashboard', 'clientes', 'tickets']
 
+/** Secções admin só no menu lateral (não aparecem na barra inferior). */
+export const ADMIN_DRAWER_SECTION_IDS = ['admins', 'operadores', 'perfil', 'definicoes']
+
+/** Secção de perfil (menu lateral nas 3 roles). */
+export const PROFILE_SECTION_ID = 'perfil'
+
 /** IDs válidos da barra inferior cliente. */
 export const CLIENTE_NAV_IDS = ['dashboard', 'recolhas', 'contentores', 'tickets', 'historico']
 
@@ -55,33 +61,124 @@ export function setAppHash(profile, section, sub = null, id = null) {
   }
 }
 
+/** @returns {string} Secção principal do admin (barra inferior ou menu lateral). */
+export function readAdminSection() {
+  const parsed = parseAppHash()
+  if (parsed?.profile !== 'admin') return 'dashboard'
+  const section = parsed.section
+  if ([...ADMIN_NAV_IDS, ...ADMIN_DRAWER_SECTION_IDS].includes(section)) return section
+  return 'dashboard'
+}
+
+/** @returns {boolean} */
+export function readIsProfileSection(profile) {
+  const parsed = parseAppHash()
+  return parsed?.profile === profile && parsed.section === PROFILE_SECTION_ID
+}
+
 /** @returns {string} */
 export function readAdminNavId() {
-  const parsed = parseAppHash()
-  if (parsed?.profile === 'admin' && ADMIN_NAV_IDS.includes(parsed.section)) {
-    return parsed.section
-  }
+  const section = readAdminSection()
+  if (ADMIN_NAV_IDS.includes(section)) return section
   return 'dashboard'
 }
 
 /** @returns {'list'|'create'|'edit'} */
+export function readAdminAdminsView() {
+  const parsed = parseAppHash()
+  if (parsed?.profile === 'admin' && parsed.section === 'admins') {
+    if (parsed.sub === 'criar') return 'create'
+    if (parsed.sub === 'editar' && parsed.id) return 'edit'
+  }
+  return 'list'
+}
+
+/** @returns {string|null} */
+export function readAdminAdminsEditId() {
+  const parsed = parseAppHash()
+  if (
+    parsed?.profile === 'admin' &&
+    parsed.section === 'admins' &&
+    parsed.sub === 'editar' &&
+    parsed.id
+  ) {
+    return parsed.id
+  }
+  return null
+}
+
+/** @returns {'list'|'create'|'edit'} */
+export function readAdminOperadoresView() {
+  const parsed = parseAppHash()
+  if (parsed?.profile === 'admin' && parsed.section === 'operadores') {
+    if (parsed.sub === 'criar') return 'create'
+    if (parsed.sub === 'editar' && parsed.id) return 'edit'
+  }
+  return 'list'
+}
+
+/** @returns {string|null} */
+export function readAdminOperadoresEditId() {
+  const parsed = parseAppHash()
+  if (
+    parsed?.profile === 'admin' &&
+    parsed.section === 'operadores' &&
+    parsed.sub === 'editar' &&
+    parsed.id
+  ) {
+    return parsed.id
+  }
+  return null
+}
+
+/** @returns {'list'|'create'|'edit'|'detail'} */
 export function readAdminContentoresView() {
   const parsed = parseAppHash()
   if (parsed?.profile === 'admin' && parsed.section === 'contentores') {
     if (parsed.sub === 'criar') return 'create'
     if (parsed.sub === 'editar' && parsed.id) return 'edit'
+    if (parsed.sub === 'detalhe' && parsed.id) return 'detail'
   }
   return 'list'
 }
 
-/** @returns {'list'|'create'|'edit'} */
+/** @returns {string|null} */
+export function readAdminContentoresDetailId() {
+  const parsed = parseAppHash()
+  if (
+    parsed?.profile === 'admin' &&
+    parsed.section === 'contentores' &&
+    parsed.sub === 'detalhe' &&
+    parsed.id
+  ) {
+    return parsed.id
+  }
+  return null
+}
+
+/** @returns {'list'|'create'|'edit'|'detail'} */
 export function readAdminClientesView() {
   const parsed = parseAppHash()
   if (parsed?.profile === 'admin' && parsed.section === 'clientes') {
     if (parsed.sub === 'criar') return 'create'
     if (parsed.sub === 'editar' && parsed.id) return 'edit'
+    if (parsed.sub === 'detalhe' && parsed.id) return 'detail'
   }
   return 'list'
+}
+
+/** @returns {string|null} */
+export function readAdminClientesDetailId() {
+  const parsed = parseAppHash()
+  if (
+    parsed?.profile === 'admin' &&
+    parsed.section === 'clientes' &&
+    parsed.sub === 'detalhe' &&
+    parsed.id
+  ) {
+    return parsed.id
+  }
+  return null
 }
 
 /** @returns {string|null} */
@@ -131,6 +228,10 @@ export function readAdminShowProcessarButton() {
   if (section === 'contentores') return readAdminContentoresView() === 'list'
   if (section === 'clientes') return readAdminClientesView() === 'list'
   if (section === 'tickets') return readAdminTicketsView() === 'list'
+  if (section === 'admins') return readAdminAdminsView() === 'list'
+  if (section === 'operadores') return readAdminOperadoresView() === 'list'
+  if (section === PROFILE_SECTION_ID) return false
+  if (section === 'definicoes') return false
 
   return ['dashboard', 'recolhas', 'contentores', 'clientes', 'tickets'].includes(section)
 }
@@ -153,6 +254,7 @@ export function readAdminContentoresEditId() {
 export function readClienteNavId() {
   const parsed = parseAppHash()
   if (parsed?.profile !== 'cliente') return 'dashboard'
+  if (parsed.section === PROFILE_SECTION_ID) return 'dashboard'
   if (parsed.section === 'tickets') return 'tickets'
   if (CLIENTE_NAV_IDS.includes(parsed.section)) return parsed.section
   return 'dashboard'
@@ -198,6 +300,7 @@ export function readClienteTicketsId() {
 export function readClienteShowCriarTicketButton() {
   const parsed = parseAppHash()
   if (parsed?.profile !== 'cliente') return false
+  if (parsed.section === PROFILE_SECTION_ID) return false
   if (parsed.section === 'tickets') return readClienteTicketsView() === 'list'
   return false
 }
@@ -205,8 +308,17 @@ export function readClienteShowCriarTicketButton() {
 /** @returns {string} */
 export function readOperadorNavId() {
   const parsed = parseAppHash()
-  if (parsed?.profile === 'operador' && OPERADOR_NAV_IDS.includes(parsed.section)) {
+  if (parsed?.profile !== 'operador') return 'dashboard'
+  if (parsed.section === PROFILE_SECTION_ID) return 'dashboard'
+  if (OPERADOR_NAV_IDS.includes(parsed.section)) {
     return parsed.section
   }
   return 'dashboard'
+}
+
+/** @returns {boolean} */
+export function readOperadorShowProcessarButton() {
+  const parsed = parseAppHash()
+  if (parsed?.profile !== 'operador') return true
+  return parsed.section !== PROFILE_SECTION_ID
 }

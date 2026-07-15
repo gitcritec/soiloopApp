@@ -17,16 +17,23 @@ export function contentorBadgeVariant(label) {
   return 'default'
 }
 
-/** Pares de badges do mock Figma (node 16:793). */
-const FIGMA_BADGE_BY_ESTADO = {
-  novo: { topText: 'Armazém', topVariant: 'armazem', bottomText: 'Reutilizável', bottomVariant: 'reutilizavel' },
-  usado: { topText: 'Cliente', topVariant: 'cliente', bottomText: 'Infetado', bottomVariant: 'infetado' },
-  danificado: {
-    topText: 'Em Trânsito',
-    topVariant: 'em-transito',
-    bottomText: 'Danificado',
-    bottomVariant: 'danificado',
-  },
+/**
+ * @param {string} [situacaoLabel]
+ * @param {string|null} [situacaoSlug]
+ */
+export function formatSituacaoDisplayLabel(situacaoLabel, situacaoSlug) {
+  const slug = String(situacaoSlug ?? situacaoLabel ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+  if (slug === 'cliente') return 'Cliente'
+  if (slug.includes('transito')) return 'Em Trânsito'
+  if (slug.includes('armazem')) return 'Armazém'
+
+  const raw = String(situacaoLabel ?? '').trim()
+  if (raw && raw !== '—') return raw
+  return 'Armazém'
 }
 
 /**
@@ -41,31 +48,20 @@ export function formatContentorQrLabel(cid) {
 }
 
 /**
- * @param {string} [localizacao]
+ * Badges do cartão: situação (topo) + estado físico do contentor (base).
+ * @param {string} [situacaoLabel]
  * @param {string} [estadoLabel]
+ * @param {string|null} [situacaoSlug]
  * @param {string|null} [estadoSlug]
  */
-export function contentorCardBadges(localizacao, estadoLabel, estadoSlug) {
-  const slug = estadoSlug && FIGMA_BADGE_BY_ESTADO[estadoSlug] ? estadoSlug : null
-  if (slug) {
-    const pair = FIGMA_BADGE_BY_ESTADO[slug]
-    const bottomText = estadoLabel?.trim() || pair.bottomText
-    return {
-      topText: pair.topText,
-      topVariant: pair.topVariant,
-      bottomText,
-      bottomVariant: contentorBadgeVariant(bottomText),
-    }
-  }
-
-  const estado = estadoLabel?.trim() || '—'
-  const loc = localizacao?.trim()
-  const locOk = loc && loc !== '—'
+export function contentorCardBadges(situacaoLabel, estadoLabel, situacaoSlug, estadoSlug) {
+  const topText = formatSituacaoDisplayLabel(situacaoLabel, situacaoSlug)
+  const bottomText = String(estadoLabel ?? '').trim() || '—'
 
   return {
-    topText: locOk ? (loc.length > 12 ? `${loc.slice(0, 10)}…` : loc) : 'Armazém',
-    topVariant: locOk ? 'armazem' : 'armazem',
-    bottomText: estado,
-    bottomVariant: contentorBadgeVariant(estado),
+    topText,
+    topVariant: contentorBadgeVariant(situacaoSlug ?? topText),
+    bottomText,
+    bottomVariant: contentorBadgeVariant(estadoSlug ?? bottomText),
   }
 }

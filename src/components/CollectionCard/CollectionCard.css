@@ -57,6 +57,14 @@
   color: #060e0b;
 }
 
+.collection-card__client {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 15px;
+  color: #060e0b;
+}
+
 .collection-card__location {
   margin: 0 0 4px;
   font-size: 12px;

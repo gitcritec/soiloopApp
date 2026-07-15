@@ -1,0 +1,67 @@
+{
+  "kind": "collectionType",
+  "collectionName": "contentores",
+  "info": {
+    "singularName": "contentor",
+    "pluralName": "contentores",
+    "displayName": "Contentores"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "CID": {
+      "type": "uid",
+      "required": true
+    },
+    "localizacao": {
+      "type": "string"
+    },
+    "capacidade": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::capacidade.capacidade"
+    },
+    "estado": {
+      "type": "enumeration",
+      "enum": [
+        "Novo",
+        "Usado",
+        "Danificado"
+      ]
+    },
+    "data": {
+      "type": "date"
+    },
+    "qrcode": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "clienteAtual": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "localizacaoAtual": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::localizacao.localizacao"
+    },
+    "situacao": {
+      "type": "enumeration",
+      "enum": [
+        "Armazem",
+        "Cliente",
+        "EmTransito"
+      ],
+      "default": "Armazem"
+    }
+  }
+}

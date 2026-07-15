@@ -57,6 +57,7 @@ export default function CollectionCard({
   showFullDateTime = false,
   badgeLabel,
   requestState,
+  clientName,
 }) {
   const statusLabel = badgeLabel ?? STATUS_LABEL[status] ?? status
   const taskTypeLabel = TASK_TYPE_LABEL[taskType] ?? taskType
@@ -81,6 +82,7 @@ export default function CollectionCard({
 
       <div className="collection-card__body">
         <p className="collection-card__id">{collectionId}</p>
+        {clientName ? <p className="collection-card__client">{clientName}</p> : null}
         {hasSplitLocation ? (
           <p className="collection-card__location collection-card__location--split">
             <span className="collection-card__location-muted">{locationPrefix}</span>

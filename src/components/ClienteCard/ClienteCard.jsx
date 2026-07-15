@@ -1,6 +1,5 @@
-import { faPen } from '@fortawesome/pro-light-svg-icons'
+import { faEye, faPen } from '@fortawesome/pro-light-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faLocationDot as faLocationDotSharp } from '@fortawesome/sharp-light-svg-icons'
 import { IconContentor } from '../icons/icons.jsx'
 import './ClienteCard.css'
 
@@ -12,7 +11,7 @@ export default function ClienteCard({
   cliCode,
   telefone,
   contentorCount = '00',
-  onLocationClick,
+  onDetailsClick,
   onEditClick,
 }) {
   const nameText = nome?.trim() || 'Cliente'
@@ -38,11 +37,11 @@ export default function ClienteCard({
       <div className="cliente-card__actions">
         <button
           type="button"
-          className="cliente-card__btn cliente-card__btn--location"
-          aria-label="Ver localização"
-          onClick={onLocationClick}
+          className="cliente-card__btn cliente-card__btn--details"
+          aria-label="Ver detalhes"
+          onClick={onDetailsClick}
         >
-          <FontAwesomeIcon icon={faLocationDotSharp} className="cliente-card__btn-icon" aria-hidden />
+          <FontAwesomeIcon icon={faEye} className="cliente-card__btn-icon" aria-hidden />
         </button>
         <button
           type="button"

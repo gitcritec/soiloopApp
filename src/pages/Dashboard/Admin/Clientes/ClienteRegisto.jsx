@@ -8,6 +8,7 @@ import {
   fetchStrapiClienteDetail,
   updateStrapiCliente,
 } from '../../../../lib/strapiClientes.js'
+import { sendStrapiPasswordResetEmail } from '../../../../lib/strapiUserInvite.js'
 import './ClienteRegisto.css'
 
 let localizacaoKeySeq = 0
@@ -28,7 +29,6 @@ function emptyForm() {
     nif: '',
     telefone: '',
     email: '',
-    password: '',
     pessoaContacto: '',
     morada: '',
     localizacoes: [emptyLocalizacao()],
@@ -53,7 +53,6 @@ function formFromCliente(cliente) {
     nif: cliente.nif != null ? String(cliente.nif) : '',
     telefone: cliente.telefoneNum != null ? String(cliente.telefoneNum) : '',
     email: cliente.email ?? '',
-    password: '',
     pessoaContacto: cliente.pessoaContacto ?? '',
     morada: cliente.morada ?? '',
     localizacoes: locs,
@@ -73,7 +72,11 @@ export default function ClienteRegisto({ clienteToEdit, clienteId, onCancel, onS
   )
   const [loadingDetail, setLoadingDetail] = useState(Boolean(resolvedId && !clienteToEdit))
   const [submitting, setSubmitting] = useState(false)
+  const [sendingInvite, setSendingInvite] = useState(false)
   const [formError, setFormError] = useState('')
+  const [formNotice, setFormNotice] = useState('')
+  const [inviteError, setInviteError] = useState('')
+  const [inviteNotice, setInviteNotice] = useState('')
   const [picker, setPicker] = useState(null)
 
   useEffect(() => {
@@ -110,6 +113,9 @@ export default function ClienteRegisto({ clienteToEdit, clienteId, onCancel, onS
   function updateField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
     setFormError('')
+    setFormNotice('')
+    setInviteError('')
+    setInviteNotice('')
   }
 
   function updateLocalizacao(index, patch) {
@@ -169,24 +175,42 @@ export default function ClienteRegisto({ clienteToEdit, clienteId, onCancel, onS
     onCancel?.()
   }
 
+  async function handleSendPasswordEmail() {
+    const email = form.email.trim()
+    if (!email) {
+      setInviteError('Indica um e-mail válido antes de enviar o convite.')
+      setInviteNotice('')
+      return
+    }
+    setSendingInvite(true)
+    setInviteError('')
+    setInviteNotice('')
+    setFormError('')
+    setFormNotice('')
+    try {
+      await sendStrapiPasswordResetEmail(email)
+      setInviteNotice('Foi enviado um email para definir ou redefinir a palavra-passe.')
+    } catch (err) {
+      setInviteError(err instanceof Error ? err.message : 'Não foi possível enviar o email.')
+    } finally {
+      setSendingInvite(false)
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     setFormError('')
+    setFormNotice('')
 
     const username = form.username.trim()
     const nif = form.nif.trim()
     const telefone = form.telefone.trim()
     const email = form.email.trim()
-    const password = form.password.trim()
     const pessoaContacto = form.pessoaContacto.trim()
     const morada = form.morada.trim()
 
     if (!username) {
       setFormError('O nome de utilizador é obrigatório.')
-      return
-    }
-    if (!isEdit && (!password || password.length < 6)) {
-      setFormError('A palavra-passe deve ter pelo menos 6 caracteres.')
       return
     }
     if (!nif) {
@@ -229,16 +253,22 @@ export default function ClienteRegisto({ clienteToEdit, clienteId, onCancel, onS
       telefone,
       pessoaContacto,
       morada,
-      password: password || undefined,
       localizacoes: locs,
     }
 
     setSubmitting(true)
     try {
-      const saved = isEdit
-        ? await updateStrapiCliente(resolvedId, apiPayload)
-        : await createStrapiCliente(apiPayload)
-      onSuccess?.(saved)
+      if (isEdit) {
+        await updateStrapiCliente(resolvedId, apiPayload)
+        onSuccess?.()
+        return
+      }
+
+      const saved = await createStrapiCliente(apiPayload)
+      onSuccess?.({
+        inviteEmailSent: Boolean(saved?.inviteEmailSent),
+        inviteEmailError: saved?.inviteEmailError ?? null,
+      })
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Não foi possível guardar o cliente.')
     } finally {
@@ -267,6 +297,12 @@ export default function ClienteRegisto({ clienteToEdit, clienteId, onCancel, onS
               {formError ? (
                 <p className="cliente-registo__error" role="alert">
                   {formError}
+                </p>
+              ) : null}
+
+              {formNotice && !isEdit ? (
+                <p className="cliente-registo__notice" role="status">
+                  {formNotice}
                 </p>
               ) : null}
 
@@ -323,31 +359,37 @@ export default function ClienteRegisto({ clienteToEdit, clienteId, onCancel, onS
               </label>
 
               {!isEdit ? (
-                <label className="cliente-registo__field">
-                  <span className="cliente-registo__label">Palavra-passe*</span>
-                  <input
-                    type="password"
-                    className="cliente-registo__input"
-                    value={form.password}
-                    placeholder="Palavra-passe*"
-                    onChange={(e) => updateField('password', e.target.value)}
-                    autoComplete="new-password"
-                    required
-                    minLength={6}
-                  />
-                </label>
+                <p className="cliente-registo__hint">
+                  Após criar a conta, é enviado um email para o cliente definir a palavra-passe.
+                </p>
               ) : (
-                <label className="cliente-registo__field">
-                  <span className="cliente-registo__label">Nova palavra-passe</span>
-                  <input
-                    type="password"
-                    className="cliente-registo__input"
-                    value={form.password}
-                    placeholder="Nova palavra-passe"
-                    onChange={(e) => updateField('password', e.target.value)}
-                    autoComplete="new-password"
-                  />
-                </label>
+                <div className="cliente-registo__invite">
+                  <p className="cliente-registo__hint">
+                    Para alterar a palavra-passe, envia um email de redefinição ao cliente.
+                  </p>
+                  <button
+                    type="button"
+                    className="cliente-registo__invite-btn"
+                    onClick={handleSendPasswordEmail}
+                    disabled={submitting || sendingInvite}
+                  >
+                    {sendingInvite ? 'A enviar…' : 'Enviar email de palavra-passe'}
+                  </button>
+                  {inviteError || inviteNotice ? (
+                    <div className="cliente-registo__invite-feedback">
+                      {inviteError ? (
+                        <p className="cliente-registo__error" role="alert">
+                          {inviteError}
+                        </p>
+                      ) : null}
+                      {inviteNotice ? (
+                        <p className="cliente-registo__notice" role="status">
+                          {inviteNotice}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
               )}
 
               <label className="cliente-registo__field">

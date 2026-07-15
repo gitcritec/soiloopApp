@@ -132,6 +132,10 @@
   flex: 1;
 }
 
+.admin-drawer__nav--staff {
+  margin-top: 8px;
+}
+
 .admin-drawer__nav--secondary {
   margin-top: auto;
   padding-top: 24px;

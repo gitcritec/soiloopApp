@@ -2,10 +2,10 @@ import {
   faArrowsRotate,
   faBell,
   faCircleInfo,
-  faGear,
+  faClock,
   faPowerOff,
   faRecycle,
-  faClock,
+  faUser,
   faXmark,
 } from '@fortawesome/pro-light-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -20,7 +20,7 @@ const DEFAULT_PRIMARY_ITEMS = [
 ]
 
 const DEFAULT_SECONDARY_ITEMS = [
-  { id: 'definicoes', label: 'Definições', icon: faGear },
+  { id: 'perfil', label: 'Perfil', icon: faUser },
   { id: 'ajuda', label: 'Ajuda', icon: faCircleInfo },
   { id: 'sair', label: 'Sair', icon: faPowerOff, isLogout: true },
 ]

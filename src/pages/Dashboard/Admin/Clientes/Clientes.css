@@ -122,6 +122,14 @@
   color: #40534c;
 }
 
+.admin-clientes__status--notice {
+  color: #1f5b34;
+  background: #e8f5e4;
+  border: 1px solid #c7e8bf;
+  border-radius: 5px;
+  padding: 10px 12px;
+}
+
 .admin-clientes__back-link {
   margin: 0;
   padding: 0;

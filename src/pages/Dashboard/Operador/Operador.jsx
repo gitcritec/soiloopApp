@@ -31,7 +31,8 @@ import { parseContentorQr } from '../../../lib/parseContentorQr.js'
 import MovimentosRecolha from './MovimentosRecolha/MovimentosRecolha.jsx'
 import Processar from './Processar/Processar.jsx'
 import QrScanner from './QrScanner/QrScanner.jsx'
-import { readOperadorNavId, setAppHash } from '../../../lib/appRoute.js'
+import Perfil from '../../Perfil/Perfil.jsx'
+import { readIsProfileSection, readOperadorNavId, readOperadorShowProcessarButton, setAppHash } from '../../../lib/appRoute.js'
 import {
   MOCK_DAY_COLLECTIONS,
   MOCK_OPERATOR_NAME,
@@ -48,10 +49,14 @@ const OPERATOR_BOTTOM_NAV_ITEMS = [
 export default function Operador({ onLogout }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [navActiveId, setNavActiveId] = useState(() => readOperadorNavId())
+  const [showPerfil, setShowPerfil] = useState(() => readIsProfileSection('operador'))
+  const [showProcessarFab, setShowProcessarFab] = useState(() => readOperadorShowProcessarButton())
 
   useEffect(() => {
     function syncFromHash() {
       setNavActiveId(readOperadorNavId())
+      setShowPerfil(readIsProfileSection('operador'))
+      setShowProcessarFab(readOperadorShowProcessarButton())
     }
     window.addEventListener('hashchange', syncFromHash)
     return () => window.removeEventListener('hashchange', syncFromHash)
@@ -59,7 +64,9 @@ export default function Operador({ onLogout }) {
 
   const selectNav = useCallback((id) => {
     setNavActiveId(id)
+    setShowPerfil(false)
     setAppHash('operador', id)
+    setShowProcessarFab(readOperadorShowProcessarButton())
   }, [])
 
   const [headerLogoSrc, setHeaderLogoSrc] = useState(null)
@@ -154,6 +161,11 @@ export default function Operador({ onLogout }) {
     if (actionId === 'movimentos') selectNav('movimentos')
     else if (actionId === 'historico') selectNav('historico')
     else if (actionId === 'recolhas') selectNav('dashboard')
+    else if (actionId === 'perfil') {
+      setShowPerfil(true)
+      setShowProcessarFab(false)
+      setAppHash('operador', 'perfil')
+    }
   }
 
   const drawerRoleLabel =
@@ -185,11 +197,16 @@ export default function Operador({ onLogout }) {
           logoSrc={headerLogoSrc ?? logoSoiloop}
           userName={userName}
           menuOpen={menuOpen}
+          onLogoClick={() => selectNav('dashboard')}
           onMenuClick={() => setMenuOpen((o) => !o)}
         />
       </div>
 
       <main className="operator-dashboard__main">
+        {showPerfil ? (
+          <Perfil profileKind="operador" onUserUpdated={setUserName} />
+        ) : (
+          <>
         <section className="operator-dashboard__section" aria-labelledby="sec-day">
           <SectionTitleWithIcon
             id="sec-day"
@@ -247,14 +264,18 @@ export default function Operador({ onLogout }) {
           contentoresRecolhidos={MOCK_OPERATOR_STATS.contentoresRecolhidos}
           kmPercorridos={MOCK_OPERATOR_STATS.kmPercorridos}
         />
+          </>
+        )}
       </main>
 
+      {showProcessarFab ? (
       <FloatingPrimaryButton
         variant="operador"
         label="Processar"
         onClick={() => setScreen('processar')}
         icon={<FontAwesomeIcon icon={faBarcodeRead} aria-hidden />}
       />
+      ) : null}
       <BottomNav
         variant="operador"
         items={OPERATOR_BOTTOM_NAV_ITEMS}
