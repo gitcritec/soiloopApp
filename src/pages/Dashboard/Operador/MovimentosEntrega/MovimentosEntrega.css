@@ -55,11 +55,40 @@
   flex-direction: column;
   min-height: 0;
   max-height: 100%;
-  padding: 16px 12px 12px;
+  padding: 8px 12px 12px;
   box-sizing: border-box;
   background: #f9f8f9;
   border-radius: 10px;
   overflow: hidden;
+}
+
+.entrega-form-screen__toolbar {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 32px;
+  margin-bottom: 4px;
+}
+
+.entrega-form-screen__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: #40534c;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.entrega-form-screen__close:hover {
+  opacity: 0.85;
 }
 
 .entrega-form-screen__scroll {

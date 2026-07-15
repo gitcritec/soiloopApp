@@ -267,15 +267,17 @@ export default function MovimentosRecolha({
       >
         <form className="recolha-form-screen__form" onSubmit={handleSubmit} noValidate>
           <div className="recolha-form-screen__card">
-            <button
-              type="button"
-              className="recolha-form-screen__close"
-              aria-label="Fechar"
-              tabIndex={isOpen ? 0 : -1}
-              onClick={onClose}
-            >
-              <FontAwesomeIcon icon={faXmark} aria-hidden />
-            </button>
+            <div className="recolha-form-screen__toolbar">
+              <button
+                type="button"
+                className="recolha-form-screen__close"
+                aria-label="Fechar"
+                tabIndex={isOpen ? 0 : -1}
+                onClick={onClose}
+              >
+                <FontAwesomeIcon icon={faXmark} aria-hidden />
+              </button>
+            </div>
 
             <div className="recolha-form-screen__scroll">
               <button

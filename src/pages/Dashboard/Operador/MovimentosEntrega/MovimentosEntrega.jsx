@@ -187,6 +187,18 @@ export default function MovimentosEntrega({
       >
         <form className="entrega-form-screen__form" onSubmit={handleSubmit} noValidate>
           <div className="entrega-form-screen__card">
+            <div className="entrega-form-screen__toolbar">
+              <button
+                type="button"
+                className="entrega-form-screen__close"
+                aria-label="Fechar"
+                tabIndex={isOpen ? 0 : -1}
+                onClick={onClose}
+              >
+                <FontAwesomeIcon icon={faXmark} aria-hidden />
+              </button>
+            </div>
+
             <div className="entrega-form-screen__scroll">
               <button
                 type="button"
