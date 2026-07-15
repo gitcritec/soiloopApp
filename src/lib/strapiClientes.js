@@ -4,6 +4,7 @@
  */
 
 import { STRAPI_JWT_STORAGE_KEY } from './strapiAuth.js'
+import { postStrapiUserAndSendInviteEmail, userInviteMetaFromResult } from './strapiUserInvite.js'
 
 /** Role «Cliente» (id 5 por defeito). */
 export const STRAPI_CLIENTE_ROLE_ID = Number(import.meta.env.VITE_STRAPI_CLIENTE_ROLE_ID) || 5
@@ -162,6 +163,8 @@ export function formatClienteCliCode(index) {
 /**
  * @typedef {object} ClienteItem
  * @property {string} id
+ * @property {string} documentId
+ * @property {string[]} idAliases
  * @property {string} username
  * @property {string} nome — igual a username (UI)
  * @property {string} email
@@ -266,9 +269,13 @@ function coerceClienteRow(row, index, opts = {}) {
   if (!id && !username) return null
 
   const localizacoes = extractLocalizacoesFromUser(row)
+  const documentId = extractStrapiEntityId(row)
+  const idAliases = [...new Set([id, documentId].map((value) => pickString(value)).filter(Boolean))]
 
   return {
     id: id ?? String(index),
+    documentId: documentId ?? id ?? String(index),
+    idAliases,
     username,
     nome: username,
     email: fields.email ?? '',
@@ -693,10 +700,7 @@ function buildUserCreateBody(payload) {
     telefone,
     pessoaContacto: payload.pessoaContacto.trim(),
     morada: payload.morada.trim(),
-    confirmed: true,
-    blocked: false,
   }
-  if (payload.password?.trim()) body.password = payload.password.trim()
   return body
 }
 
@@ -712,7 +716,6 @@ function buildUserUpdateBody(payload) {
     pessoaContacto: payload.pessoaContacto.trim(),
     morada: payload.morada.trim(),
   }
-  if (payload.password?.trim()) body.password = payload.password.trim()
   return body
 }
 
@@ -721,34 +724,16 @@ function buildUserUpdateBody(payload) {
  * @returns {Promise<ClienteItem>}
  */
 export async function createStrapiCliente(payload) {
-  const base = strapiBaseUrl()
-  if (!base) throw new Error('Serviço indisponível. Tenta mais tarde.')
-
-  const password = payload.password?.trim()
-  if (!password || password.length < 6) {
-    throw new Error('A palavra-passe deve ter pelo menos 6 caracteres.')
-  }
-
   const nif = pickNumberField(payload.nif)
   const telefone = pickNumberField(payload.telefone)
   if (nif == null) throw new Error('NIF inválido.')
   if (telefone == null) throw new Error('Telefone inválido.')
 
-  const res = await fetch(`${base}/api/users`, {
-    method: 'POST',
-    headers: {
-      ...authHeaders(),
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(buildUserCreateBody(payload)),
-  })
+  const { row, inviteEmailSent, inviteEmailError } = await postStrapiUserAndSendInviteEmail(
+    buildUserCreateBody(payload),
+    'Não foi possível registar o cliente.',
+  )
 
-  if (!res.ok) {
-    throw new Error(await parseUsersApiError(res, 'Não foi possível registar o cliente.'))
-  }
-
-  const json = await res.json()
-  const row = json.user ?? json.data ?? json
   let item = coerceClienteRow(row, 0, { requireRoleMatch: false })
   if (!item) throw new Error('Resposta inválida ao criar cliente.')
 
@@ -759,7 +744,10 @@ export async function createStrapiCliente(payload) {
     if (detail) item = detail
   }
 
-  return item
+  return {
+    ...item,
+    ...userInviteMetaFromResult({ row, inviteEmailSent, inviteEmailError }),
+  }
 }
 
 /**

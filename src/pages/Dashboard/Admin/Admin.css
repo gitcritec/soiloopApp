@@ -45,19 +45,24 @@
 
 .admin-dashboard__main:has(.admin-clientes),
 .admin-dashboard__main:has(.admin-contentores),
-.admin-dashboard__main:has(.admin-tickets) {
+.admin-dashboard__main:has(.admin-tickets),
+.admin-dashboard__main:has(.admin-recolhas) {
   gap: 12px;
   padding-bottom: calc(168px + env(safe-area-inset-bottom, 0px));
 }
 
 /* Espaço para o FAB «Processar» no dashboard */
-.admin-dashboard__main:not(:has(.admin-clientes)):not(:has(.admin-contentores)):not(:has(.admin-tickets)):not(:has(.contentor-registo)):not(:has(.cliente-registo)):not(:has(.admin-ticket-view)) {
+.admin-dashboard__main:not(:has(.admin-clientes)):not(:has(.admin-contentores)):not(:has(.admin-tickets)):not(:has(.admin-recolhas)):not(:has(.contentor-registo)):not(:has(.cliente-registo)):not(:has(.cliente-detalhe)):not(:has(.contentor-detalhe)):not(:has(.admin-ticket-view)):not(:has(.staff-user-registo)):not(:has(.perfil)):not(:has(.definicoes)) {
   padding-bottom: calc(168px + env(safe-area-inset-bottom, 0px));
 }
 
 /* Formulário de registo: altura fixa entre header e bottom nav; scroll só no cartão */
 .admin-dashboard__main:has(.contentor-registo),
-.admin-dashboard__main:has(.cliente-registo) {
+.admin-dashboard__main:has(.cliente-registo),
+.admin-dashboard__main:has(.cliente-detalhe),
+.admin-dashboard__main:has(.contentor-detalhe),
+.admin-dashboard__main:has(.staff-user-registo),
+.admin-dashboard__main:has(.definicoes) {
   overflow: hidden;
   height: 100dvh;
   max-height: 100dvh;
@@ -69,6 +74,11 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+}
+
+.admin-dashboard__main:has(.perfil) {
+  gap: 12px;
+  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
 }
 
 /* Chat do ticket: mesmo espaçamento que no cliente */

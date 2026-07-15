@@ -74,6 +74,11 @@
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25)) brightness(1.03);
 }
 
+.floating-primary-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .floating-primary-button--operador .floating-primary-button__icon svg {
   width: 20px;
   height: 20px;

@@ -9,8 +9,12 @@ import { getStoredStrapiUserRefs, STRAPI_JWT_STORAGE_KEY } from './strapiAuth.js
 /** Valores do enum `estado` no Strapi. */
 export const CONTENTOR_ESTADOS = ['Novo', 'Usado', 'Danificado']
 
-/** Valores do enum `situacao` no Strapi. */
+/** Valores do enum `situacao` no Strapi (onde está o contentor: armazém, cliente, ou em trânsito). */
 export const CONTENTOR_SITUACOES = ['Armazem', 'Cliente', 'EmTransito']
+
+export const CONTENTOR_SITUACAO_ARMAZEM = 'Armazem'
+export const CONTENTOR_SITUACAO_CLIENTE = 'Cliente'
+export const CONTENTOR_SITUACAO_EM_TRANSITO = 'EmTransito'
 
 function strapiBaseUrl() {
   const raw = import.meta.env.VITE_STRAPI_URL
@@ -214,14 +218,14 @@ function toIsoDateOnly(value) {
 }
 
 /** @param {unknown} capacidade */
-function extractCapacidadeId(capacidade) {
-  if (!capacidade || typeof capacidade !== 'object') return ''
-  const data = capacidade.data
+function extractRelationId(entity) {
+  if (!entity || typeof entity !== 'object') return ''
+  const data = entity.data
   if (data && typeof data === 'object' && !Array.isArray(data)) {
     const nestedId = extractStrapiEntityId(data)
     if (nestedId) return nestedId
   }
-  return extractStrapiEntityId(capacidade) ?? ''
+  return extractStrapiEntityId(entity) ?? ''
 }
 
 function unwrapEntity(entity) {
@@ -231,6 +235,162 @@ function unwrapEntity(entity) {
     return { ...data, ...(data.attributes ?? {}) }
   }
   return { ...entity, ...(entity.attributes ?? {}) }
+}
+
+function pickLocalizacaoAtualLabel(localizacaoEntity, fallbackText) {
+  const loc = unwrapEntity(localizacaoEntity)
+  const morada = pickString(loc?.morada ?? loc?.nome)
+  if (morada) return morada
+  return pickString(fallbackText) ?? '—'
+}
+
+function pickClienteAtualName(clienteAtualRaw) {
+  const cliente = unwrapEntity(clienteAtualRaw)
+  if (!cliente) return ''
+  return (
+    pickString(cliente.username) ??
+    pickString(cliente.nome) ??
+    pickString(cliente.email) ??
+    ''
+  )
+}
+
+function pickCoordsFromLocalizacao(localizacaoEntity) {
+  const loc = unwrapEntity(localizacaoEntity)
+  if (!loc) return { lat: null, lng: null }
+  return {
+    lat: tryNum(loc.lat),
+    lng: tryNum(loc.lng),
+  }
+}
+
+function normalizeContentorSituacao(value) {
+  const s = pickString(value)
+  if (!s) return 'armazem'
+  const lower = s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+  if (lower === 'cliente') return 'cliente'
+  if (lower.includes('transito')) return 'em-transito'
+  return 'armazem'
+}
+
+function pickContentorDisplayLocalizacao({ localizacaoAtualLabel, localizacaoText, situacao }) {
+  if (situacao === 'armazem') return 'Armazém'
+  if (situacao === 'em-transito') {
+    const transitLabel = pickString(localizacaoAtualLabel)
+    if (transitLabel && transitLabel !== '—') return transitLabel
+    return 'Em trânsito'
+  }
+  if (localizacaoAtualLabel && localizacaoAtualLabel !== '—') return localizacaoAtualLabel
+  const text = pickString(localizacaoText)
+  if (text) return text
+  return '—'
+}
+
+function resolveRelationRef(ref) {
+  if (ref == null) return undefined
+  const s = String(ref).trim()
+  if (!s) return undefined
+  if (/^\d+$/.test(s)) return Number(s)
+  return s
+}
+
+function buildRelationConnect(ref) {
+  const resolved = resolveRelationRef(ref)
+  if (resolved == null) return undefined
+  return { connect: [resolved] }
+}
+
+function buildDirectRelationRef(ref) {
+  return resolveRelationRef(ref)
+}
+
+async function putStrapiContentorData(contentorId, data) {
+  const key = pickString(contentorId)
+  if (!key) throw new Error('Contentor em falta.')
+
+  const base = strapiBaseUrl()
+  if (!base) throw new Error('Configura VITE_STRAPI_URL no .env')
+
+  const res = await fetch(`${base}/api/contentores/${encodeURIComponent(key)}`, {
+    method: 'PUT',
+    headers: {
+      ...authHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ data }),
+  })
+
+  if (res.ok) {
+    const json = await res.json()
+    return coerceContentorRow(json?.data ?? json)
+  }
+
+  let message = `Strapi contentores: HTTP ${res.status}`
+  try {
+    const err = await res.json()
+    const detail =
+      err?.error?.message ?? err?.error?.details?.errors?.[0]?.message ?? err?.message
+    if (detail) message = String(detail)
+  } catch {
+    /* ignore */
+  }
+  throw new Error(message)
+}
+
+function buildContentorSituacaoData(payload = {}) {
+  /** @type {Record<string, unknown>} */
+  const data = {}
+
+  if (payload.situacao) data.situacao = payload.situacao
+  if (payload.localizacaoLabel != null) data.localizacao = payload.localizacaoLabel
+
+  if (payload.clienteAtualId === null) {
+    data.clienteAtual = null
+  } else if (payload.clienteAtualId) {
+    const ref = buildDirectRelationRef(payload.clienteAtualId)
+    if (ref != null) data.clienteAtual = ref
+  }
+
+  if (payload.localizacaoAtualId === null) {
+    data.localizacaoAtual = null
+  } else if (payload.localizacaoAtualId) {
+    const ref = buildDirectRelationRef(payload.localizacaoAtualId)
+    if (ref != null) data.localizacaoAtual = ref
+  }
+
+  return data
+}
+
+function buildContentorSituacaoConnectData(payload = {}) {
+  /** @type {Record<string, unknown>} */
+  const data = {}
+
+  if (payload.situacao) data.situacao = payload.situacao
+  if (payload.localizacaoLabel != null) data.localizacao = payload.localizacaoLabel
+
+  if (payload.clienteAtualId === null) {
+    data.clienteAtual = null
+  } else if (payload.clienteAtualId) {
+    const relation = buildRelationConnect(payload.clienteAtualId)
+    if (relation) data.clienteAtual = relation
+  }
+
+  if (payload.localizacaoAtualId === null) {
+    data.localizacaoAtual = null
+  } else if (payload.localizacaoAtualId) {
+    const relation = buildRelationConnect(payload.localizacaoAtualId)
+    if (relation) data.localizacaoAtual = relation
+  }
+
+  return data
+}
+
+/** @param {unknown} capacidade */
+function extractCapacidadeId(capacidade) {
+  return extractRelationId(capacidade)
 }
 
 function pickRelationId(entity) {
@@ -325,14 +485,6 @@ function belongsToCurrentUser(userId, userDocumentId, currentUserRefs) {
   return refs.some((ref) => currentUserRefs.has(ref))
 }
 
-function appendContentorPopulateParams(params) {
-  params.set('populate[capacidade]', 'true')
-  params.set('populate[qrcode]', 'true')
-  params.set('populate[localizacaoAtual]', 'true')
-  params.set('populate[clienteAtual]', 'true')
-  return params
-}
-
 /**
  * @param {unknown} row
  * @returns {import('./strapiContentores.js').ContentorItem|null}
@@ -351,7 +503,7 @@ function coerceContentorRow(row) {
   const estadoRaw = pickString(attrs.estado ?? row.estado)
   const estado = normalizeContentorEstado(estadoRaw)
   const situacaoRaw = pickString(attrs.situacao ?? row.situacao)
-  const situacao = normalizeContentorEstado(situacaoRaw)
+  const situacao = normalizeContentorSituacao(situacaoRaw)
   const dataRaw = attrs.data ?? row.data
   const capacidadeRaw = attrs.capacidade ?? row.capacidade
   const capacidadeId = extractCapacidadeId(capacidadeRaw)
@@ -365,14 +517,24 @@ function coerceContentorRow(row) {
   const localizacaoAtualEntity = unwrapEntity(localizacaoAtualRaw)
   const localizacaoAtualLat = pickNumberField(localizacaoAtualEntity?.lat)
   const localizacaoAtualLng = pickNumberField(localizacaoAtualEntity?.lng)
+  const localizacaoAtualLabel =
+    localizacaoAtualDisplay.locationDetail ?? localizacaoAtualDisplay.location ?? '—'
+  const { lat, lng } = pickCoordsFromLocalizacao(localizacaoAtualRaw)
+  const displayLocalizacao = pickContentorDisplayLocalizacao({
+    localizacaoAtualLabel,
+    localizacaoText: localizacao,
+    situacao,
+  })
   const clienteAtualLabel = pickUserDisplayName(clienteAtualRaw)
+  const clienteAtualNome = pickClienteAtualName(clienteAtualRaw) || clienteAtualLabel
 
   if (!cid && id == null) return null
 
   return {
     id: id != null ? String(id) : cid ?? '',
     cid: cid ?? '—',
-    localizacao: localizacao ?? localizacaoAtualDisplay.location ?? '—',
+    localizacao: displayLocalizacao,
+    localizacaoAtualLabel,
     localizacaoAtualId: localizacaoAtualId ?? '',
     localizacaoAtualMorada: localizacaoAtualDisplay.locationDetail ?? localizacaoAtualDisplay.location ?? '',
     locationPrefix: localizacaoAtualDisplay.locationPrefix,
@@ -380,10 +542,13 @@ function coerceContentorRow(row) {
     clienteAtualId: clienteAtualId ?? '',
     clienteAtualDocumentId: clienteAtualDocumentId ?? '',
     clienteAtualLabel,
+    clienteAtualNome,
     localizacaoAtualLat,
     localizacaoAtualLng,
+    lat,
+    lng,
     situacao,
-    situacaoLabel: situacaoRaw ?? '',
+    situacaoLabel: situacaoRaw ?? '—',
     numeroEgar: numeroEgar ?? '',
     qrcodeUrl: qrcodeUrl ?? '',
     estado,
@@ -408,6 +573,10 @@ function coerceContentorRow(row) {
  * @property {string} clienteAtualId
  * @property {string} clienteAtualDocumentId
  * @property {string} clienteAtualLabel
+ * @property {string} clienteAtualNome
+ * @property {string} localizacaoAtualLabel
+ * @property {number|null} lat
+ * @property {number|null} lng
  * @property {number|null} localizacaoAtualLat
  * @property {number|null} localizacaoAtualLng
  * @property {string|null} situacao
@@ -422,6 +591,14 @@ function coerceContentorRow(row) {
  * @property {number|null} litros
  * @property {string} litrosLabel
  */
+
+function appendContentorPopulateParams(params) {
+  params.set('populate[capacidade]', 'true')
+  params.set('populate[qrcode]', 'true')
+  params.set('populate[clienteAtual]', 'true')
+  params.set('populate[localizacaoAtual]', 'true')
+  return params
+}
 
 /**
  * @typedef {object} ClienteContentorCardItem
@@ -650,6 +827,34 @@ export async function fetchStrapiContentorByCid(cid) {
 }
 
 /**
+ * Obtém um contentor pelo ID Strapi (documentId ou id numérico).
+ * @param {string} id
+ * @returns {Promise<ContentorItem|null>}
+ */
+export async function fetchStrapiContentorById(id) {
+  const key = pickString(id)
+  if (!key) return null
+
+  const base = strapiBaseUrl()
+  if (!base) return null
+
+  const params = new URLSearchParams()
+  appendContentorPopulateParams(params)
+
+  const res = await fetch(`${base}/api/contentores/${encodeURIComponent(key)}?${params.toString()}`, {
+    headers: authHeaders(),
+  })
+  if (res.ok) {
+    const json = await res.json()
+    const row = json.data ?? json
+    const item = coerceContentorRow(row)
+    if (item) return item
+  }
+
+  return fetchStrapiContentorByCid(key)
+}
+
+/**
  * @typedef {object} CapacidadeOption
  * @property {string} id
  * @property {number|null} litros
@@ -874,6 +1079,7 @@ export async function createStrapiContentor(payload) {
       data: payload.data,
       capacidade: capacidadeRef,
       qrcode: qrcodeRef,
+      situacao: CONTENTOR_SITUACAO_ARMAZEM,
     },
   }
 
@@ -1013,6 +1219,72 @@ export async function updateStrapiContentor(documentId, payload) {
   return item
 }
 
+/**
+ * Cartão de contentor instalado (admin / cliente).
+ * @param {ContentorItem} item
+ * @param {import('./strapiClientes.js').ClienteItem|null} [cliente]
+ */
+export function mapContentorItemToInstalledCard(item, cliente = null) {
+  const loc = pickString(item.localizacaoAtualLabel) ?? pickString(item.localizacao) ?? '—'
+  return {
+    id: item.cid,
+    contentorId: item.cid,
+    litrosLabel: item.litrosLabel,
+    location: loc,
+    locationDetail: loc,
+    lat: item.lat ?? null,
+    lng: item.lng ?? null,
+    clientName: cliente?.nome ?? cliente?.username ?? item.clienteAtualNome ?? null,
+    clienteId: item.clienteAtualId ?? pickString(cliente?.id),
+    contentorStrapiId: item.id,
+    estadoLabel: item.estadoLabel ?? 'Reutilizável',
+    source: 'contentor',
+  }
+}
+
+/**
+ * Contentores com `clienteAtual` = cliente (fonte de verdade no Strapi).
+ * @param {string} clienteId
+ * @param {string[]} [idAliases]
+ * @returns {Promise<ContentorItem[]>}
+ */
+export async function fetchStrapiContentoresByClienteAtual(clienteId, idAliases = []) {
+  const refs = [
+    ...new Set([pickString(clienteId), ...(idAliases ?? []).map((value) => pickString(value))].filter(Boolean)),
+  ]
+  if (refs.length === 0) return []
+
+  const base = strapiBaseUrl()
+  if (!base) return []
+
+  const filterKeys = ['filters[clienteAtual][id][$eq]', 'filters[clienteAtual][documentId][$eq]']
+
+  for (const ref of refs) {
+    for (const filterKey of filterKeys) {
+      const params = new URLSearchParams()
+      appendContentorPopulateParams(params)
+      params.set(filterKey, ref)
+      params.set('sort', 'CID:asc')
+      params.set('pagination[pageSize]', '100')
+
+      const res = await fetch(`${base}/api/contentores?${params.toString()}`, {
+        headers: authHeaders(),
+      })
+      if (!res.ok) continue
+
+      const json = await res.json()
+      const rows = parseStrapiListRows(json)
+      const items = rows.map(coerceContentorRow).filter(Boolean)
+      if (items.length > 0) return items
+    }
+  }
+
+  return []
+}
+
+/**
+ * Helper: resolve relation id or document id for Strapi relation updating.
+ */
 function resolveContentorRelationRef(ref) {
   if (ref == null) return null
   const s = String(ref).trim()
@@ -1021,6 +1293,9 @@ function resolveContentorRelationRef(ref) {
   return s
 }
 
+/**
+ * Helper: transform Strapi relation payload to direct key if connect fails.
+ */
 function toDirectContentorRelationPayload(payload) {
   /** @type {Record<string, unknown>} */
   const next = { ...payload }
@@ -1107,6 +1382,61 @@ async function putStrapiContentorUpdate(documentId, data) {
   throw new Error(
     formatContentorApiError(primary.errorJson, `Strapi contentores: HTTP ${primary.status ?? 400}`),
   )
+}
+
+/**
+ * Atualiza situação do contentor (cliente atual, localização, armazém).
+ * @param {string} contentorId documentId ou id Strapi
+ * @param {{ clienteAtualId?: string|null, localizacaoAtualId?: string|null, situacao?: string, localizacaoLabel?: string|null }} payload
+ */
+export async function updateStrapiContentorSituacao(contentorId, payload = {}) {
+  const key = pickString(contentorId)
+  if (!key) throw new Error('Contentor em falta.')
+
+  // Convert legacy payload to Strapi update keys
+  /** @type {Record<string, unknown>} */
+  const directData = buildContentorSituacaoData(payload)
+  if (Object.keys(directData).length === 0) return null
+
+  try {
+    return await putStrapiContentorUpdate(key, directData)
+  } catch (primaryError) {
+    const connectData = buildContentorSituacaoConnectData(payload)
+    if (JSON.stringify(connectData) === JSON.stringify(directData)) throw primaryError
+    try {
+      return await putStrapiContentorUpdate(key, connectData)
+    } catch {
+      throw primaryError
+    }
+  }
+}
+
+/**
+ * Reserva um contentor para entrega (pedido/agendamento): associa cliente e localização
+ * de destino sem alterar a situação (permanece em armazém até conclusão da entrega).
+ * @param {string} contentorId
+ * @param {{ clienteAtualId?: string|null, localizacaoAtualId?: string|null, localizacaoLabel?: string|null }} payload
+ */
+export async function reserveStrapiContentorParaEntrega(contentorId, payload = {}) {
+  /** @type {Parameters<typeof updateStrapiContentorSituacao>[1]} */
+  const update = {}
+
+  if (payload.clienteAtualId !== undefined && payload.clienteAtualId !== null && payload.clienteAtualId !== '') {
+    update.clienteAtualId = payload.clienteAtualId
+  }
+  if (
+    payload.localizacaoAtualId !== undefined &&
+    payload.localizacaoAtualId !== null &&
+    payload.localizacaoAtualId !== ''
+  ) {
+    update.localizacaoAtualId = payload.localizacaoAtualId
+  }
+  if (payload.localizacaoLabel !== undefined && payload.localizacaoLabel !== null) {
+    update.localizacaoLabel = payload.localizacaoLabel
+  }
+
+  if (Object.keys(update).length === 0) return null
+  return updateStrapiContentorSituacao(contentorId, update)
 }
 
 /**

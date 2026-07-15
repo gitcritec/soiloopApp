@@ -2,6 +2,8 @@
  * Conteúdo do single type Global (api::global.global) no Strapi.
  */
 
+import { STRAPI_JWT_STORAGE_KEY } from './strapiAuth.js'
+
 function strapiBaseUrl() {
   const raw = import.meta.env.VITE_STRAPI_URL
   if (!raw || typeof raw !== 'string') return ''
@@ -49,9 +51,49 @@ function pickString(value) {
  * @property {string|null} logoUrl
  * @property {string|null} logoSmallUrl
  * @property {string|null} faviconUrl
+ * @property {string} armazemMorada
+ * @property {number|null} armazemLat
+ * @property {number|null} armazemLng
+ */
+
+/**
+ * @typedef {object} ArmazemLocation
+ * @property {string} morada
+ * @property {number|null} lat
+ * @property {number|null} lng
  */
 
 let globalDocumentPromise = null
+
+export function invalidateStrapiGlobalCache() {
+  globalDocumentPromise = null
+}
+
+function authHeaders() {
+  const jwt = localStorage.getItem(STRAPI_JWT_STORAGE_KEY)
+  return jwt ? { Authorization: `Bearer ${jwt}` } : {}
+}
+
+function pickCoord(value) {
+  if (value == null || value === '') return null
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
+function mapGlobalRow(row, base) {
+  if (!row) return null
+  const attrs = row.attributes ?? row
+  return {
+    siteName: pickString(attrs.siteName ?? attrs.site_name),
+    siteDescription: pickString(attrs.siteDescription ?? attrs.site_description),
+    logoUrl: absoluteMediaUrl(base, pickMediaUrl(attrs.logo)),
+    logoSmallUrl: absoluteMediaUrl(base, pickMediaUrl(attrs.logo_small)),
+    faviconUrl: absoluteMediaUrl(base, pickMediaUrl(attrs.favicon)),
+    armazemMorada: pickString(attrs.armazemMorada) ?? '',
+    armazemLat: pickCoord(attrs.armazemLat),
+    armazemLng: pickCoord(attrs.armazemLng),
+  }
+}
 
 /**
  * Um único GET ao Global com populate dos media; resultado em cache na sessão da página.
@@ -74,15 +116,7 @@ export function getStrapiGlobalDocument() {
           if (!res.ok) return null
           const json = await res.json()
           const row = json.data
-          if (!row) return null
-          const attrs = row.attributes ?? row
-          return {
-            siteName: pickString(attrs.siteName ?? attrs.site_name),
-            siteDescription: pickString(attrs.siteDescription ?? attrs.site_description),
-            logoUrl: absoluteMediaUrl(base, pickMediaUrl(attrs.logo)),
-            logoSmallUrl: absoluteMediaUrl(base, pickMediaUrl(attrs.logo_small)),
-            faviconUrl: absoluteMediaUrl(base, pickMediaUrl(attrs.favicon)),
-          }
+          return mapGlobalRow(row, base)
         } catch {
           return null
         }
@@ -241,4 +275,64 @@ export async function applyStrapiGlobalHead(doc) {
 export async function fetchStrapiGlobalFaviconUrl() {
   const doc = await getStrapiGlobalDocument()
   return doc?.faviconUrl ?? null
+}
+
+/** @returns {Promise<ArmazemLocation|null>} */
+export async function fetchStrapiArmazemLocation() {
+  const doc = await getStrapiGlobalDocument()
+  if (!doc) return null
+  return {
+    morada: doc.armazemMorada ?? '',
+    lat: doc.armazemLat,
+    lng: doc.armazemLng,
+  }
+}
+
+/**
+ * Atualiza morada e coordenadas do armazém da empresa (single type Global).
+ * @param {{ morada: string, lat: number|null, lng: number|null }} payload
+ */
+export async function updateStrapiArmazemLocation(payload) {
+  const base = strapiBaseUrl()
+  if (!base) throw new Error('Configura VITE_STRAPI_URL no .env')
+
+  const current = await getStrapiGlobalDocument()
+  const morada = pickString(payload.morada) ?? ''
+  const lat = pickCoord(payload.lat)
+  const lng = pickCoord(payload.lng)
+
+  const res = await fetch(`${base}/api/global`, {
+    method: 'PUT',
+    headers: {
+      ...authHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      data: {
+        siteName: current?.siteName ?? 'Soiloop',
+        siteDescription: current?.siteDescription ?? 'Soiloop',
+        armazemMorada: morada,
+        armazemLat: lat,
+        armazemLng: lng,
+      },
+    }),
+  })
+
+  if (!res.ok) {
+    let message = `Strapi global: HTTP ${res.status}`
+    try {
+      const err = await res.json()
+      const detail =
+        err?.error?.message ??
+        err?.error?.details?.errors?.[0]?.message ??
+        err?.message
+      if (detail) message = String(detail)
+    } catch {
+      /* ignore */
+    }
+    throw new Error(message)
+  }
+
+  invalidateStrapiGlobalCache()
+  return { morada, lat, lng }
 }

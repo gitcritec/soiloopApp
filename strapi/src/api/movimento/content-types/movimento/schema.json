@@ -1,0 +1,108 @@
+{
+  "kind": "collectionType",
+  "collectionName": "movimentos",
+  "info": {
+    "singularName": "movimento",
+    "pluralName": "movimentos",
+    "displayName": "Movimentos"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "cliente": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "localizacao": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::localizacao.localizacao"
+    },
+    "contentor": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::contentor.contentor"
+    },
+    "capacidade": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::capacidade.capacidade"
+    },
+    "data": {
+      "type": "date"
+    },
+    "periodo": {
+      "type": "enumeration",
+      "default": "indiferente",
+      "enum": [
+        "indiferente",
+        "manha",
+        "tarde"
+      ]
+    },
+    "observacoesCliente": {
+      "type": "text"
+    },
+    "estado": {
+      "type": "enumeration",
+      "enum": [
+        "pedido",
+        "agendado",
+        "concluido",
+        "rejeitado"
+      ]
+    },
+    "observacaoOperador": {
+      "type": "text"
+    },
+    "egar": {
+      "type": "string"
+    },
+    "peso": {
+      "type": "decimal"
+    },
+    "estadoContentor": {
+      "type": "enumeration",
+      "enum": [
+        "reutilizavel",
+        "danificado",
+        "infetado"
+      ]
+    },
+    "fotografias": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "movimento": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::movimento.movimento"
+    },
+    "tipoMovimento": {
+      "type": "enumeration",
+      "enum": [
+        "entrega",
+        "recolha"
+      ]
+    },
+    "operador": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "ordemOperador": {
+      "type": "integer",
+      "default": 0,
+      "min": 0
+    }
+  }
+}

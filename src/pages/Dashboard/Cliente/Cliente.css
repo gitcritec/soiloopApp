@@ -76,6 +76,12 @@
   flex-direction: column;
   gap: 24px;
   width: 100%;
+  min-height: 0;
+}
+
+.cliente-dashboard__main:has(.perfil) {
+  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  gap: 12px;
 }
 
 .cliente-dashboard__main--tickets {

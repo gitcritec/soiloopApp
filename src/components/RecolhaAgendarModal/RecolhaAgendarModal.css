@@ -1,0 +1,371 @@
+.recolha-agendar-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.recolha-agendar-modal--open {
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.recolha-agendar-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(6, 14, 11, 0.45);
+  cursor: pointer;
+}
+
+.recolha-agendar-modal__sheet {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 393px;
+  max-height: min(92vh, 720px);
+  margin: 0 auto;
+  background: #f9f8f9;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 24px rgba(6, 14, 11, 0.12);
+  overflow: hidden;
+}
+
+.recolha-agendar-modal__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 16px 8px;
+  flex-shrink: 0;
+}
+
+.recolha-agendar-modal__titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.recolha-agendar-modal__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #060e0b;
+}
+
+.recolha-agendar-modal__subtitle {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #40534c;
+}
+
+.recolha-agendar-modal__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: #e5e9e8;
+  color: #40534c;
+  cursor: pointer;
+}
+
+.recolha-agendar-modal__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 16px 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.recolha-agendar-modal__error {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #8b1e1e;
+  background: #fdeaea;
+  border: 1px solid #f5c2c2;
+}
+
+.recolha-agendar-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.recolha-agendar-modal__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #40534c;
+}
+
+.recolha-agendar-modal__select,
+.recolha-agendar-modal__date-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  border: 1px solid #e5e9e8;
+  border-radius: 8px;
+  background: #fff;
+  font-family: 'Rubik', sans-serif;
+  font-size: 13px;
+  color: #060e0b;
+  outline: none;
+}
+
+.recolha-agendar-modal__select:focus,
+.recolha-agendar-modal__date-input:focus {
+  border-color: #15d67f;
+}
+
+.recolha-agendar-modal__day {
+  margin-bottom: 16px;
+}
+
+.recolha-agendar-modal__day-row {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.recolha-agendar-modal__day-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #e5e9e8;
+  border-radius: 8px;
+  background: #fff;
+  color: #40534c;
+  cursor: pointer;
+}
+
+.recolha-agendar-modal__date-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #e5e9e8;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.recolha-agendar-modal__date-icon {
+  color: #40534c;
+  font-size: 14px;
+}
+
+.recolha-agendar-modal__date-input {
+  border: none;
+  min-height: 42px;
+  padding: 0;
+}
+
+.recolha-agendar-modal__day-hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #5c6d66;
+}
+
+.recolha-agendar-modal__timeline-title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #060e0b;
+}
+
+.recolha-agendar-modal__timeline-help {
+  margin: 0 0 12px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #5c6d66;
+}
+
+.recolha-agendar-modal__slots {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recolha-agendar-modal__slot-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recolha-agendar-modal__insert {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px dashed #cfd8d4;
+  border-radius: 8px;
+  background: #fff;
+  color: #40534c;
+  font-family: 'Rubik', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.recolha-agendar-modal__insert--active {
+  border-style: solid;
+  border-color: #15d67f;
+  background: #e8faf1;
+  color: #1c8767;
+}
+
+.recolha-agendar-modal__preview {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #e8faf1;
+  border: 1px solid #9be3bf;
+}
+
+.recolha-agendar-modal__preview-tag {
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #1c8767;
+}
+
+.recolha-agendar-modal__preview-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #060e0b;
+}
+
+.recolha-agendar-modal__preview-meta {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #40534c;
+}
+
+.recolha-agendar-modal__agenda-item {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #e5e9e8;
+}
+
+.recolha-agendar-modal__agenda-pos {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e8f2b;
+}
+
+.recolha-agendar-modal__agenda-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #060e0b;
+}
+
+.recolha-agendar-modal__agenda-meta {
+  margin: 2px 0 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #40534c;
+}
+
+.recolha-agendar-modal__troca {
+  padding: 12px;
+  border-radius: 8px;
+  background: #f0faf5;
+  border: 1px solid #c8e8d8;
+}
+
+.recolha-agendar-modal__troca-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #060e0b;
+}
+
+.recolha-agendar-modal__troca-recolha {
+  margin: 0 0 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #40534c;
+}
+
+.recolha-agendar-modal__troca-help {
+  margin: 0 0 10px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #5a6b64;
+}
+
+.recolha-agendar-modal__capacidade-alert {
+  margin: 0 0 10px;
+  font-size: 11px;
+  line-height: 1.35;
+  font-weight: 600;
+  color: #b42318;
+}
+
+.recolha-agendar-modal__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0));
+  flex-shrink: 0;
+  border-top: 1px solid #e5e9e8;
+  background: #f9f8f9;
+}
+
+.recolha-agendar-modal__confirm,
+.recolha-agendar-modal__cancel {
+  width: 100%;
+  min-height: 48px;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Rubik', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.recolha-agendar-modal__confirm {
+  background: #15d67f;
+  color: #f9f8f9;
+}
+
+.recolha-agendar-modal__confirm:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.recolha-agendar-modal__cancel {
+  background: #e5e9e8;
+  color: #40534c;
+}

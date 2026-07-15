@@ -33,7 +33,8 @@ import MovimentosRecolha from './MovimentosRecolha/MovimentosRecolha.jsx'
 import MovimentosEntrega from './MovimentosEntrega/MovimentosEntrega.jsx'
 import Processar from './Processar/Processar.jsx'
 import QrScanner from './QrScanner/QrScanner.jsx'
-import { readOperadorNavId, readOperadorScreen, setAppHash } from '../../../lib/appRoute.js'
+import Perfil from '../../Perfil/Perfil.jsx'
+import { readIsProfileSection, readOperadorNavId, readOperadorShowProcessarButton, readOperadorScreen, setAppHash } from '../../../lib/appRoute.js'
 import {
   MOCK_DAY_COLLECTIONS,
   MOCK_OPERATOR_NAME,
@@ -74,9 +75,11 @@ export default function Operador({ onLogout }) {
   const [dashboardLoading, setDashboardLoading] = useState(true)
   const [dashboardError, setDashboardError] = useState(false)
   const [operatorStats, setOperatorStats] = useState(MOCK_OPERATOR_STATS)
+  const [showPerfil, setShowPerfil] = useState(() => readIsProfileSection('operador'))
 
   const syncOperadorRouteFromHash = useCallback(() => {
     setNavActiveId(readOperadorNavId())
+    setShowPerfil(readIsProfileSection('operador'))
     const routeScreen = readOperadorScreen()
     setScreen((current) => {
       if (routeScreen === 'processar') return 'processar'
@@ -96,6 +99,7 @@ export default function Operador({ onLogout }) {
 
   const selectNav = useCallback((id) => {
     setNavActiveId(id)
+    setShowPerfil(false)
     setScreen('dashboard')
     setAppHash('operador', id)
   }, [])
@@ -416,6 +420,10 @@ export default function Operador({ onLogout }) {
     if (actionId === 'movimentos') selectNav('movimentos')
     else if (actionId === 'historico') selectNav('historico')
     else if (actionId === 'recolhas') selectNav('dashboard')
+    else if (actionId === 'perfil') {
+      setShowPerfil(true)
+      setAppHash('operador', 'perfil')
+    }
   }
 
   const drawerRoleLabel =
@@ -454,6 +462,7 @@ export default function Operador({ onLogout }) {
           logoSrc={headerLogoSrc ?? logoSoiloop}
           userName={userName}
           menuOpen={menuOpen}
+          onLogoClick={() => selectNav('dashboard')}
           onMenuClick={() => setMenuOpen((o) => !o)}
         />
         ) : null}
@@ -461,6 +470,9 @@ export default function Operador({ onLogout }) {
 
       {isDashboardScreen ? (
       <main className="operator-dashboard__main">
+        {showPerfil ? (
+          <Perfil profileKind="operador" onUserUpdated={setUserName} />
+        ) : (
           <>
         <section className="operator-dashboard__section" aria-labelledby="sec-day">
           <SectionTitleWithIcon
@@ -542,10 +554,11 @@ export default function Operador({ onLogout }) {
           activityLabel="Serviços"
         />
           </>
+        )}
       </main>
       ) : null}
 
-      {isDashboardScreen ? (
+      {isDashboardScreen && readOperadorShowProcessarButton() && !showPerfil ? (
         <FloatingPrimaryButton
           variant="operador"
           label="Processar"

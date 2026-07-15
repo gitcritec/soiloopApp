@@ -1,0 +1,110 @@
+.admin-recolhas {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 353px;
+  min-width: 0;
+  margin: 0 auto;
+  padding-bottom: 64px;
+  box-sizing: border-box;
+}
+
+.admin-recolhas__hero-wrap {
+  width: 100%;
+  height: 120px;
+  overflow: hidden;
+  background: #f0eeec;
+}
+
+.admin-recolhas__hero {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  pointer-events: none;
+  user-select: none;
+}
+
+.admin-recolhas__toolbar {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+  min-height: 54px;
+}
+
+.admin-recolhas__search {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 54px;
+  padding: 0 16px;
+  box-sizing: border-box;
+  background: #f9f8f9;
+  border-radius: 5px;
+}
+
+.admin-recolhas__search-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: #40534c;
+}
+
+.admin-recolhas__search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font-family: 'Rubik', sans-serif;
+  font-size: 12px;
+  color: #060e0b;
+  outline: none;
+}
+
+.admin-recolhas__search-input::placeholder {
+  color: #5c6d66;
+}
+
+.admin-recolhas__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.admin-recolhas__status {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #40534c;
+  text-align: center;
+}
+
+.admin-recolhas__status--error {
+  color: #8b1e1e;
+}
+
+.admin-recolhas__pick {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 10px;
+}
+
+.admin-recolhas__pick:focus-visible {
+  outline: 2px solid #15d67f;
+  outline-offset: 2px;
+}

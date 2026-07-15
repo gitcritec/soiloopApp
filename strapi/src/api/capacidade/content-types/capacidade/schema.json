@@ -1,0 +1,18 @@
+{
+  "kind": "collectionType",
+  "collectionName": "capacidades",
+  "info": {
+    "singularName": "capacidade",
+    "pluralName": "capacidades",
+    "displayName": "Capacidade"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "Litros": {
+      "type": "integer"
+    }
+  }
+}

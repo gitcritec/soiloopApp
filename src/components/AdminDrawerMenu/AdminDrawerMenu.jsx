@@ -5,6 +5,9 @@ import {
   faGear,
   faPowerOff,
   faRecycle,
+  faUser,
+  faUserGear,
+  faUserHelmetSafety,
   faUsers,
   faXmark,
 } from '@fortawesome/pro-light-svg-icons'
@@ -158,6 +161,29 @@ export default function AdminDrawerMenu({
           </button>
         </nav>
 
+        <nav className="admin-drawer__nav admin-drawer__nav--staff" aria-label="Equipa">
+          <button
+            type="button"
+            className="admin-drawer__item"
+            onClick={() => handlePrimaryClick('admins')}
+          >
+            <span className="admin-drawer__item-icon" aria-hidden="true">
+              <FontAwesomeIcon icon={faUserGear} />
+            </span>
+            <span className="admin-drawer__item-label">Administradores</span>
+          </button>
+          <button
+            type="button"
+            className="admin-drawer__item"
+            onClick={() => handlePrimaryClick('operadores')}
+          >
+            <span className="admin-drawer__item-icon" aria-hidden="true">
+              <FontAwesomeIcon icon={faUserHelmetSafety} />
+            </span>
+            <span className="admin-drawer__item-label">Operadores</span>
+          </button>
+        </nav>
+
         <nav className="admin-drawer__nav admin-drawer__nav--secondary" aria-label="Conta e sessão">
           <button
             type="button"
@@ -171,6 +197,19 @@ export default function AdminDrawerMenu({
               <FontAwesomeIcon icon={faGear} />
             </span>
             <span className="admin-drawer__item-label">Definições</span>
+          </button>
+          <button
+            type="button"
+            className="admin-drawer__item"
+            onClick={() => {
+              onClose()
+              onNavigate?.('perfil')
+            }}
+          >
+            <span className="admin-drawer__item-icon" aria-hidden="true">
+              <FontAwesomeIcon icon={faUser} />
+            </span>
+            <span className="admin-drawer__item-label">Perfil</span>
           </button>
           <button
             type="button"

@@ -5,11 +5,11 @@ import {
   faCircleInfo,
   faClipboardList,
   faComments,
-  faGear,
   faHouseChimney,
   faPowerOff,
   faRecycle,
   faClock,
+  faUser,
 } from '@fortawesome/pro-light-svg-icons'
 import logoSoiloop from '../../../assets/figma-operador/logo-soiloop.png'
 import './Cliente.css'
@@ -26,6 +26,8 @@ import Contentores from './Contentores/Contentores.jsx'
 import Recolhas from './Recolhas/Recolhas.jsx'
 import {
   readClienteNavId,
+  readClienteShowCriarTicketButton,
+  readIsProfileSection,
   setAppHash,
 } from '../../../lib/appRoute.js'
 import { formatLocationQuery } from '../../../lib/locationQuery.js'
@@ -46,6 +48,7 @@ import SolicitarContentor from './SolicitarContentor/SolicitarContentor.jsx'
 import EditarPedido from './EditarPedido/EditarPedido.jsx'
 import ApagarPedido from './ApagarPedido/ApagarPedido.jsx'
 import HistoricoPedidos from './HistoricoPedidos/HistoricoPedidos.jsx'
+import Perfil from '../../Perfil/Perfil.jsx'
 import {
   MOCK_CLIENT_CONTAINERS,
   MOCK_CLIENT_NAME,
@@ -73,7 +76,7 @@ const CLIENT_DRAWER_PRIMARY_ITEMS = [
 ]
 
 const CLIENT_DRAWER_SECONDARY_ITEMS = [
-  { id: 'definicoes', label: 'Definições', icon: faGear },
+  { id: 'perfil', label: 'Perfil', icon: faUser },
   { id: 'ajuda', label: 'Ajuda', icon: faCircleInfo },
   { id: 'sair', label: 'Sair', icon: faPowerOff, isLogout: true },
 ]
@@ -85,7 +88,10 @@ export default function Cliente({
   headerLogoSrc,
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [displayName, setDisplayName] = useState(userName)
   const [navActiveId, setNavActiveId] = useState(() => readClienteNavId())
+  const [showPerfil, setShowPerfil] = useState(() => readIsProfileSection('cliente'))
+  const [showCriarTicket, setShowCriarTicket] = useState(() => readClienteShowCriarTicketButton())
   const [locationMap, setLocationMap] = useState(null)
   const [clientRequests, setClientRequests] = useState([])
   const [clientRequestsLoading, setClientRequestsLoading] = useState(true)
@@ -99,8 +105,14 @@ export default function Cliente({
   const [deletePedidoContext, setDeletePedidoContext] = useState(null)
 
   useEffect(() => {
+    setDisplayName(userName)
+  }, [userName])
+
+  useEffect(() => {
     function syncFromHash() {
       setNavActiveId(readClienteNavId())
+      setShowPerfil(readIsProfileSection('cliente'))
+      setShowCriarTicket(readClienteShowCriarTicketButton())
     }
     syncFromHash()
     window.addEventListener('hashchange', syncFromHash)
@@ -152,6 +164,7 @@ export default function Cliente({
   }, [])
 
   const selectNav = useCallback((id) => {
+    setShowPerfil(false)
     setNavActiveId(id)
     setAppHash('cliente', id)
   }, [])
@@ -162,6 +175,11 @@ export default function Cliente({
     else if (actionId === 'contentores') selectNav('contentores')
     else if (actionId === 'historico') selectNav('historico')
     else if (actionId === 'gestao' || actionId === 'recolhas') selectNav('dashboard')
+    else if (actionId === 'perfil') {
+      setShowPerfil(true)
+      setAppHash('cliente', 'perfil')
+      setShowCriarTicket(false)
+    }
   }
 
   function openCriarTicket() {
@@ -283,6 +301,9 @@ export default function Cliente({
   )
 
   function renderMain() {
+    if (showPerfil) {
+      return <Perfil profileKind="cliente" onUserUpdated={setDisplayName} />
+    }
     if (navActiveId === 'tickets') return <Tickets />
     if (navActiveId === 'historico') return <HistoricoPedidos />
     if (navActiveId === 'recolhas') {
@@ -398,7 +419,7 @@ export default function Cliente({
       <OperatorDrawerMenu
         isOpen={menuOpen}
         onClose={() => setMenuOpen(false)}
-        userName={userName}
+        userName={displayName}
         userRole={drawerRoleLabel}
         avatarSrc={headerLogoSrc ?? logoSoiloop}
         onLogout={onLogout ?? (() => {})}
@@ -411,9 +432,10 @@ export default function Cliente({
         <PageHeader
           variant="floating"
           logoSrc={headerLogoSrc ?? logoSoiloop}
-          userName={userName}
+          userName={displayName}
           menuOpen={menuOpen}
           menuAriaControls="cliente-drawer-panel"
+          onLogoClick={() => selectNav('dashboard')}
           onMenuClick={() => setMenuOpen((o) => !o)}
         />
       </div>

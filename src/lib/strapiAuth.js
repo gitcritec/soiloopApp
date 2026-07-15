@@ -61,6 +61,98 @@ export async function loginStrapi(identifier, password) {
   return { jwt: data.jwt, user: data.user ?? {} }
 }
 
+/**
+ * Redefine palavra-passe com o código recebido por email (Users & Permissions).
+ * @param {string} code
+ * @param {string} password
+ * @param {string} passwordConfirmation
+ */
+export async function resetStrapiPassword(code, password, passwordConfirmation) {
+  const base = strapiBaseUrl()
+  if (!base) {
+    throw new Error('Serviço indisponível. Tenta mais tarde.')
+  }
+
+  const res = await fetch(`${base}/api/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      code: String(code).trim(),
+      password,
+      passwordConfirmation,
+    }),
+  })
+
+  let data
+  try {
+    data = await res.json()
+  } catch {
+    data = {}
+  }
+
+  if (!res.ok) {
+    const raw =
+      data?.error?.message ??
+      data?.error?.data?.[0]?.messages?.[0]?.message ??
+      data?.message
+    const s = raw ? String(raw).toLowerCase() : ''
+    if (s.includes('incorrect code') || s.includes('invalid code') || s.includes('expired')) {
+      throw new Error('Link inválido ou expirado. Pede um novo email de palavra-passe.')
+    }
+    throw new Error(raw ? String(raw) : 'Não foi possível redefinir a palavra-passe.')
+  }
+
+  return data
+}
+
+/**
+ * Altera palavra-passe do utilizador autenticado.
+ * @param {string} currentPassword
+ * @param {string} password
+ * @param {string} passwordConfirmation
+ */
+export async function changeStrapiPassword(currentPassword, password, passwordConfirmation) {
+  const base = strapiBaseUrl()
+  const jwt = localStorage.getItem(STRAPI_JWT_STORAGE_KEY)
+  if (!base || !jwt) {
+    throw new Error('Sessão inválida. Inicia sessão novamente.')
+  }
+
+  const res = await fetch(`${base}/api/auth/change-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${jwt}`,
+    },
+    body: JSON.stringify({
+      currentPassword,
+      password,
+      passwordConfirmation,
+    }),
+  })
+
+  let data
+  try {
+    data = await res.json()
+  } catch {
+    data = {}
+  }
+
+  if (!res.ok) {
+    const raw =
+      data?.error?.message ??
+      data?.error?.data?.[0]?.messages?.[0]?.message ??
+      data?.message
+    const s = raw ? String(raw).toLowerCase() : ''
+    if (s.includes('current password') || s.includes('password is invalid')) {
+      throw new Error('A palavra-passe atual está incorreta.')
+    }
+    throw new Error(raw ? String(raw) : 'Não foi possível alterar a palavra-passe.')
+  }
+
+  return data
+}
+
 export const STRAPI_JWT_STORAGE_KEY = 'soiloop_strapi_jwt'
 export const STRAPI_USER_STORAGE_KEY = 'soiloop_strapi_user'
 

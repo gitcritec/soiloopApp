@@ -1,0 +1,37 @@
+.redefinir-palavra-passe__logo {
+  width: 120px;
+  height: 120px;
+}
+
+.redefinir-palavra-passe__title {
+  margin: 24px 0 8px;
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #1a2e28;
+  text-align: center;
+}
+
+.redefinir-palavra-passe__form {
+  margin-top: 20px;
+  width: 100%;
+}
+
+.redefinir-palavra-passe__hint {
+  margin: 0 0 12px;
+  font-size: 0.9rem;
+  color: #5c6d66;
+  text-align: center;
+  line-height: 1.45;
+}
+
+.redefinir-palavra-passe__success {
+  margin-top: 24px;
+  width: 100%;
+  text-align: center;
+}
+
+.redefinir-palavra-passe__success p {
+  margin: 0 0 20px;
+  color: #1a2e28;
+  line-height: 1.5;
+}

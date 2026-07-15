@@ -102,12 +102,12 @@
   line-height: 1;
 }
 
-.cliente-card__btn--location {
+.cliente-card__btn--details {
   background: #e5e9e8;
   color: #40534c;
 }
 
-.cliente-card__btn--location:hover {
+.cliente-card__btn--details:hover {
   filter: brightness(0.97);
 }
 

@@ -1,0 +1,66 @@
+{
+  "kind": "collectionType",
+  "collectionName": "tickets",
+  "info": {
+    "singularName": "ticket",
+    "pluralName": "tickets",
+    "displayName": "Ticket",
+    "description": "Pedidos de suporte dos clientes"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "ref": {
+      "type": "uid",
+      "targetField": "assunto"
+    },
+    "assunto": {
+      "type": "string",
+      "required": true
+    },
+    "mensagem": {
+      "type": "text",
+      "required": true
+    },
+    "estado": {
+      "type": "enumeration",
+      "enum": ["aberto", "respondido", "fechado"],
+      "default": "aberto",
+      "required": true
+    },
+    "prioridade": {
+      "type": "enumeration",
+      "enum": ["alta", "media", "baixa", "na"],
+      "default": "na"
+    },
+    "dataAbertura": {
+      "type": "datetime",
+      "required": true
+    },
+    "dataFecho": {
+      "type": "datetime"
+    },
+    "cliente": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "localizacao": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::localizacao.localizacao"
+    },
+    "contentor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::contentor.contentor"
+    },
+    "respostas": {
+      "type": "component",
+      "repeatable": true,
+      "component": "ticket.resposta"
+    }
+  }
+}
