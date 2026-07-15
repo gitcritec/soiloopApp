@@ -1,5 +1,18 @@
-import { STRAPI_JWT_STORAGE_KEY, ensureStoredStrapiUserRefs, getStoredStrapiUserId, getStoredStrapiUserRefs } from './strapiAuth.js'
-import { applyStrapiContentorAfterEntrega, applyStrapiContentorAfterRecolha, fetchStrapiContentorByCid, fetchStrapiClienteContentores, mapContentorToClienteCard } from './strapiContentores.js'
+import { STRAPI_JWT_STORAGE_KEY, fetchStrapiCurrentUser, ensureStoredStrapiUserRefs, getStoredStrapiUserId, getStoredStrapiUserRefs } from './strapiAuth.js'
+import {
+  applyStrapiContentorAfterEntrega,
+  applyStrapiContentorAfterRecolha,
+  CONTENTOR_SITUACAO_ARMAZEM,
+  CONTENTOR_SITUACAO_CLIENTE,
+  fetchStrapiContentorByCid,
+  fetchStrapiClienteContentores,
+  fetchStrapiContentores,
+  fetchStrapiContentoresByClienteAtual,
+  mapContentorItemToInstalledCard,
+  mapContentorToClienteCard,
+  reserveStrapiContentorParaEntrega,
+  updateStrapiContentorSituacao,
+} from './strapiContentores.js'
 import { normalizePeriodoForStrapi } from './movimentoPeriodo.js'
 
 const MOVIMENTO_ESTADO_AGENDADO = 'agendado'
@@ -119,9 +132,6 @@ function pickUserDisplayName(userEntity) {
     null
   )
 }
-    null
-  )
-}
 
 function pickClienteNameFromMovimento(attrs) {
   const fromCliente = pickUserDisplayName(attrs?.cliente)
@@ -228,7 +238,6 @@ function movimentoBelongsToOtherCliente(item, currentClienteIds) {
   const refs = [item.clienteId, item.clienteDocumentId].filter(Boolean).map(String)
   if (refs.length === 0) return false
   return !refs.some((ref) => currentClienteIds.has(ref))
-}
 }
 
 const LOCALIZACAO_MORADA_KEYS = ['morada', 'endereco', 'localizacao', 'descricao', 'titulo', 'title']
@@ -961,7 +970,6 @@ function getTodayStartSortValue() {
   const now = new Date()
   return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
 }
-}
 
 function getTodayEndSortValue() {
   const now = new Date()
@@ -1020,8 +1028,8 @@ function coerceMovimentoRow(row, fallback = {}) {
   const localizacaoDisplay = pickLocalizacaoDisplay(localizacaoEntity, contentor)
   const { lat: localizacaoLat, lng: localizacaoLng } = pickLocalizacaoCoords(localizacaoEntity)
   const localizacaoId = pickRelationId(localizacaoEntity)
-  const { clienteId, clienteDocumentId } = pickClienteRelationRefs(attrs.cliente)
-  const { operadorId, operadorDocumentId } = pickOperadorRelationRefs(attrs.operador ?? row.operador)
+  const { clienteId: relationClienteId, clienteDocumentId } = pickClienteRelationRefs(attrs.cliente)
+  const { operadorId: relationOperadorId, operadorDocumentId } = pickOperadorRelationRefs(attrs.operador ?? row.operador)
   const clienteLabel = pickMovimentoClienteLabel(attrs, row, contentor) ?? ''
   const movimentoKey =
     pickString(attrs.documentId ?? row.documentId ?? attrs.id ?? row.id) ??
@@ -1043,9 +1051,9 @@ function coerceMovimentoRow(row, fallback = {}) {
     localizacaoDisplay.location ?? fallback.locationDetail ?? fallback.location ?? null
   const clientName =
     pickClienteNameFromMovimento(attrs) ?? pickString(fallback.clientName) ?? null
-  const clienteId = pickClienteIdFromMovimento(attrs) ?? fallback.clienteId ?? null
+  const clienteId = relationClienteId ?? pickClienteIdFromMovimento(attrs) ?? fallback.clienteId ?? null
   const clienteIdAliases = pickClienteIdAliasesFromMovimento(attrs)
-  const operadorId = pickRelationId(attrs.operador) ?? fallback.operadorId ?? null
+  const operadorId = relationOperadorId ?? pickRelationId(attrs.operador) ?? fallback.operadorId ?? null
   const operadorName =
     pickString(operador?.username) ?? pickString(operador?.email) ?? fallback.operadorName ?? null
   const ordemOperadorRaw = attrs.ordemOperador ?? fallback.ordemOperador
@@ -1088,9 +1096,7 @@ function coerceMovimentoRow(row, fallback = {}) {
     lat: localizacaoLat ?? fallback.lat ?? null,
     lng: localizacaoLng ?? fallback.lng ?? null,
     localizacaoId: localizacaoId ?? fallback.localizacaoId,
-    clienteId: clienteId ?? fallback.clienteId,
     clienteDocumentId: clienteDocumentId ?? fallback.clienteDocumentId,
-    operadorId: operadorId ?? fallback.operadorId,
     operadorDocumentId: operadorDocumentId ?? fallback.operadorDocumentId,
     clienteLabel,
     periodo: normalizePeriodoForStrapi(periodo) || periodo || fallback.periodo,
@@ -1117,10 +1123,8 @@ function coerceMovimentoRow(row, fallback = {}) {
     fotografias: fotografias.length > 0 ? fotografias : fallback.fotografias ?? [],
     estado,
     estadoKey: normalizeEstadoKey(estado),
-    ordemOperador: Number.isFinite(Number(attrs.ordemOperador))
-      ? Number(attrs.ordemOperador)
-      : fallback.ordemOperador ?? Number.POSITIVE_INFINITY,
     dateSortValue: getDateSortValue(effectiveData),
+    historicoSortValue,
     dataIso: pickDataIso(effectiveData),
     historicoScheduledAt:
       pickHistoricoScheduledAt(attrs, date, periodo) || fallback.historicoScheduledAt || '',
@@ -1638,7 +1642,6 @@ export async function fetchStrapiClienteMovimentosHistorico(fallbackRows = []) {
 }
 
 /**
-/**
  * Recolhas pendentes do cliente indexadas por CID do contentor.
  * @returns {Promise<Map<string, ReturnType<typeof coerceMovimentoRow>>>}
  */
@@ -1691,7 +1694,6 @@ async function fetchStrapiClientePendingRecolhasByContentor() {
 /**
  * Lista contentores do cliente a partir da entidade Contentor (`clienteAtual`, `situacao`).
  * Enriquece com recolhas pendentes dos movimentos (estado «Em recolha»).
- */
  * @param {Array<object>} [fallbackRows]
  */
 export async function fetchStrapiClienteContentoresInstalados(fallbackRows = []) {
@@ -1724,6 +1726,224 @@ export async function fetchStrapiClienteContentoresInstalados(fallbackRows = [])
     )
     .filter(Boolean)
     .sort((a, b) => a.id.localeCompare(b.id, 'pt'))
+}
+
+function groupMovimentosByContentor(rows, fallbackRows = []) {
+  const grouped = new Map()
+  rows
+    .map((row, index) => coerceMovimentoRow(row, fallbackRows[index]))
+    .filter(Boolean)
+    .forEach((item) => {
+      const key = item.contentorId ?? item.id
+      if (!key) return
+      const current = grouped.get(key) ?? []
+      current.push(item)
+      grouped.set(key, current)
+    })
+  return grouped
+}
+
+async function fetchMovimentosRowsForDisponibilidade(base) {
+  const attempts = [
+    createEstadoMovimentosParams('pedido', true),
+    createEstadoMovimentosParams('Pedido', true),
+    createEstadoMovimentosParams('agendado', true),
+    createEstadoMovimentosParams('Agendado', true),
+    createAllMovimentosParams(true),
+  ]
+
+  for (const params of attempts) {
+    try {
+      const rows = await fetchMovimentosRows(base, params)
+      if (rows.length > 0) return rows
+    } catch {
+      /* tentar próximo */
+    }
+  }
+  return []
+}
+
+function collectContentoresCidsIndisponiveisParaEntrega(rows) {
+  const grouped = groupMovimentosByContentor(rows)
+  const reservados = new Set()
+
+  for (const row of rows) {
+    const item = coerceMovimentoRow(row)
+    if (!item) continue
+    if (item.taskType === 'entregar' && isEstadoPedidoVisivel(item.estado)) {
+      const entregaCid = pickString(item.contentorId)
+      if (entregaCid) reservados.add(entregaCid)
+    }
+  }
+
+  const instalados = new Set()
+  for (const items of grouped.values()) {
+    const card = createContentorCardFromMovimentos(items, {}, getStoredStrapiUserRefs())
+    const cid = pickString(card?.contentorId ?? card?.id)
+    if (cid) instalados.add(cid)
+  }
+
+  return new Set([...reservados, ...instalados])
+}
+
+async function fetchStrapiContentoresCidsIndisponiveisParaEntrega() {
+  const base = strapiBaseUrl()
+  if (!base) return new Set()
+
+  try {
+    const [rows, allContentores] = await Promise.all([
+      fetchMovimentosRowsForDisponibilidade(base),
+      fetchStrapiContentores(),
+    ])
+    const cids = rows.length > 0 ? collectContentoresCidsIndisponiveisParaEntrega(rows) : new Set()
+    for (const item of allContentores) {
+      if (item.situacao === 'cliente' || item.clienteAtualId) {
+        cids.add(String(item.cid))
+      }
+    }
+    return cids
+  } catch {
+    return new Set()
+  }
+}
+
+function filterContentoresDisponiveisParaEntrega(all, indisponiveisCids) {
+  return all.filter(
+    (item) =>
+      item.estado !== 'danificado' &&
+      item.situacao !== 'cliente' &&
+      !item.clienteAtualId &&
+      !indisponiveisCids.has(String(item.cid)),
+  )
+}
+
+/**
+ * Contentores disponíveis para entrega (troca/entrega simples).
+ * Prioriza a mesma capacidade; se não houver, devolve todos os disponíveis.
+ * @param {string} [capacidadeId]
+ * @returns {Promise<{ contentores: object[], semContentoresMesmaCapacidade: boolean }>}
+ */
+export async function fetchStrapiContentoresParaEntrega(capacidadeId) {
+  const capacidadeRef = pickString(capacidadeId)
+  const [all, indisponiveisCids] = await Promise.all([
+    fetchStrapiContentores(),
+    fetchStrapiContentoresCidsIndisponiveisParaEntrega(),
+  ])
+
+  const disponiveis = filterContentoresDisponiveisParaEntrega(all, indisponiveisCids)
+
+  if (!capacidadeRef) {
+    return { contentores: disponiveis, semContentoresMesmaCapacidade: false }
+  }
+
+  const mesmaCapacidade = disponiveis.filter(
+    (item) => String(item.capacidadeId) === String(capacidadeRef),
+  )
+
+  if (mesmaCapacidade.length > 0) {
+    return { contentores: mesmaCapacidade, semContentoresMesmaCapacidade: false }
+  }
+
+  return { contentores: disponiveis, semContentoresMesmaCapacidade: true }
+}
+
+/**
+ * Cartões de contentores instalados (todos os clientes).
+ * @returns {Promise<object[]>}
+ */
+export async function fetchStrapiContentoresInstaladosCards() {
+  try {
+    const all = await fetchStrapiContentores()
+    return all
+      .filter((item) => item.situacao === 'cliente' || item.clienteAtualId)
+      .map((item) => mapContentorItemToInstalledCard(item))
+      .sort((a, b) => String(a.id).localeCompare(String(b.id), 'pt'))
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Número de contentores instalados por cliente (user id).
+ * @param {Array<import('./strapiClientes.js').ClienteItem>} [clientes]
+ * @returns {Promise<Map<string, number>>}
+ */
+export async function fetchStrapiContentorCountsByClienteId(clientes = []) {
+  const [cards, allContentores] = await Promise.all([
+    fetchStrapiContentoresInstaladosCards(),
+    fetchStrapiContentores(),
+  ])
+  const counts = new Map()
+
+  for (const cliente of clientes) {
+    const clientRef = pickString(cliente?.id)
+    if (!clientRef) continue
+
+    const movimentoCards = cards.filter((card) => movimentoCardBelongsToCliente(card, cliente))
+    const labels = buildClienteLocalizacaoLabels(cliente)
+    const localizacaoCards =
+      labels.size > 0
+        ? allContentores.filter((item) => {
+            const loc = pickString(item.localizacaoAtualMorada ?? item.localizacao)
+            return loc && labels.has(loc.toLowerCase())
+          })
+        : []
+
+    const uniqueCids = new Set([
+      ...movimentoCards.map((card) => String(card.id)),
+      ...localizacaoCards.map((item) => String(item.cid)),
+    ])
+
+    for (const alias of cliente.idAliases ?? []) {
+      const aliasRef = pickString(alias)
+      if (aliasRef && aliasRef !== clientRef) {
+        counts.set(aliasRef, uniqueCids.size)
+      }
+    }
+    counts.set(String(cliente.id), uniqueCids.size)
+    if (cliente.documentId) counts.set(String(cliente.documentId), uniqueCids.size)
+  }
+
+  return counts
+}
+
+/**
+ * Contentores instalados num cliente específico (admin).
+ * @param {import('./strapiClientes.js').ClienteItem} cliente
+ * @returns {Promise<object[]>}
+ */
+export async function fetchStrapiClienteContentoresInstaladosPorCliente(cliente) {
+  if (!cliente) return []
+
+  const refs = [
+    ...new Set(
+      [cliente.id, cliente.documentId, ...(cliente.idAliases ?? [])]
+        .map((value) => pickString(value))
+        .filter(Boolean),
+    ),
+  ]
+
+  const byCid = new Map()
+
+  for (const ref of refs) {
+    try {
+      const items = await fetchStrapiContentoresByClienteAtual(ref, refs)
+      for (const item of items) {
+        byCid.set(item.cid, mapContentorItemToInstalledCard(item, cliente))
+      }
+    } catch {
+      /* tentar próximo alias */
+    }
+  }
+
+  if (byCid.size > 0) {
+    return [...byCid.values()].sort((a, b) => String(a.id).localeCompare(String(b.id), 'pt'))
+  }
+
+  const cards = await fetchStrapiContentoresInstaladosCards()
+  return cards
+    .filter((card) => movimentoCardBelongsToCliente(card, cliente))
+    .sort((a, b) => String(a.id).localeCompare(String(b.id), 'pt'))
 }
 
 function resolveRelationRef(ref) {
@@ -1977,7 +2197,7 @@ export async function createStrapiClienteSolicitacaoRecolha(payload) {
   }
 }
 
-async function fetchStrapiMovimentoByKey(movimentoKey) {
+export async function fetchStrapiMovimentoByKey(movimentoKey) {
   const key = pickString(movimentoKey)
   if (!key) return null
 
@@ -1988,6 +2208,11 @@ async function fetchStrapiMovimentoByKey(movimentoKey) {
     () => {
       const params = new URLSearchParams()
       addMovimentosDeepPopulateParams(params)
+      return params
+    },
+    () => {
+      const params = new URLSearchParams()
+      addMovimentoRelationsPopulate(params)
       return params
     },
     () => {
@@ -2377,29 +2602,6 @@ export function resolveOperadorRecolhaContentorIdFromCard(card) {
   }
 
   return ''
-}
-
-/**
- * @param {string} movimentoKey
- */
-export async function fetchStrapiMovimentoByKey(movimentoKey) {
-  const key = pickString(movimentoKey)
-  if (!key) return null
-
-  const base = strapiBaseUrl()
-  if (!base) return null
-
-  const params = new URLSearchParams()
-  addMovimentoRelationsPopulate(params)
-
-  const res = await fetch(`${base}/api/movimentos/${encodeURIComponent(key)}?${params.toString()}`, {
-    headers: authHeaders(),
-  })
-  if (!res.ok) return null
-
-  const json = await res.json()
-  const row = json?.data ?? json
-  return coerceMovimentoRow(row)
 }
 
 function pickMovimentoClienteRef(movimento, contentor = null) {

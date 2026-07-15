@@ -75,9 +75,11 @@ export default function Operador({ onLogout }) {
   const [dashboardLoading, setDashboardLoading] = useState(true)
   const [dashboardError, setDashboardError] = useState(false)
   const [operatorStats, setOperatorStats] = useState(MOCK_OPERATOR_STATS)
+  const [showPerfil, setShowPerfil] = useState(() => readIsProfileSection('operador'))
 
   const syncOperadorRouteFromHash = useCallback(() => {
     setNavActiveId(readOperadorNavId())
+    setShowPerfil(readIsProfileSection('operador'))
     const routeScreen = readOperadorScreen()
     setScreen((current) => {
       if (routeScreen === 'processar') return 'processar'
@@ -97,6 +99,7 @@ export default function Operador({ onLogout }) {
 
   const selectNav = useCallback((id) => {
     setNavActiveId(id)
+    setShowPerfil(false)
     setScreen('dashboard')
     setAppHash('operador', id)
   }, [])
@@ -419,7 +422,6 @@ export default function Operador({ onLogout }) {
     else if (actionId === 'recolhas') selectNav('dashboard')
     else if (actionId === 'perfil') {
       setShowPerfil(true)
-      setShowProcessarFab(false)
       setAppHash('operador', 'perfil')
     }
   }
@@ -552,11 +554,11 @@ export default function Operador({ onLogout }) {
           activityLabel="Serviços"
         />
           </>
-// (nothing to insert — resolved merge conflict)
+        )}
       </main>
       ) : null}
 
-      {isDashboardScreen ? (
+      {isDashboardScreen && readOperadorShowProcessarButton() && !showPerfil ? (
         <FloatingPrimaryButton
           variant="operador"
           label="Processar"

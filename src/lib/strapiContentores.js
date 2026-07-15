@@ -393,15 +393,6 @@ function extractCapacidadeId(capacidade) {
   return extractRelationId(capacidade)
 }
 
-function unwrapEntity(entity) {
-  if (!entity || typeof entity !== 'object') return null
-  const data = entity.data
-  if (data && typeof data === 'object' && !Array.isArray(data)) {
-    return { ...data, ...(data.attributes ?? {}) }
-  }
-  return { ...entity, ...(entity.attributes ?? {}) }
-}
-
 function pickRelationId(entity) {
   const unwrapped = unwrapEntity(entity)
   if (!unwrapped) return null
@@ -494,14 +485,6 @@ function belongsToCurrentUser(userId, userDocumentId, currentUserRefs) {
   return refs.some((ref) => currentUserRefs.has(ref))
 }
 
-function appendContentorPopulateParams(params) {
-  params.set('populate[capacidade]', 'true')
-  params.set('populate[qrcode]', 'true')
-  params.set('populate[localizacaoAtual]', 'true')
-  params.set('populate[clienteAtual]', 'true')
-  return params
-}
-
 /**
  * @param {unknown} row
  * @returns {import('./strapiContentores.js').ContentorItem|null}
@@ -520,7 +503,7 @@ function coerceContentorRow(row) {
   const estadoRaw = pickString(attrs.estado ?? row.estado)
   const estado = normalizeContentorEstado(estadoRaw)
   const situacaoRaw = pickString(attrs.situacao ?? row.situacao)
-  const situacao = normalizeContentorEstado(situacaoRaw)
+  const situacao = normalizeContentorSituacao(situacaoRaw)
   const dataRaw = attrs.data ?? row.data
   const capacidadeRaw = attrs.capacidade ?? row.capacidade
   const capacidadeId = extractCapacidadeId(capacidadeRaw)
@@ -534,14 +517,24 @@ function coerceContentorRow(row) {
   const localizacaoAtualEntity = unwrapEntity(localizacaoAtualRaw)
   const localizacaoAtualLat = pickNumberField(localizacaoAtualEntity?.lat)
   const localizacaoAtualLng = pickNumberField(localizacaoAtualEntity?.lng)
+  const localizacaoAtualLabel =
+    localizacaoAtualDisplay.locationDetail ?? localizacaoAtualDisplay.location ?? '—'
+  const { lat, lng } = pickCoordsFromLocalizacao(localizacaoAtualRaw)
+  const displayLocalizacao = pickContentorDisplayLocalizacao({
+    localizacaoAtualLabel,
+    localizacaoText: localizacao,
+    situacao,
+  })
   const clienteAtualLabel = pickUserDisplayName(clienteAtualRaw)
+  const clienteAtualNome = pickClienteAtualName(clienteAtualRaw) || clienteAtualLabel
 
   if (!cid && id == null) return null
 
   return {
     id: id != null ? String(id) : cid ?? '',
     cid: cid ?? '—',
-    localizacao: localizacao ?? localizacaoAtualDisplay.location ?? '—',
+    localizacao: displayLocalizacao,
+    localizacaoAtualLabel,
     localizacaoAtualId: localizacaoAtualId ?? '',
     localizacaoAtualMorada: localizacaoAtualDisplay.locationDetail ?? localizacaoAtualDisplay.location ?? '',
     locationPrefix: localizacaoAtualDisplay.locationPrefix,
@@ -549,10 +542,13 @@ function coerceContentorRow(row) {
     clienteAtualId: clienteAtualId ?? '',
     clienteAtualDocumentId: clienteAtualDocumentId ?? '',
     clienteAtualLabel,
+    clienteAtualNome,
     localizacaoAtualLat,
     localizacaoAtualLng,
+    lat,
+    lng,
     situacao,
-    situacaoLabel: situacaoRaw ?? '',
+    situacaoLabel: situacaoRaw ?? '—',
     numeroEgar: numeroEgar ?? '',
     qrcodeUrl: qrcodeUrl ?? '',
     estado,
@@ -577,6 +573,10 @@ function coerceContentorRow(row) {
  * @property {string} clienteAtualId
  * @property {string} clienteAtualDocumentId
  * @property {string} clienteAtualLabel
+ * @property {string} clienteAtualNome
+ * @property {string} localizacaoAtualLabel
+ * @property {number|null} lat
+ * @property {number|null} lng
  * @property {number|null} localizacaoAtualLat
  * @property {number|null} localizacaoAtualLng
  * @property {string|null} situacao
@@ -600,7 +600,6 @@ function appendContentorPopulateParams(params) {
   return params
 }
 
-/**
 /**
  * @typedef {object} ClienteContentorCardItem
  * @property {string} id CID do contentor
@@ -781,8 +780,6 @@ export async function fetchStrapiClienteContentores() {
  * Lista contentores com capacidade populada.
  * @returns {Promise<ContentorItem[]>}
  */
- * @returns {Promise<ContentorItem[]>}
- */
 export async function fetchStrapiContentores() {
   const base = strapiBaseUrl()
   if (!base) return []
@@ -816,7 +813,6 @@ export async function fetchStrapiContentorByCid(cid) {
 
   const params = appendContentorPopulateParams(new URLSearchParams())
   params.set('filters[CID][$eq]', code)
-// (resolved - no extra call, already called above)
   params.set('pagination[pageSize]', '1')
 
   const url = `${base}/api/contentores?${params.toString()}`
@@ -1544,5 +1540,4 @@ export async function applyStrapiContentorAfterRecolha(documentId, payload = {})
     }
   }
   throw lastError ?? new Error('Não foi possível atualizar o contentor após a recolha.')
-}
 }

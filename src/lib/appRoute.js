@@ -330,6 +330,15 @@ export function readOperadorScreen() {
   return readOperadorProcessarOpen() ? 'processar' : 'dashboard'
 }
 
+/** @returns {boolean} Mostrar FAB «Processar» no dashboard do operador. */
+export function readOperadorShowProcessarButton() {
+  const parsed = parseAppHash()
+  if (parsed?.profile !== 'operador') return false
+  if (parsed.section === PROFILE_SECTION_ID) return false
+  if (parsed.section === 'processar') return false
+  return parsed.section === 'dashboard' || OPERADOR_NAV_IDS.includes(parsed.section)
+}
+
 /**
  * Alinha o hash da app ao perfil autenticado (evita operador preso em #/cliente/...).
  * @param {'admin'|'cliente'|'operador'} expectedProfile
@@ -347,5 +356,4 @@ export function ensureAppHashProfile(expectedProfile) {
     return
   }
   setAppHash('admin', 'dashboard')
-}
 }
