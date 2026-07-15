@@ -1,0 +1,213 @@
+.operador-recolha-card {
+  display: grid;
+  grid-template-columns: 1fr 114px;
+  align-items: start;
+  gap: 12px;
+  width: 100%;
+  max-width: 353px;
+  margin: 0 auto;
+  padding: 8px 8px 8px 16px;
+  box-sizing: border-box;
+  background: #f9f8f9;
+  border-radius: 10px;
+}
+
+.operador-recolha-card__lead {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+.operador-recolha-card__bin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  flex-shrink: 0;
+}
+
+.operador-recolha-card__bin-icon {
+  width: 17px;
+  height: 24px;
+  color: currentColor;
+}
+
+.operador-recolha-card__body {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.operador-recolha-card__tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.operador-recolha-card__task-line {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 15px;
+  color: #060e0b;
+}
+
+.operador-recolha-card__task-type {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 15px;
+}
+
+.operador-recolha-card__task-type--recolher {
+  color: #1e8f2b;
+}
+
+.operador-recolha-card__task-type--entregar {
+  color: #1565c0;
+}
+
+.operador-recolha-card__task-id {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 15px;
+  color: #060e0b;
+}
+
+.operador-recolha-card__location {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  font-size: 12px;
+  line-height: 15px;
+}
+
+.operador-recolha-card__location-muted {
+  color: #40534c;
+}
+
+.operador-recolha-card__location-strong {
+  color: #060e0b;
+}
+
+.operador-recolha-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  line-height: 15px;
+}
+
+.operador-recolha-card__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 80px;
+  height: 20px;
+  padding: 0 8px 2px;
+  box-sizing: border-box;
+  border-radius: 5px;
+}
+
+.operador-recolha-card__badge-text {
+  font-size: 9px;
+  line-height: 15px;
+}
+
+.operador-recolha-card__badge-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.operador-recolha-card__date {
+  font-size: 9px;
+  line-height: 15px;
+}
+
+.operador-recolha-card__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  align-self: stretch;
+}
+
+.operador-recolha-card__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 53px;
+  height: 54px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.operador-recolha-card__btn-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+}
+
+.operador-recolha-card__btn--location {
+  background: #e5e9e8;
+  color: #40534c;
+}
+
+.operador-recolha-card__btn--process {
+  background: #15d67f;
+  color: #f9f8f9;
+}
+
+.operador-recolha-card--status-hoje .operador-recolha-card__bin,
+.operador-recolha-card--status-hoje .operador-recolha-card__meta {
+  color: #e6193c;
+}
+
+.operador-recolha-card--status-hoje .operador-recolha-card__badge {
+  background: #fbdae0;
+  color: #e6193c;
+}
+
+.operador-recolha-card--status-amanha .operador-recolha-card__bin,
+.operador-recolha-card--status-amanha .operador-recolha-card__meta {
+  color: #f1ba00;
+}
+
+.operador-recolha-card--status-amanha .operador-recolha-card__badge {
+  background: #fff6d6;
+  color: #f1ba00;
+}
+
+.operador-recolha-card--status-agendada .operador-recolha-card__bin,
+.operador-recolha-card--status-agendada .operador-recolha-card__meta {
+  color: #1e8f2b;
+}
+
+.operador-recolha-card--status-agendada .operador-recolha-card__badge {
+  background: #eeffce;
+  color: #1e8f2b;
+}
+
+.operador-recolha-card--status-atrasado .operador-recolha-card__bin,
+.operador-recolha-card--status-atrasado .operador-recolha-card__meta {
+  color: #9f1239;
+}
+
+.operador-recolha-card--status-atrasado .operador-recolha-card__badge {
+  background: #ffd6df;
+  color: #9f1239;
+}

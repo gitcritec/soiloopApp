@@ -13,6 +13,9 @@ export const CLIENTE_NAV_IDS = ['dashboard', 'recolhas', 'contentores', 'tickets
 /** IDs válidos da barra inferior operador. */
 export const OPERADOR_NAV_IDS = ['movimentos', 'dashboard', 'historico']
 
+/** Secções operador fora da barra inferior. */
+export const OPERADOR_SCREEN_IDS = ['processar', ...OPERADOR_NAV_IDS]
+
 /**
  * @returns {{ profile: 'admin'|'operador', section: string, sub: string|null, id: string|null }|null}
  */
@@ -317,8 +320,32 @@ export function readOperadorNavId() {
 }
 
 /** @returns {boolean} */
-export function readOperadorShowProcessarButton() {
+export function readOperadorProcessarOpen() {
   const parsed = parseAppHash()
-  if (parsed?.profile !== 'operador') return true
-  return parsed.section !== PROFILE_SECTION_ID
+  return parsed?.profile === 'operador' && parsed.section === 'processar'
+}
+
+/** @returns {'dashboard'|'processar'} */
+export function readOperadorScreen() {
+  return readOperadorProcessarOpen() ? 'processar' : 'dashboard'
+}
+
+/**
+ * Alinha o hash da app ao perfil autenticado (evita operador preso em #/cliente/...).
+ * @param {'admin'|'cliente'|'operador'} expectedProfile
+ */
+export function ensureAppHashProfile(expectedProfile) {
+  const parsed = parseAppHash()
+  if (parsed?.profile === expectedProfile) return
+
+  if (expectedProfile === 'operador') {
+    setAppHash('operador', 'dashboard')
+    return
+  }
+  if (expectedProfile === 'cliente') {
+    setAppHash('cliente', 'dashboard')
+    return
+  }
+  setAppHash('admin', 'dashboard')
+}
 }

@@ -1,12 +1,10 @@
 import { faChevronDown, faXmark } from '@fortawesome/pro-light-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { MOVIMENTO_PERIODO_OPTIONS } from '../../../../lib/movimentoPeriodo.js'
 import '../SolicitarRecolha/SolicitarRecolha.css'
 
-const PERIODOS = [
-  { value: 'manha', label: 'manhã' },
-  { value: 'tarde', label: 'tarde' },
-]
+const PERIODOS = MOVIMENTO_PERIODO_OPTIONS
 
 function formatLocalizacao(item) {
   if (!item) return ''
@@ -195,10 +193,10 @@ export default function EditarPedido({
                       disabled={!hasMovimento}
                       required
                       tabIndex={isOpen ? 0 : -1}
-                      aria-label="Período"
+                      aria-label="Preferência de horário"
                     >
                       <option value="" disabled>
-                        Período*
+                        Preferência de horário*
                       </option>
                       {PERIODOS.map((periodo) => (
                         <option key={periodo.value} value={periodo.value}>

@@ -135,6 +135,7 @@
 }
 
 .collection-card__date,
+.collection-card__time,
 .collection-card__period {
   font-size: 9px;
   line-height: 15px;
@@ -242,8 +243,8 @@
 }
 
 .collection-card--status-finalizado .collection-card__badge {
-  background: #40534c;
-  color: #f9f8f9;
+  background: #e5e9e8;
+  color: #40534c;
 }
 
 .collection-card--status-finalizado .collection-card__badge-icon {
@@ -258,4 +259,9 @@
 .collection-card__meta .collection-card__task-type--entregar {
   color: #ed6f1f;
   background: #ffe7d8;
+}
+
+.collection-card__meta .collection-card__task-type--trocar {
+  color: #7c3aed;
+  background: #ede9fe;
 }

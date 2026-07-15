@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faBell,
@@ -6,17 +6,14 @@ import {
   faClipboardList,
   faComments,
   faHouseChimney,
-  faLocationDot,
   faPowerOff,
   faRecycle,
-  faPlus,
   faClock,
   faUser,
 } from '@fortawesome/pro-light-svg-icons'
 import logoSoiloop from '../../../assets/figma-operador/logo-soiloop.png'
 import './Cliente.css'
 import PageHeader from '../../../components/PageHeader/PageHeader.jsx'
-import FloatingPrimaryButton from '../../../components/FloatingPrimaryButton/FloatingPrimaryButton.jsx'
 import SectionTitleWithIcon from '../../../components/SectionTitleWithIcon/SectionTitleWithIcon.jsx'
 import CollectionCard from '../../../components/CollectionCard/CollectionCard.jsx'
 import BottomNav from '../../../components/BottomNav/BottomNav.jsx'
@@ -25,6 +22,8 @@ import OperatorDrawerMenu from '../../../components/OperatorDrawerMenu/OperatorD
 import LocationMapModal from '../../../components/LocationMapModal/LocationMapModal.jsx'
 import { IconContentor } from '../../../components/icons/icons.jsx'
 import Tickets from './Tickets/Tickets.jsx'
+import Contentores from './Contentores/Contentores.jsx'
+import Recolhas from './Recolhas/Recolhas.jsx'
 import {
   readClienteNavId,
   readClienteShowCriarTicketButton,
@@ -35,7 +34,9 @@ import { formatLocationQuery } from '../../../lib/locationQuery.js'
 import {
   canDeleteMovimentoCliente,
   canEditMovimentoCliente,
+  collapseMovimentosPedidoCards,
   createStrapiClienteSolicitacaoRecolha,
+  createStrapiClienteSolicitacaoContentor,
   deleteStrapiMovimentosBatch,
   fetchStrapiClienteContentoresInstalados,
   fetchStrapiClienteMovimentosAgendados,
@@ -43,6 +44,7 @@ import {
   updateStrapiMovimentosBatch,
 } from '../../../lib/strapiMovimentos.js'
 import SolicitarRecolha from './SolicitarRecolha/SolicitarRecolha.jsx'
+import SolicitarContentor from './SolicitarContentor/SolicitarContentor.jsx'
 import EditarPedido from './EditarPedido/EditarPedido.jsx'
 import ApagarPedido from './ApagarPedido/ApagarPedido.jsx'
 import HistoricoPedidos from './HistoricoPedidos/HistoricoPedidos.jsx'
@@ -79,55 +81,6 @@ const CLIENT_DRAWER_SECONDARY_ITEMS = [
   { id: 'sair', label: 'Sair', icon: faPowerOff, isLogout: true },
 ]
 
-function ClienteContentorCard({ item, onLocationClick, onRequestPickup }) {
-  const estadoLabel = item.estadoLabel ?? 'Reutilizável'
-  const estadoKey = estadoLabel.toLowerCase().includes('recolha') ? 'em-recolha' : 'reutilizavel'
-  const localizacao = [item.locationPrefix, item.locationDetail].filter(Boolean).join(' ')
-  const canRequestPickup = item.canRequestPickup !== false
-
-  return (
-    <article className="cliente-contentor-card">
-      <div className="cliente-contentor-card__icon-col">
-        <IconContentor className="cliente-contentor-card__icon" />
-      </div>
-
-      <div className="cliente-contentor-card__body">
-        <p className="cliente-contentor-card__id">{item.id}</p>
-        <p className="cliente-contentor-card__specs">
-          <span>{item.qrCode ?? item.id}</span>{' '}
-          <strong>{item.litrosLabel ?? item.scheduledAt}</strong>
-        </p>
-        <p className="cliente-contentor-card__location">{localizacao}</p>
-      </div>
-
-      <span className={`cliente-contentor-card__badge cliente-contentor-card__badge--${estadoKey}`}>
-        {estadoLabel}
-      </span>
-
-      <div className="cliente-contentor-card__actions">
-        <button
-          type="button"
-          className="cliente-contentor-card__btn cliente-contentor-card__btn--location"
-          aria-label="Ver localização"
-          onClick={onLocationClick}
-        >
-          <FontAwesomeIcon icon={faLocationDot} aria-hidden />
-        </button>
-        {canRequestPickup ? (
-          <button
-            type="button"
-            className="cliente-contentor-card__btn cliente-contentor-card__btn--recycle"
-            aria-label="Solicitar recolha"
-            onClick={onRequestPickup}
-          >
-            <FontAwesomeIcon icon={faRecycle} aria-hidden />
-          </button>
-        ) : null}
-      </div>
-    </article>
-  )
-}
-
 export default function Cliente({
   onLogout,
   userName = MOCK_CLIENT_NAME,
@@ -147,6 +100,7 @@ export default function Cliente({
   const [clientContainersLoading, setClientContainersLoading] = useState(true)
   const [clientContainersError, setClientContainersError] = useState(false)
   const [recolhaContext, setRecolhaContext] = useState(null)
+  const [solicitarContentorOpen, setSolicitarContentorOpen] = useState(false)
   const [editPedidoContext, setEditPedidoContext] = useState(null)
   const [deletePedidoContext, setDeletePedidoContext] = useState(null)
 
@@ -213,7 +167,6 @@ export default function Cliente({
     setShowPerfil(false)
     setNavActiveId(id)
     setAppHash('cliente', id)
-    setShowCriarTicket(readClienteShowCriarTicketButton())
   }, [])
 
   function handleDrawerNavigate(actionId) {
@@ -232,11 +185,18 @@ export default function Cliente({
   function openCriarTicket() {
     setNavActiveId('tickets')
     setAppHash('cliente', 'tickets', 'criar')
-    setShowCriarTicket(false)
   }
 
   function openSolicitarRecolha(item) {
     setRecolhaContext(item)
+  }
+
+  function openSolicitarContentor() {
+    setSolicitarContentorOpen(true)
+  }
+
+  function closeSolicitarContentor() {
+    setSolicitarContentorOpen(false)
   }
 
   function closeSolicitarRecolha() {
@@ -305,12 +265,17 @@ export default function Cliente({
   }
 
   function openCollectionLocation(item) {
-    const query = formatLocationQuery(item)
+    const locationLabel = item.locationDetail || item.location || ''
+    const query = formatLocationQuery({
+      location: locationLabel,
+      lat: item.lat,
+      lng: item.lng,
+    })
     if (!query) return
     setLocationMap({
       query,
-      title: item.id,
-      subtitle: query,
+      title: item.clienteLabel || userName,
+      subtitle: locationLabel || query,
     })
   }
 
@@ -320,11 +285,20 @@ export default function Cliente({
     reloadClientDashboardData()
   }
 
+  async function handleSolicitarContentorSubmit(payload) {
+    await createStrapiClienteSolicitacaoContentor(payload)
+    closeSolicitarContentor()
+    reloadClientDashboardData()
+  }
+
   const drawerRoleLabel =
     typeof userRole === 'string' && userRole.trim() ? userRole.trim() : 'Cliente'
 
-  const shouldShowRequests = navActiveId === 'dashboard' || navActiveId === 'recolhas'
-  const shouldShowContainers = navActiveId === 'dashboard' || navActiveId === 'contentores'
+  const shouldShowRequests = navActiveId === 'dashboard'
+  const displayClientRequests = useMemo(
+    () => collapseMovimentosPedidoCards(clientRequests),
+    [clientRequests],
+  )
 
   function renderMain() {
     if (showPerfil) {
@@ -332,6 +306,31 @@ export default function Cliente({
     }
     if (navActiveId === 'tickets') return <Tickets />
     if (navActiveId === 'historico') return <HistoricoPedidos />
+    if (navActiveId === 'recolhas') {
+      return (
+        <Recolhas
+          items={clientRequests}
+          loading={clientRequestsLoading}
+          loadError={clientRequestsError}
+          onEditPedido={openEditPedido}
+          onDeletePedido={openDeletePedido}
+          onVerHistorico={() => selectNav('historico')}
+        />
+      )
+    }
+    if (navActiveId === 'contentores') {
+      return (
+        <Contentores
+          variant="page"
+          items={clientContainers}
+          loading={clientContainersLoading}
+          loadError={clientContainersError}
+          onLocationClick={openCollectionLocation}
+          onRequestPickup={openSolicitarRecolha}
+          onAddContentor={openSolicitarContentor}
+        />
+      )
+    }
 
     return (
       <>
@@ -353,17 +352,19 @@ export default function Cliente({
                   Não foi possível carregar os pedidos.
                 </p>
               ) : null}
-              {!clientRequestsLoading && !clientRequestsError && clientRequests.length === 0 ? (
+              {!clientRequestsLoading && !clientRequestsError && displayClientRequests.length === 0 ? (
                 <p className="cliente-dashboard__state">Não existem pedidos.</p>
               ) : null}
               {!clientRequestsLoading && !clientRequestsError
-                ? clientRequests.map((item) => (
+                ? displayClientRequests.map((item) => (
                     <CollectionCard
-                      key={item.movimentoKey ?? `${item.id}-${item.taskType}-${item.scheduledAt}`}
-                      collectionId={item.id}
-                      location={item.location}
-                      locationPrefix={item.locationPrefix}
-                      locationDetail={item.locationDetail}
+                      key={
+                        item.pedidoDisplayMode === 'trocar'
+                          ? `trocar-${item.pedidoGroupKey}`
+                          : item.movimentoKey ?? `${item.id}-${item.taskType}-${item.scheduledAt}`
+                      }
+                      collectionId={item.pedidoGroupContentorId ?? item.id}
+                      location={item.locationDetail || item.location || ''}
                       status={item.status}
                       scheduledAt={item.scheduledAt}
                       binNumber={item.binNumber}
@@ -381,38 +382,15 @@ export default function Cliente({
           </section>
         ) : null}
 
-        {shouldShowContainers ? (
-          <section className="cliente-dashboard__section" aria-labelledby="cliente-sec-contentores">
-            <SectionTitleWithIcon
-              id="cliente-sec-contentores"
-              title="Meu Contentores"
-              icon={<IconContentor className="cliente-dashboard__section-contentor-icon" />}
-              iconSize="large"
-            />
-            <div className="cliente-dashboard__cards">
-              {clientContainersLoading ? (
-                <p className="cliente-dashboard__state">A carregar contentores…</p>
-              ) : null}
-              {!clientContainersLoading && clientContainersError ? (
-                <p className="cliente-dashboard__state" role="alert">
-                  Não foi possível carregar os contentores instalados.
-                </p>
-              ) : null}
-              {!clientContainersLoading && !clientContainersError && clientContainers.length === 0 ? (
-                <p className="cliente-dashboard__state">Não existem contentores instalados.</p>
-              ) : null}
-              {!clientContainersLoading && !clientContainersError
-                ? clientContainers.map((item) => (
-                    <ClienteContentorCard
-                      key={item.id}
-                      item={item}
-                      onLocationClick={() => openCollectionLocation(item)}
-                      onRequestPickup={() => openSolicitarRecolha(item)}
-                    />
-                  ))
-                : null}
-            </div>
-          </section>
+        {navActiveId === 'dashboard' ? (
+          <Contentores
+            variant="dashboard"
+            items={clientContainers}
+            loading={clientContainersLoading}
+            loadError={clientContainersError}
+            onLocationClick={openCollectionLocation}
+            onRequestPickup={openSolicitarRecolha}
+          />
         ) : null}
 
         {navActiveId === 'dashboard' ? (
@@ -421,6 +399,7 @@ export default function Cliente({
             recolhasAgendadas={MOCK_CLIENT_STATS.recolhasAgendadas}
             contentoresRecolhidos={MOCK_CLIENT_STATS.contentoresRecolhidos}
             kmPercorridos={MOCK_CLIENT_STATS.kmPercorridos}
+            contentoresLabel="recolhidos"
           />
         ) : null}
       </>
@@ -464,19 +443,12 @@ export default function Cliente({
       <main
         className={`cliente-dashboard__main${
           navActiveId === 'tickets' ? ' cliente-dashboard__main--tickets' : ''
-        }${navActiveId === 'historico' ? ' cliente-dashboard__main--historico' : ''}`}
+        }${navActiveId === 'recolhas' ? ' cliente-dashboard__main--recolhas' : ''}${
+          navActiveId === 'historico' ? ' cliente-dashboard__main--historico' : ''
+        }${navActiveId === 'contentores' ? ' cliente-dashboard__main--contentores' : ''}`}
       >
         {renderMain()}
       </main>
-
-      {showCriarTicket ? (
-        <FloatingPrimaryButton
-          variant="operador"
-          label="Criar Ticket"
-          onClick={openCriarTicket}
-          icon={<FontAwesomeIcon icon={faPlus} aria-hidden />}
-        />
-      ) : null}
 
       <BottomNav
         variant="operador"
@@ -490,6 +462,12 @@ export default function Cliente({
         containerItem={recolhaContext}
         onClose={closeSolicitarRecolha}
         onSubmit={handleSolicitarRecolhaSubmit}
+      />
+
+      <SolicitarContentor
+        isOpen={solicitarContentorOpen}
+        onClose={closeSolicitarContentor}
+        onSubmit={handleSolicitarContentorSubmit}
       />
 
       <EditarPedido

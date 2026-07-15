@@ -1,6 +1,7 @@
 import { faXmark } from '@fortawesome/pro-light-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useEffect, useState } from 'react'
+import { formatPeriodoLabel } from '../../../../lib/movimentoPeriodo.js'
 import '../SolicitarRecolha/SolicitarRecolha.css'
 
 function formatLocalizacao(item) {
@@ -9,18 +10,6 @@ function formatLocalizacao(item) {
   if (detail) return detail
   if (item.location) return item.location
   return [item.locationPrefix, item.locationDetail].filter(Boolean).join(', ')
-}
-
-function formatPeriod(period) {
-  const value = (period ?? '').trim()
-  if (!value) return ''
-  const normalized = value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-  if (normalized === 'manha') return 'manhã'
-  if (normalized === 'tarde') return 'tarde'
-  return value
 }
 
 function formatDateLabel(dataIso, scheduledAt) {
@@ -41,7 +30,7 @@ export default function ApagarPedido({ isOpen, movimentoItem = null, onClose, on
 
   const localizacao = formatLocalizacao(movimentoItem)
   const contentorId = movimentoItem?.pedidoGroupContentorId ?? movimentoItem?.id ?? '—'
-  const periodoLabel = formatPeriod(movimentoItem?.periodo)
+  const periodoLabel = formatPeriodoLabel(movimentoItem?.periodo)
   const dataLabel = formatDateLabel(movimentoItem?.dataIso, movimentoItem?.scheduledAt)
   const groupTasks = movimentoItem?.pedidoGroupTasks ?? []
   const hasGroup = groupTasks.length > 1

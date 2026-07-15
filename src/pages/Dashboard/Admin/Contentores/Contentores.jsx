@@ -15,6 +15,7 @@ import {
 } from '../../../../lib/appRoute.js'
 import { fetchStrapiContentores } from '../../../../lib/strapiContentores.js'
 import ContentorDetalhe from './ContentorDetalhe.jsx'
+import { formatLocationQuery } from '../../../../lib/locationQuery.js'
 import ContentorRegisto from './ContentorRegisto.jsx'
 import './Contentores.css'
 
@@ -221,14 +222,29 @@ export default function Contentores() {
                 <ContentorCard
                   cid={item.cid}
                   litros={item.litros}
-                  localizacao={item.localizacao}
-                  cliente={item.clienteAtualNome || ''}
-                  situacao={item.situacao}
-                  situacaoLabel={item.situacaoLabel}
+                  localizacao={item.localizacaoAtualMorada || item.localizacao}
+                  cliente={item.clienteAtualLabel || '—'}
                   estado={item.estado}
                   estadoLabel={item.estadoLabel}
                   onEditClick={() => openEdit(item)}
-                  onViewClick={() => openDetail(item)}
+                  onLocationClick={() => {
+                    const locationLabel =
+                      item.locationDetail ||
+                      item.localizacaoAtualMorada ||
+                      item.localizacao ||
+                      ''
+                    const query = formatLocationQuery({
+                      location: locationLabel,
+                      lat: item.localizacaoAtualLat,
+                      lng: item.localizacaoAtualLng,
+                    })
+                    if (!query) return
+                    setLocationMap({
+                      query,
+                      title: item.clienteAtualLabel || item.cid,
+                      subtitle: locationLabel || query,
+                    })
+                  }}
                   onScanClick={() =>
                     setQrPreview({ cid: item.cid, qrcodeImageUrl: item.qrcodeUrl })
                   }

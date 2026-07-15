@@ -1,71 +1,125 @@
 import { faChevronDown, faXmark } from '@fortawesome/pro-light-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import './SolicitarRecolha.css'
+import '../SolicitarRecolha/SolicitarRecolha.css'
+import { IconContentor } from '../../../../components/icons/icons.jsx'
+import { fetchStrapiCapacidades } from '../../../../lib/strapiContentores.js'
+import { fetchStrapiClienteDetail } from '../../../../lib/strapiClientes.js'
+import { getStrapiCurrentUserId } from '../../../../lib/strapiTickets.js'
 import { MOVIMENTO_PERIODO_OPTIONS } from '../../../../lib/movimentoPeriodo.js'
 
 const PERIODOS = MOVIMENTO_PERIODO_OPTIONS
-const TROCAR_CONTENTOR_OPCOES = ['Sim', 'Não']
 
-function emptyForm() {
+function emptyForm(capacidadeId = '') {
   return {
     data: '',
     periodo: '',
     observacoes: '',
-    trocarContentor: '',
+    capacidadeId,
   }
 }
 
-function formatLocalizacao(item) {
-  if (!item) return ''
-  const detail = item.locationDetail?.replace(/\s*-\s*/g, ', ')
-  if (detail) return detail
-  if (item.location) return item.location
-  return [item.locationPrefix, item.locationDetail].filter(Boolean).join(', ')
-}
-
 /**
- * Formulário cliente — solicitar nova recolha (Figma SOLO-URBANO-App_v3, nó 166:4503).
+ * Formulário cliente — solicitar novo contentor (Figma SOLO-URBANO-App_v3, nó 166:4574).
  */
-export default function SolicitarRecolha({
-  isOpen,
-  containerItem = null,
-  onClose,
-  onSubmit,
-}) {
+export default function SolicitarContentor({ isOpen, onClose, onSubmit }) {
   const [form, setForm] = useState(() => emptyForm())
+  const [capacidades, setCapacidades] = useState([])
+  const [loadingCaps, setLoadingCaps] = useState(false)
+  const [capsError, setCapsError] = useState('')
+  const [localizacaoId, setLocalizacaoId] = useState('')
+  const [localizacaoLabel, setLocalizacaoLabel] = useState('')
+  const [localizacoes, setLocalizacoes] = useState([])
+  const [loadingContext, setLoadingContext] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
   const dateInputRef = useRef(null)
 
-  const contentorId = containerItem?.id ?? containerItem?.contentorId ?? ''
-  const localizacao = formatLocalizacao(containerItem)
-  const hasContainer = Boolean(contentorId)
+  const hasLocalizacao = Boolean(localizacaoId)
+  const hasMultiplasLocalizacoes = localizacoes.length > 1
+  const ready = hasLocalizacao && capacidades.length > 0 && !loadingContext && !loadingCaps
 
   const canSubmit = useMemo(() => {
-    if (!hasContainer || submitting) return false
-    return Boolean(form.data.trim()) && Boolean(form.periodo.trim()) && Boolean(form.trocarContentor.trim())
-  }, [hasContainer, submitting, form.data, form.periodo, form.trocarContentor])
+    if (!ready || submitting) return false
+    return (
+      Boolean(form.data.trim()) &&
+      Boolean(form.periodo.trim()) &&
+      Boolean(form.capacidadeId.trim())
+    )
+  }, [ready, submitting, form.data, form.periodo, form.capacidadeId])
 
   const canDiscard = useMemo(() => {
     return Boolean(
       form.data.trim() ||
         form.periodo.trim() ||
         form.observacoes.trim() ||
-        form.trocarContentor.trim(),
+        form.capacidadeId.trim(),
     )
-  }, [form.data, form.periodo, form.observacoes, form.trocarContentor])
+  }, [form.data, form.periodo, form.observacoes, form.capacidadeId])
 
   useEffect(() => {
     if (!isOpen) {
       setForm(emptyForm())
       setSubmitting(false)
       setFormError('')
+      setCapsError('')
+      setLocalizacoes([])
+      setLocalizacaoId('')
+      setLocalizacaoLabel('')
       return
     }
-    setForm(emptyForm())
+
+    let cancelled = false
+    setLoadingContext(true)
+    setLoadingCaps(true)
     setFormError('')
-  }, [isOpen, contentorId])
+    setCapsError('')
+
+    Promise.all([
+      fetchStrapiCapacidades().catch((err) => {
+        if (!cancelled) {
+          setCapsError(
+            err instanceof Error ? err.message : 'Não foi possível carregar as capacidades.',
+          )
+        }
+        return []
+      }),
+      getStrapiCurrentUserId().then(async (id) => {
+        if (!id) return null
+        return fetchStrapiClienteDetail(String(id))
+      }),
+    ])
+      .then(([caps, detail]) => {
+        if (cancelled) return
+        setCapacidades(caps)
+        if (caps.length > 0) {
+          setForm(emptyForm(caps[0].id))
+        } else {
+          setForm(emptyForm())
+        }
+
+        const locs = (detail?.localizacoes ?? []).filter((loc) => loc.estado !== false)
+        setLocalizacoes(locs)
+        const first = locs[0]
+        if (first?.strapiId) {
+          setLocalizacaoId(String(first.strapiId))
+          setLocalizacaoLabel(first.nome || first.morada || '')
+        } else {
+          setLocalizacaoId('')
+          setLocalizacaoLabel('')
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingContext(false)
+          setLoadingCaps(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isOpen])
 
   useEffect(() => {
     if (!isOpen) return
@@ -101,8 +155,15 @@ export default function SolicitarRecolha({
     setFormError('')
   }
 
+  function handleLocalizacaoChange(nextId) {
+    setLocalizacaoId(nextId)
+    const loc = localizacoes.find((item) => String(item.strapiId) === String(nextId))
+    setLocalizacaoLabel(loc?.nome || loc?.morada || '')
+    setFormError('')
+  }
+
   function handleDiscard() {
-    setForm(emptyForm())
+    setForm(emptyForm(capacidades[0]?.id ?? ''))
     setFormError('')
   }
 
@@ -112,17 +173,18 @@ export default function SolicitarRecolha({
     setFormError('')
     setSubmitting(true)
     try {
+      const selectedCap = capacidades.find((cap) => cap.id === form.capacidadeId.trim())
       await onSubmit?.({
-        contentorId,
-        localizacaoId: containerItem?.localizacaoId ?? '',
-        localizacao,
+        localizacaoId,
+        localizacao: localizacaoLabel,
         data: form.data.trim(),
         periodo: form.periodo.trim(),
         observacoes: form.observacoes.trim(),
-        trocarContentor: form.trocarContentor.trim(),
+        capacidadeId: form.capacidadeId.trim(),
+        capacidadeLabel: selectedCap?.label ?? '',
       })
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Não foi possível solicitar a recolha.')
+      setFormError(err instanceof Error ? err.message : 'Não foi possível solicitar o contentor.')
     } finally {
       setSubmitting(false)
     }
@@ -139,7 +201,7 @@ export default function SolicitarRecolha({
         className="solicitar-recolha__panel"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="solicitar-recolha-title"
+        aria-labelledby="solicitar-contentor-title"
         aria-hidden={!isOpen}
       >
         <form className="solicitar-recolha__form" onSubmit={handleSubmit} noValidate>
@@ -155,8 +217,8 @@ export default function SolicitarRecolha({
             </button>
 
             <div className="solicitar-recolha__scroll">
-              <h2 id="solicitar-recolha-title" className="solicitar-recolha__title">
-                Solicitar Nova Recolha
+              <h2 id="solicitar-contentor-title" className="solicitar-recolha__title">
+                Solicitar Novo Contentor
               </h2>
 
               {formError ? (
@@ -165,16 +227,55 @@ export default function SolicitarRecolha({
                 </p>
               ) : null}
 
-              <div className="solicitar-recolha__fields">
-                <div className="solicitar-recolha__field solicitar-recolha__field--locked">
-                  <span className="solicitar-recolha__locked-value">{localizacao || '—'}</span>
-                  <FontAwesomeIcon icon={faChevronDown} className="solicitar-recolha__locked-icon" aria-hidden />
-                </div>
+              {capsError ? (
+                <p className="solicitar-recolha__alert" role="alert">
+                  {capsError}
+                </p>
+              ) : null}
 
-                <div className="solicitar-recolha__field solicitar-recolha__field--locked">
-                  <span className="solicitar-recolha__locked-value">{contentorId || '—'}</span>
-                  <FontAwesomeIcon icon={faChevronDown} className="solicitar-recolha__locked-icon" aria-hidden />
-                </div>
+              {!loadingContext && !hasLocalizacao ? (
+                <p className="solicitar-recolha__alert" role="alert">
+                  Não foi possível identificar a localização do cliente.
+                </p>
+              ) : null}
+
+              <div className="solicitar-recolha__illustration" aria-hidden>
+                <IconContentor className="solicitar-recolha__illustration-icon" />
+              </div>
+
+              <div className="solicitar-recolha__fields">
+                {!loadingContext && hasLocalizacao && !hasMultiplasLocalizacoes ? (
+                  <div className="solicitar-recolha__field solicitar-recolha__field--locked">
+                    <span className="solicitar-recolha__locked-value">{localizacaoLabel || '—'}</span>
+                    <FontAwesomeIcon icon={faChevronDown} className="solicitar-recolha__locked-icon" aria-hidden />
+                  </div>
+                ) : null}
+
+                {!loadingContext && hasMultiplasLocalizacoes ? (
+                  <label className="solicitar-recolha__field">
+                    <span className="solicitar-recolha__select-wrap">
+                      <select
+                        className={`solicitar-recolha__select${localizacaoId ? '' : ' solicitar-recolha__select--empty'}`}
+                        value={localizacaoId}
+                        onChange={(e) => handleLocalizacaoChange(e.target.value)}
+                        disabled={!ready}
+                        required
+                        tabIndex={isOpen ? 0 : -1}
+                        aria-label="Local de entrega"
+                      >
+                        <option value="" disabled>
+                          Local de entrega*
+                        </option>
+                        {localizacoes.map((loc) => (
+                          <option key={loc.strapiId} value={loc.strapiId ?? ''}>
+                            {loc.nome || loc.morada}
+                          </option>
+                        ))}
+                      </select>
+                      <FontAwesomeIcon icon={faChevronDown} className="solicitar-recolha__select-icon" aria-hidden />
+                    </span>
+                  </label>
+                ) : null}
 
                 <label
                   className="solicitar-recolha__field solicitar-recolha__field--date"
@@ -187,7 +288,7 @@ export default function SolicitarRecolha({
                     name="data"
                     value={form.data}
                     onChange={(e) => updateField('data', e.target.value)}
-                    disabled={!hasContainer}
+                    disabled={!ready}
                     required
                     tabIndex={isOpen ? 0 : -1}
                     aria-label="Data"
@@ -203,7 +304,7 @@ export default function SolicitarRecolha({
                       className={`solicitar-recolha__select${form.periodo ? '' : ' solicitar-recolha__select--empty'}`}
                       value={form.periodo}
                       onChange={(e) => updateField('periodo', e.target.value)}
-                      disabled={!hasContainer}
+                      disabled={!ready}
                       required
                       tabIndex={isOpen ? 0 : -1}
                       aria-label="Preferência de horário"
@@ -228,7 +329,7 @@ export default function SolicitarRecolha({
                     name="observacoes"
                     value={form.observacoes}
                     onChange={(e) => updateField('observacoes', e.target.value)}
-                    disabled={!hasContainer}
+                    disabled={!ready}
                     tabIndex={isOpen ? 0 : -1}
                     aria-label="Observações"
                   />
@@ -240,20 +341,20 @@ export default function SolicitarRecolha({
                 <label className="solicitar-recolha__field">
                   <span className="solicitar-recolha__select-wrap">
                     <select
-                      className={`solicitar-recolha__select${form.trocarContentor ? '' : ' solicitar-recolha__select--empty'}`}
-                      value={form.trocarContentor}
-                      onChange={(e) => updateField('trocarContentor', e.target.value)}
-                      disabled={!hasContainer}
+                      className={`solicitar-recolha__select${form.capacidadeId ? '' : ' solicitar-recolha__select--empty'}`}
+                      value={form.capacidadeId}
+                      onChange={(e) => updateField('capacidadeId', e.target.value)}
+                      disabled={!ready || loadingCaps || capacidades.length === 0}
                       required
                       tabIndex={isOpen ? 0 : -1}
-                      aria-label="Trocar Contentor"
+                      aria-label="Capacidade"
                     >
                       <option value="" disabled>
-                        Trocar Contentor*
+                        Capacidade*
                       </option>
-                      {TROCAR_CONTENTOR_OPCOES.map((opcao) => (
-                        <option key={opcao} value={opcao}>
-                          {opcao}
+                      {capacidades.map((cap) => (
+                        <option key={cap.id} value={cap.id}>
+                          {cap.label}
                         </option>
                       ))}
                     </select>

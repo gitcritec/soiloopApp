@@ -1,13 +1,13 @@
-import { faMemo, faRecycle, faTruck, faXmark } from '@fortawesome/pro-light-svg-icons'
+import { faRecycle, faTruck } from '@fortawesome/pro-light-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import processarBg from '../../../../assets/figma-operador/processar-bg.jpg'
 import processarIllustration from '../../../../assets/figma-cliente/icon-section-contentores.png'
 import './Processar.css'
 
 /**
- * Ecrã «Processar» (Figma SOLO-URBANO-App_v3, nó 52:4219).
- * Slide da direita para a esquerda, largura total (padrão do menu operador).
+ * Ecrã «Processar» (Figma SOLO-URBANO-App_v3, nó 48:3104).
  */
 export default function Processar({
   isOpen,
@@ -16,7 +16,6 @@ export default function Processar({
   onClose,
   onSelectRecolha,
   onSelectEntrega,
-  onSelectMovimentosRecolha,
 }) {
   useEffect(() => {
     if (!isOpen) return
@@ -32,36 +31,21 @@ export default function Processar({
     }
   }, [isOpen, onClose])
 
-  return (
-    <div
-      className={`processar-screen${isOpen ? ' processar-screen--open' : ''}`}
-      aria-hidden={!isOpen}
-    >
+  if (!isOpen) return null
+
+  return createPortal(
+    <div className="processar-screen processar-screen--open">
       <div
         className="processar-screen__panel"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="processar-title"
-        aria-hidden={!isOpen}
+        aria-labelledby="processar-intro"
       >
         <img src={processarBg} alt="" className="processar-screen__bg" />
         <div className="processar-screen__overlay" aria-hidden="true" />
 
-        <button
-          type="button"
-          className="processar-screen__close"
-          aria-label="Fechar"
-          tabIndex={isOpen ? 0 : -1}
-          onClick={onClose}
-        >
-          <FontAwesomeIcon icon={faXmark} aria-hidden />
-        </button>
-
         <div className="processar-screen__content">
-          <h1 id="processar-title" className="processar-screen__title">
-            Processar
-          </h1>
-          <p className="processar-screen__intro">
+          <p id="processar-intro" className="processar-screen__intro">
             Para dar continuidade ao processamento,
             <br />
             por favor selecione uma das opções
@@ -92,7 +76,6 @@ export default function Processar({
             <button
               type="button"
               className="processar-screen__action processar-screen__action--recolha"
-              tabIndex={isOpen ? 0 : -1}
               onClick={onSelectRecolha}
             >
               <FontAwesomeIcon icon={faRecycle} className="processar-screen__action-icon" aria-hidden />
@@ -101,24 +84,15 @@ export default function Processar({
             <button
               type="button"
               className="processar-screen__action processar-screen__action--entrega"
-              tabIndex={isOpen ? 0 : -1}
               onClick={onSelectEntrega}
             >
               <FontAwesomeIcon icon={faTruck} className="processar-screen__action-icon" aria-hidden />
               Entrega
             </button>
-            <button
-              type="button"
-              className="processar-screen__action processar-screen__action--movimentos-recolha"
-              tabIndex={isOpen ? 0 : -1}
-              onClick={onSelectMovimentosRecolha}
-            >
-              <FontAwesomeIcon icon={faMemo} className="processar-screen__action-icon" aria-hidden />
-              Preencher Formulário
-            </button>
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

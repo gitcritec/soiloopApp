@@ -2,6 +2,7 @@ import { faPen, faRecycle, faTrashCan } from '@fortawesome/pro-light-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import './CollectionCard.css'
 import { IconCalendarSmall } from '../icons/icons.jsx'
+import { formatPeriodoLabel } from '../../lib/movimentoPeriodo.js'
 
 const STATUS_LABEL = {
   atrasado: 'Atrasado',
@@ -14,6 +15,7 @@ const STATUS_LABEL = {
 const TASK_TYPE_LABEL = {
   recolher: 'Recolher',
   entregar: 'Entregar',
+  trocar: 'Trocar',
 }
 
 function splitScheduledAt(scheduledAt) {
@@ -26,18 +28,6 @@ function splitScheduledAt(scheduledAt) {
   return { date, time }
 }
 
-function formatPeriod(period) {
-  const value = (period ?? '').trim()
-  if (!value) return ''
-  const normalized = value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-  if (normalized === 'manha') return 'manhã'
-  if (normalized === 'tarde') return 'tarde'
-  return value
-}
-
 export default function CollectionCard({
   collectionId,
   location,
@@ -46,7 +36,7 @@ export default function CollectionCard({
   status,
   scheduledAt,
   binNumber,
-  /** @type {'recolher' | 'entregar'} */
+  /** @type {'recolher' | 'entregar' | 'trocar'} */
   taskType = 'recolher',
   onLocationClick,
   onEditClick,
@@ -55,6 +45,7 @@ export default function CollectionCard({
   showDelete = true,
   hideTaskType = false,
   showFullDateTime = false,
+  showScheduledTime = false,
   badgeLabel,
   requestState,
   clientName,
@@ -62,7 +53,7 @@ export default function CollectionCard({
   const statusLabel = badgeLabel ?? STATUS_LABEL[status] ?? status
   const taskTypeLabel = TASK_TYPE_LABEL[taskType] ?? taskType
   const { date: datePart, time: timePart } = splitScheduledAt(scheduledAt)
-  const periodLabel = formatPeriod(timePart)
+  const periodLabel = formatPeriodoLabel(timePart)
   const historicoDateLabel = showFullDateTime ? (scheduledAt ?? '').trim() : ''
 
   const hasSplitLocation = Boolean(locationPrefix && locationDetail)
@@ -110,7 +101,9 @@ export default function CollectionCard({
           ) : (
             <>
               {datePart ? <span className="collection-card__date">{datePart}</span> : null}
-              {periodLabel ? (
+              {showScheduledTime && timePart ? (
+                <span className="collection-card__time">{timePart}</span>
+              ) : periodLabel ? (
                 <span className="collection-card__period">Periodo: {periodLabel}</span>
               ) : null}
             </>

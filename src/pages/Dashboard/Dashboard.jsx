@@ -3,12 +3,12 @@ import {
   fetchStrapiCurrentUser,
   getStoredStrapiRoleLabel,
   getStoredStrapiUsername,
-  isStrapiAdminRoleLabel,
-  isStrapiClienteRoleLabel,
   normalizeStrapiUserRole,
   persistStrapiUserCache,
+  resolveDashboardProfile,
 } from '../../lib/strapiAuth.js'
 import { fetchStrapiGlobalLogoSmallUrl } from '../../lib/strapiGlobal.js'
+import { ensureAppHashProfile } from '../../lib/appRoute.js'
 import Admin from './Admin/Admin.jsx'
 import Cliente from './Cliente/Cliente.jsx'
 import Operador from './Operador/Operador.jsx'
@@ -23,6 +23,12 @@ export default function Dashboard({ onLogout }) {
     () => getStoredStrapiUsername() ?? MOCK_OPERATOR_NAME,
   )
   const [userRole, setUserRole] = useState(() => getStoredStrapiRoleLabel() ?? '')
+  const profile = resolveDashboardProfile(userRole)
+
+  useEffect(() => {
+    const storedProfile = resolveDashboardProfile(getStoredStrapiRoleLabel())
+    ensureAppHashProfile(storedProfile)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -43,13 +49,14 @@ export default function Dashboard({ onLogout }) {
       if (name) setUserName(name)
       const label = normalizeStrapiUserRole(u.role) ?? getStoredStrapiRoleLabel() ?? ''
       setUserRole(label)
+      ensureAppHashProfile(resolveDashboardProfile(label))
     })
     return () => {
       cancelled = true
     }
   }, [])
 
-  if (isStrapiAdminRoleLabel(userRole)) {
+  if (profile === 'admin') {
     return (
       <Admin
         onLogout={onLogout}
@@ -60,7 +67,7 @@ export default function Dashboard({ onLogout }) {
     )
   }
 
-  if (isStrapiClienteRoleLabel(userRole)) {
+  if (profile === 'cliente') {
     return (
       <Cliente
         onLogout={onLogout}

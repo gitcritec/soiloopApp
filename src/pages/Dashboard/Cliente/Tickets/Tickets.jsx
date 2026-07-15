@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   faMagnifyingGlass,
+  faPen,
+  faPlus,
+  faComments,
 } from '@fortawesome/pro-light-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import ticketsHero from '../../../../assets/figma-cliente/tickets-hero.svg'
-import { IconChevronRight } from '../../../../components/icons/icons.jsx'
+import SectionTitleWithIcon from '../../../../components/SectionTitleWithIcon/SectionTitleWithIcon.jsx'
 import {
   fetchStrapiTicketDetail,
   fetchStrapiTicketsMine,
@@ -95,6 +98,13 @@ export default function Tickets() {
     setActiveId(id)
     setActionError(null)
     setAppHash('cliente', 'tickets', 'detalhe', id)
+  }, [])
+
+  const openCreate = useCallback(() => {
+    setView('create')
+    setActiveId(null)
+    setActionError(null)
+    setAppHash('cliente', 'tickets', 'criar')
   }, [])
 
   function handleCreateSuccess(created) {
@@ -260,6 +270,14 @@ export default function Tickets() {
 
   return (
     <div className="cliente-tickets">
+      <SectionTitleWithIcon
+        id="cliente-sec-tickets"
+        title="Tickets em Aberto"
+        icon={faComments}
+        iconSize="large"
+        titleTone="swapped"
+      />
+
       <div className="cliente-tickets__hero-wrap">
         <img src={ticketsHero} alt="" className="cliente-tickets__hero" width={353} height={120} />
       </div>
@@ -276,6 +294,14 @@ export default function Tickets() {
             aria-label="Pesquisar tickets"
           />
         </label>
+        <button
+          type="button"
+          className="cliente-tickets__tool-btn cliente-tickets__tool-btn--add"
+          aria-label="Criar novo ticket"
+          onClick={openCreate}
+        >
+          <FontAwesomeIcon icon={faPlus} aria-hidden />
+        </button>
       </div>
 
       {loading ? (
@@ -291,9 +317,7 @@ export default function Tickets() {
       ) : null}
 
       {!loading && !loadError && items.length === 0 ? (
-        <p className="cliente-tickets__status">
-          Ainda não tem tickets. Use o botão <strong>Criar Ticket</strong> para abrir um pedido.
-        </p>
+        <p className="cliente-tickets__status">Ainda não tem tickets.</p>
       ) : null}
 
       {!loading && items.length > 0 && filteredItems.length === 0 ? (
@@ -307,10 +331,9 @@ export default function Tickets() {
               <article className="cliente-ticket-card">
                 <div className="cliente-ticket-card__main">
                   <p className="cliente-ticket-card__title">{ticket.title}</p>
-                  <p className="cliente-ticket-card__client">
-                    <span className="cliente-ticket-card__client-label">Localização</span>{' '}
-                    <span className="cliente-ticket-card__client-value">{ticket.location}</span>
-                  </p>
+                  {ticket.location ? (
+                    <p className="cliente-ticket-card__location">{ticket.location}</p>
+                  ) : null}
                   <p className="cliente-ticket-card__ref">
                     <span className="cliente-ticket-card__ref-code">#{ticket.ref}</span> {ticket.date}{' '}
                     {ticket.time}
@@ -323,11 +346,11 @@ export default function Tickets() {
                 </span>
                 <button
                   type="button"
-                  className="cliente-ticket-card__chevron"
+                  className="cliente-ticket-card__action"
                   aria-label={`Abrir ticket ${ticket.ref}`}
                   onClick={() => openDetail(ticket.id)}
                 >
-                  <IconChevronRight className="cliente-ticket-card__chevron-icon" />
+                  <FontAwesomeIcon icon={faPen} className="cliente-ticket-card__action-icon" aria-hidden />
                 </button>
               </article>
             </li>
