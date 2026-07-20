@@ -10,6 +10,7 @@ import {
   fetchStrapiContentoresByClienteAtual,
   mapContentorItemToInstalledCard,
   mapContentorToClienteCard,
+  normalizeCapacidadeLitros,
   reserveStrapiContentorParaEntrega,
   updateStrapiContentorSituacao,
 } from './strapiContentores.js'
@@ -1651,6 +1652,7 @@ async function fetchStrapiClientePendingRecolhasByContentor() {
   const byContentor = new Map()
   if (!base) return byContentor
 
+  await ensureStoredStrapiUserRefs()
   const currentClienteIds = getStoredStrapiUserRefs()
   if (currentClienteIds.size === 0) return byContentor
 
@@ -1671,6 +1673,7 @@ async function fetchStrapiClientePendingRecolhasByContentor() {
         const item = coerceMovimentoRow(row)
         if (!item?.contentorId || item.contentorId === 'Não definido') continue
         if (item.taskType !== 'recolher') continue
+        if (!isEstadoPedidoVisivel(item.estado)) continue
         if (!movimentoBelongsToCliente(item, currentClienteIds)) continue
         merged.set(item.movimentoKey, item)
       }
@@ -1703,8 +1706,11 @@ export async function fetchStrapiClienteContentoresInstalados(fallbackRows = [])
     if (userId) {
       const items = await fetchStrapiContentoresByClienteAtual(userId)
       if (items.length > 0) {
+        const pendingByCid = await fetchStrapiClientePendingRecolhasByContentor()
         return items
-          .map((item) => mapContentorItemToInstalledCard(item))
+          .map((item) =>
+            mapContentorItemToInstalledCard(item, null, pendingByCid.get(item.cid) ?? null),
+          )
           .sort((a, b) => String(a.id).localeCompare(String(b.id), 'pt'))
       }
     }
@@ -2154,11 +2160,13 @@ export async function createStrapiClienteSolicitacaoRecolha(payload) {
   const periodo = normalizePeriodoForStrapi(payload.periodo)
   if (!periodo) throw new Error('Período em falta.')
 
-  const localizacaoId = pickString(payload.localizacaoId)
   const observacoes = pickString(payload.observacoes)
 
   const contentor = await fetchStrapiContentorByCid(contentorCid)
   if (!contentor?.id) throw new Error('Contentor não encontrado.')
+
+  const localizacaoId =
+    pickString(payload.localizacaoId) ?? pickString(contentor.localizacaoAtualId)
 
   if (!localizacaoId) {
     throw new Error('Localização do contentor em falta. Não foi possível associar o pedido.')
@@ -2997,6 +3005,87 @@ export function splitOperadorDashboardMovimentos(rows) {
   }
 }
 
+function getTodayIsoDate() {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function createOperadorDataDiaParams(operadorRef, refKey, dataIso, withPopulate) {
+  const params = new URLSearchParams()
+  params.set('filters[data][$eq]', dataIso)
+  if (operadorRef) {
+    params.set(`filters[operador][${refKey}][$eq]`, operadorRef)
+  }
+  if (withPopulate) addMovimentoRelationsPopulate(params)
+  return addMovimentosCommonParams(params)
+}
+
+function countOperadorServicosHojeFromRows(rows, operadorRefs, options = {}) {
+  const todayStart = getTodayStartSortValue()
+  const todayEnd = getTodayEndSortValue()
+
+  return rows
+    .map((row) => coerceMovimentoRow(row))
+    .filter((item) => item && !isEstadoPedido(item.estado))
+    .filter((item) => movimentoBelongsToOperador(item, operadorRefs, options))
+    .filter((item) => {
+      const dateVal = item.dateSortValue
+      return Number.isFinite(dateVal) && dateVal >= todayStart && dateVal <= todayEnd
+    }).length
+}
+
+/**
+ * Conta movimentos do operador logado com data de hoje (exclui estado «pedido»).
+ * @returns {Promise<number>}
+ */
+async function fetchStrapiOperadorServicosHojeCount() {
+  const base = strapiBaseUrl()
+  if (!base) return 0
+
+  const operadorRefs = await ensureStoredStrapiUserRefs()
+  if (operadorRefs.size === 0) return 0
+
+  const todayIso = getTodayIsoDate()
+  /** @type {Array<{ params: URLSearchParams, trustApiScope: boolean }>} */
+  const attempts = []
+
+  for (const ref of operadorRefs) {
+    for (const refKey of ['id', 'documentId']) {
+      attempts.push({
+        params: createOperadorDataDiaParams(ref, refKey, todayIso, true),
+        trustApiScope: true,
+      })
+      attempts.push({
+        params: createOperadorDataDiaParams(ref, refKey, todayIso, false),
+        trustApiScope: true,
+      })
+    }
+  }
+
+  const paramsToday = new URLSearchParams()
+  paramsToday.set('filters[data][$eq]', todayIso)
+  addMovimentoRelationsPopulate(paramsToday)
+  addMovimentosCommonParams(paramsToday)
+  attempts.push({ params: paramsToday, trustApiScope: true })
+
+  let bestCount = 0
+  for (const { params, trustApiScope } of attempts) {
+    try {
+      const rows = await fetchMovimentosRows(base, params)
+      const count = countOperadorServicosHojeFromRows(rows, operadorRefs, { trustApiScope })
+      if (count > bestCount) bestCount = count
+      if (count > 0) return count
+    } catch {
+      /* tentar próxima query */
+    }
+  }
+
+  return bestCount
+}
+
 function createOperadorAgendadoParams(operadorRef, refKey, estado, withPopulate) {
   const params = new URLSearchParams()
   params.set('filters[estado][$eq]', estado)
@@ -3089,6 +3178,104 @@ export async function fetchStrapiOperadorMovimentosAgendados(fallbackRows = []) 
   return []
 }
 
+function createOperadorHistoricoParams(operadorRef, refKey, estado, withPopulate) {
+  const params = new URLSearchParams()
+  params.set('filters[estado][$eq]', estado)
+  if (operadorRef) {
+    params.set(`filters[operador][${refKey}][$eq]`, operadorRef)
+  }
+  if (withPopulate) addMovimentoRelationsPopulate(params)
+  return addHistoricoSortParams(params)
+}
+
+function processOperadorHistoricoRows(rows, fallbackRows, operadorRefs, options = {}) {
+  const build = (opts) =>
+    enrichMovimentosPedidoGroups(
+      rows
+        .map((row, index) => coerceMovimentoRow(row, fallbackRows[index]))
+        .filter((item) => item && isEstadoConcluido(item.estado))
+        .filter((item) => movimentoBelongsToOperador(item, operadorRefs, opts)),
+    )
+
+  const items = build(options)
+  if (items.length > 0 || options.trustApiScope || rows.length === 0) {
+    return sortMovimentosHistoricoDesc(items)
+  }
+  return sortMovimentosHistoricoDesc(build({ trustApiScope: true }))
+}
+
+function buildOperadorHistoricoFetchAttempts(operadorRefs) {
+  const refs = [...operadorRefs]
+  /** @type {Array<{ params: URLSearchParams, trustApiScope: boolean }>} */
+  const attempts = []
+  const estados = ['concluido', 'Concluido', 'concluído', 'Concluído']
+
+  for (const estado of estados) {
+    attempts.push({
+      params: createEstadoMovimentosParamsHistorico(estado, true),
+      trustApiScope: true,
+    })
+  }
+
+  for (const ref of refs) {
+    for (const refKey of ['id', 'documentId']) {
+      for (const estado of ['concluido', 'Concluido']) {
+        attempts.push({
+          params: createOperadorHistoricoParams(ref, refKey, estado, true),
+          trustApiScope: true,
+        })
+        attempts.push({
+          params: createOperadorHistoricoParams(ref, refKey, estado, false),
+          trustApiScope: true,
+        })
+      }
+    }
+  }
+
+  for (const estado of ['concluido', 'Concluido']) {
+    attempts.push({
+      params: createEstadoMovimentosParamsHistorico(estado, false),
+      trustApiScope: true,
+    })
+  }
+
+  return attempts
+}
+
+/**
+ * Histórico do operador: entregas e recolhas concluídas (mais recentes primeiro).
+ * @param {Array<object>} [fallbackRows]
+ */
+export async function fetchStrapiOperadorMovimentosHistorico(fallbackRows = []) {
+  const base = strapiBaseUrl()
+  if (!base) return []
+
+  const operadorRefs = await ensureStoredStrapiUserRefs()
+  if (operadorRefs.size === 0) return []
+
+  const attempts = buildOperadorHistoricoFetchAttempts(operadorRefs)
+  let hadSuccessfulFetch = false
+  let lastProcessed = []
+
+  for (const { params, trustApiScope } of attempts) {
+    try {
+      const rows = await fetchMovimentosRows(base, params)
+      hadSuccessfulFetch = true
+      const historico = processOperadorHistoricoRows(rows, fallbackRows, operadorRefs, {
+        trustApiScope,
+      })
+      if (historico.length > 0) return historico
+      lastProcessed = historico
+      if (rows.length === 0) return historico
+    } catch {
+      // Tentar próxima combinação de query
+    }
+  }
+
+  if (hadSuccessfulFetch) return lastProcessed
+  return []
+}
+
 /**
  * Dashboard operador: recolhas do dia, próximas recolhas e estatísticas parciais.
  * @param {Array<object>} [fallbackDay]
@@ -3113,7 +3300,18 @@ export async function fetchStrapiOperadorDashboardMovimentos(
     return splitOperadorDashboardMovimentos(fallbackFromMock)
   }
 
-  const rows = await fetchStrapiOperadorMovimentosAgendados(fallbackRows)
+  const [rows, servicosHoje] = await Promise.all([
+    fetchStrapiOperadorMovimentosAgendados(fallbackRows),
+    fetchStrapiOperadorServicosHojeCount(),
+  ])
   const collapsed = collapseMovimentosPedidoCards(rows)
-  return splitOperadorDashboardMovimentos(collapsed)
+  const result = splitOperadorDashboardMovimentos(collapsed)
+
+  return {
+    ...result,
+    stats: {
+      ...result.stats,
+      recolhasHoje: servicosHoje,
+    },
+  }
 }

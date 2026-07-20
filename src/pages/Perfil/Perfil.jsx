@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { changeStrapiPassword } from '../../lib/strapiAuth.js'
 import { fetchStrapiProfileForm, saveStrapiProfileForm } from '../../lib/strapiProfile.js'
-import { sendStrapiPasswordResetEmail } from '../../lib/strapiUserInvite.js'
 import './Perfil.css'
 
 /** @typedef {'admin'|'operador'|'cliente'} ProfileKind */
@@ -43,13 +42,10 @@ export default function Perfil({ profileKind, onUserUpdated }) {
   const [passwordForm, setPasswordForm] = useState(emptyPasswordForm)
   const [savingProfile, setSavingProfile] = useState(false)
   const [savingPassword, setSavingPassword] = useState(false)
-  const [sendingInvite, setSendingInvite] = useState(false)
   const [profileError, setProfileError] = useState('')
   const [profileNotice, setProfileNotice] = useState('')
   const [passwordError, setPasswordError] = useState('')
   const [passwordNotice, setPasswordNotice] = useState('')
-  const [inviteError, setInviteError] = useState('')
-  const [inviteNotice, setInviteNotice] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -150,26 +146,6 @@ export default function Perfil({ profileKind, onUserUpdated }) {
       setPasswordError(err instanceof Error ? err.message : 'Não foi possível alterar a palavra-passe.')
     } finally {
       setSavingPassword(false)
-    }
-  }
-
-  async function handleSendPasswordEmail() {
-    const email = (isClienteProfile ? clienteForm.email : staffForm.email).trim()
-    if (!email) {
-      setInviteError('Indica um e-mail válido antes de enviar o convite.')
-      setInviteNotice('')
-      return
-    }
-    setSendingInvite(true)
-    setInviteError('')
-    setInviteNotice('')
-    try {
-      await sendStrapiPasswordResetEmail(email)
-      setInviteNotice('Foi enviado um email para redefinir a palavra-passe.')
-    } catch (err) {
-      setInviteError(err instanceof Error ? err.message : 'Não foi possível enviar o email.')
-    } finally {
-      setSendingInvite(false)
     }
   }
 
@@ -302,7 +278,7 @@ export default function Perfil({ profileKind, onUserUpdated }) {
           <button
             type="submit"
             className="perfil__btn perfil__btn--primary"
-            disabled={savingProfile || savingPassword || sendingInvite}
+            disabled={savingProfile || savingPassword}
           >
             {savingProfile ? 'A guardar…' : 'Guardar perfil'}
           </button>
@@ -366,39 +342,11 @@ export default function Perfil({ profileKind, onUserUpdated }) {
             <button
               type="submit"
               className="perfil__btn perfil__btn--secondary"
-              disabled={savingPassword || savingProfile || sendingInvite}
+              disabled={savingPassword || savingProfile}
             >
               {savingPassword ? 'A guardar…' : 'Alterar palavra-passe'}
             </button>
           </form>
-
-          <div className="perfil__invite">
-            <p className="perfil__hint">
-              Também podes receber um email com um link para redefinir a palavra-passe.
-            </p>
-            <button
-              type="button"
-              className="perfil__btn perfil__btn--ghost"
-              onClick={handleSendPasswordEmail}
-              disabled={sendingInvite || savingProfile || savingPassword}
-            >
-              {sendingInvite ? 'A enviar…' : 'Enviar email de palavra-passe'}
-            </button>
-            {inviteError || inviteNotice ? (
-              <div className="perfil__invite-feedback">
-                {inviteError ? (
-                  <p className="perfil__error" role="alert">
-                    {inviteError}
-                  </p>
-                ) : null}
-                {inviteNotice ? (
-                  <p className="perfil__notice" role="status">
-                    {inviteNotice}
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
         </div>
       </section>
     </div>

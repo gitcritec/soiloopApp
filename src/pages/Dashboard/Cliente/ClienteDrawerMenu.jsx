@@ -1,5 +1,4 @@
 import {
-  faCircleInfo,
   faComments,
   faHouseChimney,
   faPowerOff,
@@ -84,23 +83,23 @@ export default function ClienteDrawerMenu({
         </div>
 
         <nav className="operator-drawer__nav" aria-label="Navegação principal">
-          <button type="button" className="operator-drawer__item" onClick={() => handlePrimaryClick('pedidos')}>
+          <button type="button" className="operator-drawer__item" onClick={() => handlePrimaryClick('dashboard')}>
+            <span className="operator-drawer__item-icon" aria-hidden="true">
+              <FontAwesomeIcon icon={faHouseChimney} />
+            </span>
+            <span className="operator-drawer__item-label">Dashboard</span>
+          </button>
+          <button type="button" className="operator-drawer__item" onClick={() => handlePrimaryClick('recolhas')}>
             <span className="operator-drawer__item-icon" aria-hidden="true">
               <FontAwesomeIcon icon={faRecycle} />
             </span>
-            <span className="operator-drawer__item-label">Pedidos</span>
+            <span className="operator-drawer__item-label">Recolhas</span>
           </button>
           <button type="button" className="operator-drawer__item" onClick={() => handlePrimaryClick('contentores')}>
             <span className="operator-drawer__item-icon" aria-hidden="true">
               <IconContentor className="operator-drawer__item-icon-svg" />
             </span>
             <span className="operator-drawer__item-label">Contentores</span>
-          </button>
-          <button type="button" className="operator-drawer__item" onClick={() => handlePrimaryClick('gestao')}>
-            <span className="operator-drawer__item-icon" aria-hidden="true">
-              <FontAwesomeIcon icon={faHouseChimney} />
-            </span>
-            <span className="operator-drawer__item-label">Dashboard</span>
           </button>
           <button type="button" className="operator-drawer__item" onClick={() => handlePrimaryClick('tickets')}>
             <span className="operator-drawer__item-icon" aria-hidden="true">
@@ -116,12 +115,6 @@ export default function ClienteDrawerMenu({
               <FontAwesomeIcon icon={faUser} />
             </span>
             <span className="operator-drawer__item-label">Perfil</span>
-          </button>
-          <button type="button" className="operator-drawer__item" onClick={() => { onClose(); onNavigate?.('ajuda') }}>
-            <span className="operator-drawer__item-icon" aria-hidden="true">
-              <FontAwesomeIcon icon={faCircleInfo} />
-            </span>
-            <span className="operator-drawer__item-label">Ajuda</span>
           </button>
           <button
             type="button"

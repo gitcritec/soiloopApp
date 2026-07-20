@@ -11,7 +11,7 @@ export const PROFILE_SECTION_ID = 'perfil'
 export const CLIENTE_NAV_IDS = ['dashboard', 'recolhas', 'contentores', 'tickets', 'historico']
 
 /** IDs válidos da barra inferior operador. */
-export const OPERADOR_NAV_IDS = ['movimentos', 'dashboard', 'historico']
+export const OPERADOR_NAV_IDS = ['dashboard', 'historico']
 
 /** Secções operador fora da barra inferior. */
 export const OPERADOR_SCREEN_IDS = ['processar', ...OPERADOR_NAV_IDS]

@@ -1,14 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
-  faBell,
-  faCircleInfo,
-  faClipboardList,
   faComments,
   faHouseChimney,
   faPowerOff,
   faRecycle,
-  faClock,
   faUser,
 } from '@fortawesome/pro-light-svg-icons'
 import logoSoiloop from '../../../assets/figma-operador/logo-soiloop.png'
@@ -68,16 +64,18 @@ const CLIENT_BOTTOM_NAV_ITEMS = [
 ]
 
 const CLIENT_DRAWER_PRIMARY_ITEMS = [
-  { id: 'notificacoes', label: 'Notificações', icon: faBell },
-  { id: 'pedidos', label: 'Pedidos', icon: faClipboardList },
+  { id: 'dashboard', label: 'Dashboard', icon: faHouseChimney },
   { id: 'recolhas', label: 'Recolhas', icon: faRecycle },
+  {
+    id: 'contentores',
+    label: 'Contentores',
+    iconNode: <IconContentor className="operator-drawer__item-icon-svg" />,
+  },
   { id: 'tickets', label: 'Tickets', icon: faComments },
-  { id: 'historico', label: 'Histórico', icon: faClock },
 ]
 
 const CLIENT_DRAWER_SECONDARY_ITEMS = [
   { id: 'perfil', label: 'Perfil', icon: faUser },
-  { id: 'ajuda', label: 'Ajuda', icon: faCircleInfo },
   { id: 'sair', label: 'Sair', icon: faPowerOff, isLogout: true },
 ]
 
@@ -171,10 +169,9 @@ export default function Cliente({
 
   function handleDrawerNavigate(actionId) {
     if (actionId === 'tickets') selectNav('tickets')
-    else if (actionId === 'pedidos') selectNav('recolhas')
     else if (actionId === 'contentores') selectNav('contentores')
-    else if (actionId === 'historico') selectNav('historico')
-    else if (actionId === 'gestao' || actionId === 'recolhas') selectNav('dashboard')
+    else if (actionId === 'recolhas') selectNav('recolhas')
+    else if (actionId === 'dashboard') selectNav('dashboard')
     else if (actionId === 'perfil') {
       setShowPerfil(true)
       setAppHash('cliente', 'perfil')

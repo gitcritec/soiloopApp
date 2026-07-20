@@ -1,10 +1,7 @@
 import {
-  faArrowsRotate,
-  faBell,
-  faCircleInfo,
   faClock,
+  faHouseChimney,
   faPowerOff,
-  faRecycle,
   faUser,
   faXmark,
 } from '@fortawesome/pro-light-svg-icons'
@@ -13,15 +10,12 @@ import { useEffect } from 'react'
 import './OperatorDrawerMenu.css'
 
 const DEFAULT_PRIMARY_ITEMS = [
-  { id: 'notificacoes', label: 'Notificações', icon: faBell },
-  { id: 'recolhas', label: 'Recolhas', icon: faRecycle },
-  { id: 'movimentos', label: 'Movimentos', icon: faArrowsRotate },
+  { id: 'dashboard', label: 'Dashboard', icon: faHouseChimney },
   { id: 'historico', label: 'Histórico', icon: faClock },
 ]
 
 const DEFAULT_SECONDARY_ITEMS = [
   { id: 'perfil', label: 'Perfil', icon: faUser },
-  { id: 'ajuda', label: 'Ajuda', icon: faCircleInfo },
   { id: 'sair', label: 'Sair', icon: faPowerOff, isLogout: true },
 ]
 
@@ -35,8 +29,8 @@ const DEFAULT_SECONDARY_ITEMS = [
  * @param {string|null} [props.avatarSrc]
  * @param {() => void} props.onLogout
  * @param {(actionId: string) => void} [props.onNavigate]
- * @param {Array<{ id: string, label: string, icon: import('@fortawesome/fontawesome-svg-core').IconDefinition }>} [props.primaryItems]
- * @param {Array<{ id: string, label: string, icon: import('@fortawesome/fontawesome-svg-core').IconDefinition, isLogout?: boolean }>} [props.secondaryItems]
+ * @param {Array<{ id: string, label: string, icon?: import('@fortawesome/fontawesome-svg-core').IconDefinition, iconNode?: import('react').ReactNode }>} [props.primaryItems]
+ * @param {Array<{ id: string, label: string, icon?: import('@fortawesome/fontawesome-svg-core').IconDefinition, iconNode?: import('react').ReactNode, isLogout?: boolean }>} [props.secondaryItems]
  */
 export default function OperatorDrawerMenu({
   isOpen,
@@ -130,7 +124,7 @@ export default function OperatorDrawerMenu({
               onClick={() => handlePrimaryClick(item.id)}
             >
               <span className="operator-drawer__item-icon" aria-hidden="true">
-                <FontAwesomeIcon icon={item.icon} />
+                {item.iconNode ?? (item.icon ? <FontAwesomeIcon icon={item.icon} /> : null)}
               </span>
               <span className="operator-drawer__item-label">{item.label}</span>
             </button>
@@ -150,7 +144,7 @@ export default function OperatorDrawerMenu({
               }}
             >
               <span className="operator-drawer__item-icon" aria-hidden="true">
-                <FontAwesomeIcon icon={item.icon} />
+                {item.iconNode ?? (item.icon ? <FontAwesomeIcon icon={item.icon} /> : null)}
               </span>
               <span className="operator-drawer__item-label">{item.label}</span>
             </button>

@@ -113,3 +113,36 @@ export const MOCK_UPCOMING_COLLECTIONS = [
     taskType: 'recolher',
   },
 ]
+
+export const MOCK_OPERATOR_HISTORICO = [
+  {
+    id: 'CNT-004',
+    clienteLabel: 'Revigrés',
+    locationPrefix: 'Polo 4',
+    locationDetail: 'Aveiro',
+    status: 'finalizado',
+    historicoScheduledAt: '18/07/2026 11:40',
+    scheduledAt: '18/07/2026 11:40',
+    binNumber: '02',
+    taskType: 'recolher',
+    estado: 'concluido',
+    estadoKey: 'concluido',
+    dataIso: '2026-07-18',
+    dateSortValue: new Date('2026-07-18').getTime(),
+  },
+  {
+    id: 'CNT-005',
+    clienteLabel: 'C.M Águeda',
+    locationPrefix: 'Praça do Município',
+    locationDetail: 'Águeda',
+    status: 'finalizado',
+    historicoScheduledAt: '17/07/2026 09:15',
+    scheduledAt: '17/07/2026 09:15',
+    binNumber: '01',
+    taskType: 'entregar',
+    estado: 'concluido',
+    estadoKey: 'concluido',
+    dataIso: '2026-07-17',
+    dateSortValue: new Date('2026-07-17').getTime(),
+  },
+]

@@ -1,6 +1,5 @@
 import {
   faChartColumn,
-  faCircleInfo,
   faComments,
   faGear,
   faPowerOff,
@@ -210,19 +209,6 @@ export default function AdminDrawerMenu({
               <FontAwesomeIcon icon={faUser} />
             </span>
             <span className="admin-drawer__item-label">Perfil</span>
-          </button>
-          <button
-            type="button"
-            className="admin-drawer__item"
-            onClick={() => {
-              onClose()
-              onNavigate?.('ajuda')
-            }}
-          >
-            <span className="admin-drawer__item-icon" aria-hidden="true">
-              <FontAwesomeIcon icon={faCircleInfo} />
-            </span>
-            <span className="admin-drawer__item-label">Ajuda</span>
           </button>
           <button
             type="button"

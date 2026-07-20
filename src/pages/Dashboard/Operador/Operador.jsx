@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
-  faArrowsRotate,
   faBarcodeRead,
   faHouseChimney,
   faRecycle,
@@ -33,6 +32,7 @@ import MovimentosRecolha from './MovimentosRecolha/MovimentosRecolha.jsx'
 import MovimentosEntrega from './MovimentosEntrega/MovimentosEntrega.jsx'
 import Processar from './Processar/Processar.jsx'
 import QrScanner from './QrScanner/QrScanner.jsx'
+import Historico from './Historico/Historico.jsx'
 import Perfil from '../../Perfil/Perfil.jsx'
 import { readIsProfileSection, readOperadorNavId, readOperadorShowProcessarButton, readOperadorScreen, setAppHash } from '../../../lib/appRoute.js'
 import {
@@ -42,7 +42,7 @@ import {
   MOCK_UPCOMING_COLLECTIONS,
 } from './mockData.js'
 
-const OPERATOR_BOTTOM_NAV_ITEMS = [  { id: 'movimentos', label: 'Movimentos', icon: faArrowsRotate },
+const OPERATOR_BOTTOM_NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: faHouseChimney },
   { id: 'historico', label: 'Histórico', icon: faClockSharp },
 ]
@@ -417,9 +417,8 @@ export default function Operador({ onLogout }) {
   }, [])
 
   function handleDrawerNavigate(actionId) {
-    if (actionId === 'movimentos') selectNav('movimentos')
-    else if (actionId === 'historico') selectNav('historico')
-    else if (actionId === 'recolhas') selectNav('dashboard')
+    if (actionId === 'historico') selectNav('historico')
+    else if (actionId === 'dashboard') selectNav('dashboard')
     else if (actionId === 'perfil') {
       setShowPerfil(true)
       setAppHash('operador', 'perfil')
@@ -472,6 +471,8 @@ export default function Operador({ onLogout }) {
       <main className="operator-dashboard__main">
         {showPerfil ? (
           <Perfil profileKind="operador" onUserUpdated={setUserName} />
+        ) : navActiveId === 'historico' ? (
+          <Historico />
         ) : (
           <>
         <section className="operator-dashboard__section" aria-labelledby="sec-day">
@@ -558,7 +559,10 @@ export default function Operador({ onLogout }) {
       </main>
       ) : null}
 
-      {isDashboardScreen && readOperadorShowProcessarButton() && !showPerfil ? (
+      {isDashboardScreen &&
+      readOperadorShowProcessarButton() &&
+      !showPerfil &&
+      navActiveId === 'dashboard' ? (
         <FloatingPrimaryButton
           variant="operador"
           label="Processar"

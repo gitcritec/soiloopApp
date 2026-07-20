@@ -119,12 +119,12 @@
 
 .cliente-contentor-card {
   display: grid;
-  grid-template-columns: 57px minmax(0, 1fr) 114px;
-  align-items: stretch;
-  gap: 24px;
+  grid-template-columns: 28px minmax(0, 1fr) auto 114px;
+  align-items: center;
+  gap: 8px;
   width: 100%;
-  min-height: 120px;
-  padding: 12px 12px 12px 24px;
+  min-height: 70px;
+  padding: 8px 8px 8px 16px;
   box-sizing: border-box;
   border-radius: 10px;
   background: #f9f8f9;
@@ -137,17 +137,17 @@
 }
 
 .cliente-contentor-card__icon {
-  width: 57px;
-  height: 80px;
+  width: 20px;
+  height: 28px;
   color: #40534c;
 }
 
 .cliente-contentor-card__body {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
   min-width: 0;
-  min-height: 96px;
+  min-height: 0;
 }
 
 .cliente-contentor-card__head {
@@ -187,83 +187,19 @@
   line-height: 15px;
 }
 
-.cliente-contentor-card__meta {
+.cliente-contentor-card__badges {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
   align-items: flex-start;
-}
-
-.cliente-contentor-card__meta--hoje,
-.cliente-contentor-card__meta--atrasado {
-  color: #e6193c;
-}
-
-.cliente-contentor-card__meta--amanha {
-  color: #f1ba00;
-}
-
-.cliente-contentor-card__meta--agendada,
-.cliente-contentor-card__meta--recolhido {
-  color: #1e8f2b;
-}
-
-.cliente-contentor-card__meta-badge {
-  display: inline-flex;
-  align-items: center;
   justify-content: center;
-  gap: 4px;
-  min-width: 80px;
-  height: 20px;
-  padding: 0 8px 2px;
-  box-sizing: border-box;
-  border-radius: 5px;
-  font-size: 9px;
-  line-height: 15px;
-}
-
-.cliente-contentor-card__meta--hoje .cliente-contentor-card__meta-badge,
-.cliente-contentor-card__meta--atrasado .cliente-contentor-card__meta-badge {
-  background: #fbdae0;
-}
-
-.cliente-contentor-card__meta--amanha .cliente-contentor-card__meta-badge {
-  background: #fff6d6;
-}
-
-.cliente-contentor-card__meta--agendada .cliente-contentor-card__meta-badge,
-.cliente-contentor-card__meta--recolhido .cliente-contentor-card__meta-badge {
-  background: #eeffce;
-}
-
-.cliente-contentor-card__meta-icon {
-  width: 12px;
-  height: 12px;
-  font-size: 12px;
-  line-height: 1;
-}
-
-.cliente-contentor-card__meta-date {
-  display: flex;
-  gap: 4px;
-  margin: 0;
-  font-size: 9px;
-  line-height: 15px;
-}
-
-.cliente-contentor-card__aside {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: space-between;
-  min-height: 96px;
 }
 
 .cliente-contentor-card__estado {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 80px;
+  min-width: 60px;
   padding: 3px 8px 4px;
   box-sizing: border-box;
   border-radius: 4px;
@@ -273,45 +209,15 @@
   white-space: nowrap;
 }
 
-.cliente-contentor-card__estado--reutilizavel {
+.cliente-contentor-card__estado--reutilizavel,
+.cliente-contentor-card__estado--novo {
   color: #1e8f2b;
   background: #eeffce;
-}
-
-.cliente-contentor-card__estado--em-recolha {
-  color: #40534c;
-  background: #e5e9e8;
 }
 
 .cliente-contentor-card__estado--danificado {
   color: #e6193c;
   background: #fbdae0;
-}
-
-.cliente-contentor-card--dashboard {
-  grid-template-columns: 28px minmax(0, 1fr) auto 114px;
-  align-items: center;
-  gap: 8px;
-  min-height: 70px;
-  padding: 8px 8px 8px 16px;
-}
-
-.cliente-contentor-card--dashboard .cliente-contentor-card__icon {
-  width: 20px;
-  height: 28px;
-}
-
-.cliente-contentor-card--dashboard .cliente-contentor-card__body {
-  min-height: 0;
-  justify-content: center;
-}
-
-.cliente-contentor-card--dashboard .cliente-contentor-card__badges {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: flex-start;
-  justify-content: center;
 }
 
 .cliente-contentor-card__recolha-badge {
@@ -330,23 +236,22 @@
   background: #e5e9e8;
 }
 
-.cliente-contentor-card--dashboard .cliente-contentor-card__actions {
-  height: 54px;
-}
-
 .cliente-contentor-card__actions {
   display: flex;
   gap: 8px;
   width: 100%;
   height: 54px;
+  justify-content: flex-start;
 }
 
 .cliente-contentor-card__btn {
   display: flex;
-  flex: 1 1 0;
+  flex: 0 0 53px;
   align-items: center;
   justify-content: center;
-  min-width: 0;
+  width: 53px;
+  min-width: 53px;
+  max-width: 53px;
   height: 54px;
   padding: 0;
   border: none;
@@ -366,8 +271,6 @@
 }
 
 .cliente-contentor-card__btn--recycle:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
-  color: #f9f8f9;
-  background: #e5e9e8;
 }

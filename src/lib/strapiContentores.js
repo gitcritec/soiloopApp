@@ -394,6 +394,12 @@ function extractCapacidadeId(capacidade) {
 }
 
 function pickRelationId(entity) {
+  if (entity == null) return null
+  if (typeof entity === 'string' || typeof entity === 'number') {
+    return pickString(entity)
+  }
+  const fromExtract = pickString(extractRelationId(entity))
+  if (fromExtract) return fromExtract
   const unwrapped = unwrapEntity(entity)
   if (!unwrapped) return null
   return pickString(unwrapped.documentId ?? unwrapped.id)
@@ -1223,21 +1229,29 @@ export async function updateStrapiContentor(documentId, payload) {
  * Cartão de contentor instalado (admin / cliente).
  * @param {ContentorItem} item
  * @param {import('./strapiClientes.js').ClienteItem|null} [cliente]
+ * @param {object|null} [pendingRecolha]
  */
-export function mapContentorItemToInstalledCard(item, cliente = null) {
+export function mapContentorItemToInstalledCard(item, cliente = null, pendingRecolha = null) {
   const loc = pickString(item.localizacaoAtualLabel) ?? pickString(item.localizacao) ?? '—'
+  const emRecolha = Boolean(pendingRecolha)
   return {
     id: item.cid,
     contentorId: item.cid,
     litrosLabel: item.litrosLabel,
     location: loc,
-    locationDetail: loc,
+    locationPrefix: item.locationPrefix ?? null,
+    locationDetail: item.locationDetail ?? loc,
+    localizacaoId: item.localizacaoAtualId || '',
     lat: item.lat ?? null,
     lng: item.lng ?? null,
     clientName: cliente?.nome ?? cliente?.username ?? item.clienteAtualNome ?? null,
     clienteId: item.clienteAtualId ?? pickString(cliente?.id),
     contentorStrapiId: item.id,
     estadoLabel: item.estadoLabel ?? 'Reutilizável',
+    emRecolha,
+    canRequestPickup: !emRecolha,
+    status: pendingRecolha?.status,
+    scheduledAt: pendingRecolha?.scheduledAt ?? pendingRecolha?.dataIso ?? '',
     source: 'contentor',
   }
 }
