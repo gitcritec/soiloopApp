@@ -238,6 +238,7 @@ export default function Operador({ onLogout }) {
         ...prev,
         recolhasHoje: result.stats?.recolhasHoje ?? prev.recolhasHoje,
         recolhasAgendadas: result.stats?.recolhasAgendadas ?? prev.recolhasAgendadas,
+        contentoresAtivos: result.stats?.contentoresAtivos ?? prev.contentoresAtivos,
       }))
     } catch {
       setDayCollections([])
@@ -387,6 +388,7 @@ export default function Operador({ onLogout }) {
           ...prev,
           recolhasHoje: result.stats?.recolhasHoje ?? prev.recolhasHoje,
           recolhasAgendadas: result.stats?.recolhasAgendadas ?? prev.recolhasAgendadas,
+          contentoresAtivos: result.stats?.contentoresAtivos ?? prev.contentoresAtivos,
         }))
       } catch {
         if (!cancelled) {
@@ -551,7 +553,7 @@ export default function Operador({ onLogout }) {
           recolhasAgendadas={operatorStats.recolhasAgendadas}
           contentoresAtivos={operatorStats.contentoresAtivos}
           kmPercorridos={operatorStats.kmPercorridos}
-          contentoresLabel="ativos"
+          contentoresLabel="recolhidos"
           activityLabel="Serviços"
         />
           </>

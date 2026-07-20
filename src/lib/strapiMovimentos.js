@@ -220,6 +220,11 @@ function movimentoBelongsToOperador(item, currentOperadorIds, options = {}) {
   return refs.some((ref) => currentOperadorIds.has(ref))
 }
 
+/** Contagens de stats: só movimentos com operador explicitamente associado. */
+function movimentoBelongsToOperadorStrict(item, currentOperadorIds) {
+  return movimentoBelongsToOperador(item, currentOperadorIds, { trustApiScope: false })
+}
+
 function movimentoBelongsToCliente(item, currentClienteIds) {
   if (!item || !(currentClienteIds instanceof Set) || currentClienteIds.size === 0) {
     return false
@@ -230,6 +235,16 @@ function movimentoBelongsToCliente(item, currentClienteIds) {
   }
   // Movimentos da API do cliente sem relação `cliente` preenchida (legado / permissões).
   return true
+}
+
+/** Contagens de stats: só movimentos com cliente explicitamente associado. */
+function movimentoBelongsToClienteStrict(item, currentClienteIds) {
+  if (!item || !(currentClienteIds instanceof Set) || currentClienteIds.size === 0) {
+    return false
+  }
+  const refs = [item.clienteId, item.clienteDocumentId].filter(Boolean).map(String)
+  if (refs.length === 0) return false
+  return refs.some((ref) => currentClienteIds.has(ref))
 }
 
 function movimentoBelongsToOtherCliente(item, currentClienteIds) {
@@ -1456,50 +1471,74 @@ export async function fetchStrapiContentorMovimentosHistorico(contentorStrapiId,
 }
 
 /**
- * Lista movimentos nos estados "agendado" e "pedido".
+ * Lista movimentos nos estados "agendado" e "pedido" do cliente autenticado.
  * @param {Array<object>} [fallbackRows]
  */
 export async function fetchStrapiClienteMovimentosAgendados(fallbackRows = []) {
   const base = strapiBaseUrl()
   if (!base) return []
 
-  const attempts = [
+  const clienteRefs = await ensureStoredStrapiUserRefs()
+
+  /** @type {URLSearchParams[]} */
+  const attempts = []
+
+  for (const ref of clienteRefs) {
+    for (const refKey of ['id', 'documentId']) {
+      for (const estado of ['agendado', 'pedido', 'Agendado', 'Pedido', 'agendada', 'Agendada']) {
+        const params = new URLSearchParams()
+        params.set('filters[estado][$eq]', estado)
+        params.set(`filters[cliente][${refKey}][$eq]`, ref)
+        addMovimentoRelationsPopulate(params)
+        addMovimentosCommonParams(params)
+        attempts.push(params)
+
+        const paramsPlain = new URLSearchParams()
+        paramsPlain.set('filters[estado][$eq]', estado)
+        paramsPlain.set(`filters[cliente][${refKey}][$eq]`, ref)
+        addMovimentosCommonParams(paramsPlain)
+        attempts.push(paramsPlain)
+      }
+    }
+  }
+
+  attempts.push(
+    createEstadoMovimentosParams('agendado', true),
+    createEstadoMovimentosParams('pedido', true),
+    createEstadoMovimentosParams('agendado', false),
+    createEstadoMovimentosParams('pedido', false),
     createAllMovimentosParams(true),
     createAllMovimentosParams(false),
-    createEstadoMovimentosParams('agendado', true),
-    createEstadoMovimentosParams('Agendado', true),
-    createEstadoMovimentosParams('agendada', true),
-    createEstadoMovimentosParams('Agendada', true),
-    createEstadoMovimentosParams('pedido', true),
-    createEstadoMovimentosParams('Pedido', true),
-    createEstadoMovimentosParams('agendado', false),
-    createEstadoMovimentosParams('Agendado', false),
-    createEstadoMovimentosParams('agendada', false),
-    createEstadoMovimentosParams('Agendada', false),
-    createEstadoMovimentosParams('pedido', false),
-    createEstadoMovimentosParams('Pedido', false),
-  ]
+  )
 
   let lastError = null
+  let lastProcessed = []
+
   for (const params of attempts) {
     try {
       const rows = await fetchMovimentosRows(base, params)
-      if (rows.length > 0) {
-        const pedidos = enrichMovimentosPedidoGroups(
-          rows
-            .map((row, index) => coerceMovimentoRow(row, fallbackRows[index]))
-            .filter((item) => item && isEstadoPedidoVisivel(item.estado))
-            .sort((a, b) => a.dateSortValue - b.dateSortValue),
-        )
-        if (pedidos.length > 0 || !params.toString().includes('filters%5Bestado%5D')) {
-          return pedidos
-        }
+      const pedidos = enrichMovimentosPedidoGroups(
+        rows
+          .map((row, index) => coerceMovimentoRow(row, fallbackRows[index]))
+          .filter((item) => item && isEstadoPedidoVisivel(item.estado))
+          .filter((item) =>
+            clienteRefs.size > 0
+              ? movimentoBelongsToClienteStrict(item, clienteRefs)
+              : true,
+          )
+          .sort((a, b) => a.dateSortValue - b.dateSortValue),
+      )
+      if (pedidos.length > 0) return pedidos
+      lastProcessed = pedidos
+      if (rows.length === 0 && params.toString().includes('filters%5Bcliente%5D')) {
+        continue
       }
     } catch (err) {
       lastError = err
     }
   }
 
+  if (lastProcessed.length > 0) return lastProcessed
   if (lastError) throw lastError
   return []
 }
@@ -1606,23 +1645,47 @@ export async function fetchStrapiOperadorAgenda(operadorId, dataIso) {
 }
 
 /**
- * Lista movimentos concluídos, ordenados por data (mais recentes primeiro).
+ * Lista movimentos concluídos do cliente autenticado, ordenados por data (mais recentes primeiro).
  * @param {Array<object>} [fallbackRows]
  */
 export async function fetchStrapiClienteMovimentosHistorico(fallbackRows = []) {
   const base = strapiBaseUrl()
   if (!base) return []
 
-  const attempts = [
-    createEstadoMovimentosParamsHistorico('concluido', true),
-    createEstadoMovimentosParamsHistorico('Concluido', true),
-    createEstadoMovimentosParamsHistorico('concluído', true),
-    createEstadoMovimentosParamsHistorico('Concluído', true),
-    createEstadoMovimentosParamsHistorico('concluido', false),
-    createEstadoMovimentosParamsHistorico('Concluido', false),
-  ]
+  const clienteRefs = await ensureStoredStrapiUserRefs()
+
+  /** @type {URLSearchParams[]} */
+  const attempts = []
+  const estados = ['concluido', 'Concluido', 'concluído', 'Concluído']
+
+  for (const ref of clienteRefs) {
+    for (const refKey of ['id', 'documentId']) {
+      for (const estado of ['concluido', 'Concluido']) {
+        const params = new URLSearchParams()
+        params.set('filters[estado][$eq]', estado)
+        params.set(`filters[cliente][${refKey}][$eq]`, ref)
+        addMovimentoRelationsPopulate(params)
+        addHistoricoSortParams(params)
+        attempts.push(params)
+
+        const paramsPlain = new URLSearchParams()
+        paramsPlain.set('filters[estado][$eq]', estado)
+        paramsPlain.set(`filters[cliente][${refKey}][$eq]`, ref)
+        addHistoricoSortParams(paramsPlain)
+        attempts.push(paramsPlain)
+      }
+    }
+  }
+
+  for (const estado of estados) {
+    attempts.push(createEstadoMovimentosParamsHistorico(estado, true))
+  }
+  attempts.push(createEstadoMovimentosParamsHistorico('concluido', false))
+  attempts.push(createEstadoMovimentosParamsHistorico('Concluido', false))
 
   let lastError = null
+  let lastProcessed = []
+
   for (const params of attempts) {
     try {
       const rows = await fetchMovimentosRows(base, params)
@@ -1630,14 +1693,21 @@ export async function fetchStrapiClienteMovimentosHistorico(fallbackRows = []) {
         rows
           .map((row, index) => coerceMovimentoRow(row, fallbackRows[index]))
           .filter((item) => item && isEstadoConcluido(item.estado))
-          .sort((a, b) => b.dateSortValue - a.dateSortValue),
+          .filter((item) =>
+            clienteRefs.size > 0
+              ? movimentoBelongsToClienteStrict(item, clienteRefs)
+              : true,
+          ),
       )
-      if (historico.length > 0) return historico
+      const sorted = sortMovimentosHistoricoDesc(historico)
+      if (sorted.length > 0) return sorted
+      lastProcessed = sorted
     } catch (err) {
       lastError = err
     }
   }
 
+  if (lastProcessed.length > 0) return lastProcessed
   if (lastError) throw lastError
   return []
 }
@@ -3000,7 +3070,7 @@ export function splitOperadorDashboardMovimentos(rows) {
     overdueCount,
     stats: {
       recolhasHoje: dayCollections.filter((item) => item.status === 'hoje').length,
-      recolhasAgendadas: upcomingCollections.length,
+      recolhasAgendadas: dayCollections.length + upcomingCollections.length,
     },
   }
 }
@@ -3023,14 +3093,14 @@ function createOperadorDataDiaParams(operadorRef, refKey, dataIso, withPopulate)
   return addMovimentosCommonParams(params)
 }
 
-function countOperadorServicosHojeFromRows(rows, operadorRefs, options = {}) {
+function countOperadorServicosHojeFromRows(rows, operadorRefs) {
   const todayStart = getTodayStartSortValue()
   const todayEnd = getTodayEndSortValue()
 
   return rows
     .map((row) => coerceMovimentoRow(row))
     .filter((item) => item && !isEstadoPedido(item.estado))
-    .filter((item) => movimentoBelongsToOperador(item, operadorRefs, options))
+    .filter((item) => movimentoBelongsToOperadorStrict(item, operadorRefs))
     .filter((item) => {
       const dateVal = item.dateSortValue
       return Number.isFinite(dateVal) && dateVal >= todayStart && dateVal <= todayEnd
@@ -3049,33 +3119,21 @@ async function fetchStrapiOperadorServicosHojeCount() {
   if (operadorRefs.size === 0) return 0
 
   const todayIso = getTodayIsoDate()
-  /** @type {Array<{ params: URLSearchParams, trustApiScope: boolean }>} */
+  /** @type {URLSearchParams[]} */
   const attempts = []
 
   for (const ref of operadorRefs) {
     for (const refKey of ['id', 'documentId']) {
-      attempts.push({
-        params: createOperadorDataDiaParams(ref, refKey, todayIso, true),
-        trustApiScope: true,
-      })
-      attempts.push({
-        params: createOperadorDataDiaParams(ref, refKey, todayIso, false),
-        trustApiScope: true,
-      })
+      attempts.push(createOperadorDataDiaParams(ref, refKey, todayIso, true))
+      attempts.push(createOperadorDataDiaParams(ref, refKey, todayIso, false))
     }
   }
 
-  const paramsToday = new URLSearchParams()
-  paramsToday.set('filters[data][$eq]', todayIso)
-  addMovimentoRelationsPopulate(paramsToday)
-  addMovimentosCommonParams(paramsToday)
-  attempts.push({ params: paramsToday, trustApiScope: true })
-
   let bestCount = 0
-  for (const { params, trustApiScope } of attempts) {
+  for (const params of attempts) {
     try {
       const rows = await fetchMovimentosRows(base, params)
-      const count = countOperadorServicosHojeFromRows(rows, operadorRefs, { trustApiScope })
+      const count = countOperadorServicosHojeFromRows(rows, operadorRefs)
       if (count > bestCount) bestCount = count
       if (count > 0) return count
     } catch {
@@ -3104,42 +3162,50 @@ function sortOperadorMovimentos(a, b) {
 }
 
 function processOperadorMovimentosRows(rows, fallbackRows, operadorRefs, options = {}) {
-  const build = (opts) =>
-    enrichMovimentosPedidoGroups(
-      rows
-        .map((row, index) => coerceMovimentoRow(row, fallbackRows[index]))
-        .filter((item) => item && isEstadoAgendado(item.estado))
-        .filter((item) => movimentoBelongsToOperador(item, operadorRefs, opts))
-        .sort(sortOperadorMovimentos),
-    )
-
-  const pedidos = build(options)
-  if (pedidos.length > 0 || options.trustApiScope || rows.length === 0) return pedidos
-  return build({ trustApiScope: true })
+  return enrichMovimentosPedidoGroups(
+    rows
+      .map((row, index) => coerceMovimentoRow(row, fallbackRows[index]))
+      .filter((item) => item && isEstadoAgendado(item.estado))
+      .filter((item) =>
+        options.strict
+          ? movimentoBelongsToOperadorStrict(item, operadorRefs)
+          : movimentoBelongsToOperador(item, operadorRefs, options),
+      )
+      .sort(sortOperadorMovimentos),
+  )
 }
 
 function buildOperadorAgendadoFetchAttempts(operadorRefs) {
   const refs = [...operadorRefs]
-  /** @type {Array<{ params: URLSearchParams, trustApiScope: boolean }>} */
+  /** @type {Array<{ params: URLSearchParams, trustApiScope: boolean, strict?: boolean }>} */
   const attempts = []
 
-  attempts.push({ params: createAllMovimentosParams(true), trustApiScope: true })
-  attempts.push({ params: createAllMovimentosParams(false), trustApiScope: true })
-  attempts.push({ params: createEstadoMovimentosParams('agendado', true), trustApiScope: true })
-  attempts.push({ params: createEstadoMovimentosParams('agendado', false), trustApiScope: true })
-
+  // Preferir filtros por operador — evita contar movimentos de outros / sem operador.
   for (const ref of refs) {
     for (const refKey of ['id', 'documentId']) {
       attempts.push({
         params: createOperadorAgendadoParams(ref, refKey, 'agendado', true),
-        trustApiScope: true,
+        trustApiScope: false,
+        strict: true,
       })
       attempts.push({
         params: createOperadorAgendadoParams(ref, refKey, 'agendado', false),
-        trustApiScope: true,
+        trustApiScope: false,
+        strict: true,
       })
     }
   }
+
+  attempts.push({
+    params: createEstadoMovimentosParams('agendado', true),
+    trustApiScope: false,
+    strict: true,
+  })
+  attempts.push({
+    params: createEstadoMovimentosParams('agendado', false),
+    trustApiScope: false,
+    strict: true,
+  })
 
   return attempts
 }
@@ -3159,12 +3225,13 @@ export async function fetchStrapiOperadorMovimentosAgendados(fallbackRows = []) 
   let hadSuccessfulFetch = false
   let lastProcessed = []
 
-  for (const { params, trustApiScope } of attempts) {
+  for (const { params, trustApiScope, strict } of attempts) {
     try {
       const rows = await fetchMovimentosRows(base, params)
       hadSuccessfulFetch = true
       const pedidos = processOperadorMovimentosRows(rows, fallbackRows, operadorRefs, {
         trustApiScope,
+        strict,
       })
       if (pedidos.length > 0) return pedidos
       lastProcessed = pedidos
@@ -3188,55 +3255,37 @@ function createOperadorHistoricoParams(operadorRef, refKey, estado, withPopulate
   return addHistoricoSortParams(params)
 }
 
-function processOperadorHistoricoRows(rows, fallbackRows, operadorRefs, options = {}) {
-  const build = (opts) =>
+function processOperadorHistoricoRows(rows, fallbackRows, operadorRefs) {
+  return sortMovimentosHistoricoDesc(
     enrichMovimentosPedidoGroups(
       rows
         .map((row, index) => coerceMovimentoRow(row, fallbackRows[index]))
         .filter((item) => item && isEstadoConcluido(item.estado))
-        .filter((item) => movimentoBelongsToOperador(item, operadorRefs, opts)),
-    )
-
-  const items = build(options)
-  if (items.length > 0 || options.trustApiScope || rows.length === 0) {
-    return sortMovimentosHistoricoDesc(items)
-  }
-  return sortMovimentosHistoricoDesc(build({ trustApiScope: true }))
+        .filter((item) => movimentoBelongsToOperadorStrict(item, operadorRefs)),
+    ),
+  )
 }
 
 function buildOperadorHistoricoFetchAttempts(operadorRefs) {
   const refs = [...operadorRefs]
-  /** @type {Array<{ params: URLSearchParams, trustApiScope: boolean }>} */
+  /** @type {URLSearchParams[]} */
   const attempts = []
   const estados = ['concluido', 'Concluido', 'concluído', 'Concluído']
-
-  for (const estado of estados) {
-    attempts.push({
-      params: createEstadoMovimentosParamsHistorico(estado, true),
-      trustApiScope: true,
-    })
-  }
 
   for (const ref of refs) {
     for (const refKey of ['id', 'documentId']) {
       for (const estado of ['concluido', 'Concluido']) {
-        attempts.push({
-          params: createOperadorHistoricoParams(ref, refKey, estado, true),
-          trustApiScope: true,
-        })
-        attempts.push({
-          params: createOperadorHistoricoParams(ref, refKey, estado, false),
-          trustApiScope: true,
-        })
+        attempts.push(createOperadorHistoricoParams(ref, refKey, estado, true))
+        attempts.push(createOperadorHistoricoParams(ref, refKey, estado, false))
       }
     }
   }
 
+  for (const estado of estados) {
+    attempts.push(createEstadoMovimentosParamsHistorico(estado, true))
+  }
   for (const estado of ['concluido', 'Concluido']) {
-    attempts.push({
-      params: createEstadoMovimentosParamsHistorico(estado, false),
-      trustApiScope: true,
-    })
+    attempts.push(createEstadoMovimentosParamsHistorico(estado, false))
   }
 
   return attempts
@@ -3257,13 +3306,11 @@ export async function fetchStrapiOperadorMovimentosHistorico(fallbackRows = []) 
   let hadSuccessfulFetch = false
   let lastProcessed = []
 
-  for (const { params, trustApiScope } of attempts) {
+  for (const params of attempts) {
     try {
       const rows = await fetchMovimentosRows(base, params)
       hadSuccessfulFetch = true
-      const historico = processOperadorHistoricoRows(rows, fallbackRows, operadorRefs, {
-        trustApiScope,
-      })
+      const historico = processOperadorHistoricoRows(rows, fallbackRows, operadorRefs)
       if (historico.length > 0) return historico
       lastProcessed = historico
       if (rows.length === 0) return historico
@@ -3300,18 +3347,28 @@ export async function fetchStrapiOperadorDashboardMovimentos(
     return splitOperadorDashboardMovimentos(fallbackFromMock)
   }
 
-  const [rows, servicosHoje] = await Promise.all([
+  const [rows, servicosHoje, historico] = await Promise.all([
     fetchStrapiOperadorMovimentosAgendados(fallbackRows),
     fetchStrapiOperadorServicosHojeCount(),
+    fetchStrapiOperadorMovimentosHistorico(),
   ])
   const collapsed = collapseMovimentosPedidoCards(rows)
   const result = splitOperadorDashboardMovimentos(collapsed)
+  const operadorRefs = await ensureStoredStrapiUserRefs()
+  const agendadosCount = rows.filter((item) =>
+    movimentoBelongsToOperadorStrict(item, operadorRefs),
+  ).length
+  const concluidosCount = historico.filter((item) =>
+    movimentoBelongsToOperadorStrict(item, operadorRefs),
+  ).length
 
   return {
     ...result,
     stats: {
       ...result.stats,
       recolhasHoje: servicosHoje,
+      recolhasAgendadas: agendadosCount,
+      contentoresAtivos: concluidosCount,
     },
   }
 }

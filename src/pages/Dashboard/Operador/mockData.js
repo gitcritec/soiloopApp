@@ -3,10 +3,10 @@
 export const MOCK_OPERATOR_NAME = 'Luís Pedro'
 
 export const MOCK_OPERATOR_STATS = {
-  recolhasHoje: 3,
-  recolhasAgendadas: 9,
-  contentoresAtivos: 2,
-  kmPercorridos: '34',
+  recolhasHoje: 0,
+  recolhasAgendadas: 0,
+  contentoresAtivos: 0,
+  kmPercorridos: '0',
 }
 
 export const MOCK_DAY_COLLECTIONS = [

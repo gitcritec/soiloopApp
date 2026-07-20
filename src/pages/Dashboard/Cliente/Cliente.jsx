@@ -36,6 +36,7 @@ import {
   deleteStrapiMovimentosBatch,
   fetchStrapiClienteContentoresInstalados,
   fetchStrapiClienteMovimentosAgendados,
+  fetchStrapiClienteMovimentosHistorico,
   getPedidoGroupMovimentoKeys,
   updateStrapiMovimentosBatch,
 } from '../../../lib/strapiMovimentos.js'
@@ -97,6 +98,7 @@ export default function Cliente({
   const [clientContainers, setClientContainers] = useState([])
   const [clientContainersLoading, setClientContainersLoading] = useState(true)
   const [clientContainersError, setClientContainersError] = useState(false)
+  const [clientHistoricoCount, setClientHistoricoCount] = useState(0)
   const [recolhaContext, setRecolhaContext] = useState(null)
   const [solicitarContentorOpen, setSolicitarContentorOpen] = useState(false)
   const [editPedidoContext, setEditPedidoContext] = useState(null)
@@ -143,13 +145,19 @@ export default function Cliente({
     let cancelled = false
     setClientRequestsLoading(true)
     setClientRequestsError(false)
-    fetchStrapiClienteMovimentosAgendados(MOCK_CLIENT_REQUESTS)
-      .then((rows) => {
-        if (!cancelled) setClientRequests(rows)
+    Promise.all([
+      fetchStrapiClienteMovimentosAgendados(MOCK_CLIENT_REQUESTS),
+      fetchStrapiClienteMovimentosHistorico(),
+    ])
+      .then(([rows, historico]) => {
+        if (cancelled) return
+        setClientRequests(rows)
+        setClientHistoricoCount(Array.isArray(historico) ? historico.length : 0)
       })
       .catch(() => {
         if (!cancelled) {
           setClientRequests([])
+          setClientHistoricoCount(0)
           setClientRequestsError(true)
         }
       })
@@ -203,10 +211,17 @@ export default function Cliente({
   function reloadClientDashboardData() {
     setClientRequestsLoading(true)
     setClientRequestsError(false)
-    fetchStrapiClienteMovimentosAgendados(MOCK_CLIENT_REQUESTS)
-      .then((rows) => setClientRequests(rows))
+    Promise.all([
+      fetchStrapiClienteMovimentosAgendados(MOCK_CLIENT_REQUESTS),
+      fetchStrapiClienteMovimentosHistorico(),
+    ])
+      .then(([rows, historico]) => {
+        setClientRequests(rows)
+        setClientHistoricoCount(Array.isArray(historico) ? historico.length : 0)
+      })
       .catch(() => {
         setClientRequests([])
+        setClientHistoricoCount(0)
         setClientRequestsError(true)
       })
       .finally(() => setClientRequestsLoading(false))
@@ -296,6 +311,32 @@ export default function Cliente({
     () => collapseMovimentosPedidoCards(clientRequests),
     [clientRequests],
   )
+  const clientStats = useMemo(() => {
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+    const todayEnd = new Date()
+    todayEnd.setHours(23, 59, 59, 999)
+    const todayStartMs = todayStart.getTime()
+    const todayEndMs = todayEnd.getTime()
+
+    // Espelha a lógica do operador, mas para o cliente autenticado:
+    // - hoje: movimentos do dia (exclui só «pedido»)
+    // - agendadas: todos os «agendado»
+    // - recolhidos: todos os «concluido» (histórico)
+    const semPedido = clientRequests.filter((item) => item?.estadoKey !== 'pedido')
+    const agendados = clientRequests.filter((item) => item?.estadoKey === 'agendado')
+    const hoje = semPedido.filter((item) => {
+      const v = item?.dateSortValue
+      return Number.isFinite(v) && v >= todayStartMs && v <= todayEndMs
+    })
+
+    return {
+      recolhasHoje: hoje.length,
+      recolhasAgendadas: agendados.length,
+      contentoresRecolhidos: clientHistoricoCount,
+      kmPercorridos: MOCK_CLIENT_STATS.kmPercorridos,
+    }
+  }, [clientRequests, clientHistoricoCount])
 
   function renderMain() {
     if (showPerfil) {
@@ -392,10 +433,10 @@ export default function Cliente({
 
         {navActiveId === 'dashboard' ? (
           <OperadorStatsSummary
-            recolhasHoje={MOCK_CLIENT_STATS.recolhasHoje}
-            recolhasAgendadas={MOCK_CLIENT_STATS.recolhasAgendadas}
-            contentoresRecolhidos={MOCK_CLIENT_STATS.contentoresRecolhidos}
-            kmPercorridos={MOCK_CLIENT_STATS.kmPercorridos}
+            recolhasHoje={clientStats.recolhasHoje}
+            recolhasAgendadas={clientStats.recolhasAgendadas}
+            contentoresRecolhidos={clientStats.contentoresRecolhidos}
+            kmPercorridos={clientStats.kmPercorridos}
             contentoresLabel="recolhidos"
           />
         ) : null}
