@@ -190,19 +190,6 @@ export function movimentoCardBelongsToCliente(card, cliente) {
   return false
 }
 
-function buildClienteLocalizacaoLabels(cliente) {
-  const labels = new Set()
-  for (const loc of cliente?.localizacoes ?? []) {
-    for (const value of [loc?.nome, loc?.morada]) {
-      const label = pickString(value)
-      if (label) labels.add(label.toLowerCase())
-    }
-  }
-  const morada = pickString(cliente?.morada)
-  if (morada) labels.add(morada.toLowerCase())
-  return labels
-}
-
 function pickMovimentoClienteLabel(attrs, row, contentor) {
   return (
     pickUserDisplayName(attrs?.cliente ?? row?.cliente) ??
@@ -1940,35 +1927,35 @@ export async function fetchStrapiContentoresInstaladosCards() {
 }
 
 /**
- * Número de contentores instalados por cliente (user id).
+ * Número de contentores instalados por cliente (`clienteAtual` no Strapi).
+ * Alinhado com `fetchStrapiClienteContentoresInstaladosPorCliente` (detalhe).
  * @param {Array<import('./strapiClientes.js').ClienteItem>} [clientes]
  * @returns {Promise<Map<string, number>>}
  */
 export async function fetchStrapiContentorCountsByClienteId(clientes = []) {
-  const [cards, allContentores] = await Promise.all([
-    fetchStrapiContentoresInstaladosCards(),
-    fetchStrapiContentores(),
-  ])
+  const allContentores = await fetchStrapiContentores()
   const counts = new Map()
 
   for (const cliente of clientes) {
     const clientRef = pickString(cliente?.id)
     if (!clientRef) continue
 
-    const movimentoCards = cards.filter((card) => movimentoCardBelongsToCliente(card, cliente))
-    const labels = buildClienteLocalizacaoLabels(cliente)
-    const localizacaoCards =
-      labels.size > 0
-        ? allContentores.filter((item) => {
-            const loc = pickString(item.localizacaoAtualMorada ?? item.localizacao)
-            return loc && labels.has(loc.toLowerCase())
-          })
-        : []
+    const targetIds = new Set(
+      [cliente.id, cliente.documentId, ...(cliente.idAliases ?? [])]
+        .map((value) => pickString(value))
+        .filter(Boolean),
+    )
 
-    const uniqueCids = new Set([
-      ...movimentoCards.map((card) => String(card.id)),
-      ...localizacaoCards.map((item) => String(item.cid)),
-    ])
+    const uniqueCids = new Set(
+      allContentores
+        .filter((item) => {
+          const id = pickString(item.clienteAtualId)
+          const docId = pickString(item.clienteAtualDocumentId)
+          return (id && targetIds.has(id)) || (docId && targetIds.has(docId))
+        })
+        .map((item) => pickString(item.cid))
+        .filter(Boolean),
+    )
 
     for (const alias of cliente.idAliases ?? []) {
       const aliasRef = pickString(alias)
