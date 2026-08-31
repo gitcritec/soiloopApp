@@ -15,25 +15,40 @@ function formatLocalizacao(item) {
 }
 
 /**
- * Edição de pedido/recolha — apenas data e período.
+ * Edição de pedido/recolha — data, período e notas.
  */
 export default function EditarPedido({
   isOpen,
   movimentoItem = null,
   resetToApproval = false,
+  title,
+  submitLabel,
   onClose,
   onSubmit,
 }) {
-  const [form, setForm] = useState({ data: '', periodo: '' })
+  const [form, setForm] = useState({ data: '', periodo: '', notas: '' })
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
   const dateInputRef = useRef(null)
 
   const contentorId = movimentoItem?.pedidoGroupContentorId ?? movimentoItem?.id ?? '—'
   const localizacao = formatLocalizacao(movimentoItem)
-  const hasMovimento = Boolean(movimentoItem?.movimentoKey)
+  const hasMovimento = Boolean(
+    movimentoItem?.movimentoKey ||
+      (Array.isArray(movimentoItem?.pedidoGroupMovimentoKeys) &&
+        movimentoItem.pedidoGroupMovimentoKeys.length > 0),
+  )
   const groupTasks = movimentoItem?.pedidoGroupTasks ?? []
-  const hasGroup = groupTasks.length > 1
+  const hasGroup =
+    groupTasks.length > 1 ||
+    Boolean(movimentoItem?.hasTroca) ||
+    (Array.isArray(movimentoItem?.pedidoGroupMovimentoKeys) &&
+      movimentoItem.pedidoGroupMovimentoKeys.length > 1)
+
+  const dialogTitle =
+    title ??
+    (resetToApproval ? 'Editar Pedido — requer aprovação' : 'Editar Pedido')
+  const confirmLabel = submitLabel ?? 'Guardar Alterações'
 
   const canSubmit = useMemo(() => {
     if (!hasMovimento || submitting) return false
@@ -42,7 +57,7 @@ export default function EditarPedido({
 
   useEffect(() => {
     if (!isOpen || !movimentoItem) {
-      setForm({ data: '', periodo: '' })
+      setForm({ data: '', periodo: '', notas: '' })
       setSubmitting(false)
       setFormError('')
       return
@@ -50,6 +65,7 @@ export default function EditarPedido({
     setForm({
       data: movimentoItem.dataIso ?? '',
       periodo: movimentoItem.periodo ?? '',
+      notas: movimentoItem.notas ?? '',
     })
     setFormError('')
   }, [isOpen, movimentoItem])
@@ -100,6 +116,7 @@ export default function EditarPedido({
           : [movimentoItem.movimentoKey],
         data: form.data.trim(),
         periodo: form.periodo.trim(),
+        notas: form.notas.trim(),
         resetToApproval,
       })
     } catch (err) {
@@ -137,7 +154,7 @@ export default function EditarPedido({
 
             <div className="solicitar-recolha__scroll">
               <h2 id="editar-pedido-title" className="solicitar-recolha__title">
-                Editar Pedido{resetToApproval ? ' — requer aprovação' : ''}
+                {dialogTitle}
               </h2>
 
               {hasGroup ? (
@@ -207,6 +224,22 @@ export default function EditarPedido({
                     <FontAwesomeIcon icon={faChevronDown} className="solicitar-recolha__select-icon" aria-hidden />
                   </span>
                 </label>
+
+                <label className="solicitar-recolha__field">
+                  <input
+                    type="text"
+                    className={`solicitar-recolha__input${form.notas ? '' : ' solicitar-recolha__input--placeholder-only'}`}
+                    name="notas"
+                    value={form.notas}
+                    onChange={(e) => updateField('notas', e.target.value)}
+                    disabled={!hasMovimento}
+                    tabIndex={isOpen ? 0 : -1}
+                    aria-label="Notas"
+                  />
+                  {!form.notas ? (
+                    <span className="solicitar-recolha__placeholder">Notas</span>
+                  ) : null}
+                </label>
               </div>
             </div>
 
@@ -217,7 +250,7 @@ export default function EditarPedido({
                 disabled={!canSubmit}
                 tabIndex={isOpen ? 0 : -1}
               >
-                {submitting ? 'A guardar…' : 'Guardar Alterações'}
+                {submitting ? 'A guardar…' : confirmLabel}
               </button>
               <button
                 type="button"

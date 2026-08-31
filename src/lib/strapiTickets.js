@@ -558,33 +558,69 @@ async function postTicket(url, data) {
  * @param {string|number|null} clienteRef
  * @param {string|number|null|undefined} localizacaoRef
  */
-function buildTicketCreatePayloadsForUserKey(core, userRelKey, clienteRef, localizacaoRef) {
+/**
+ * @param {object} core
+ * @param {string} userRelKey
+ * @param {string|number|null} clienteRef
+ * @param {string|number|null|undefined} localizacaoRef
+ * @param {Record<string, string|number|null|undefined>} [extraRelations]
+ */
+function buildTicketCreatePayloadsForUserKey(
+  core,
+  userRelKey,
+  clienteRef,
+  localizacaoRef,
+  extraRelations = {},
+) {
   const clienteVariants = buildRelationWriteVariants(userRelKey, clienteRef)
   const locVariants =
     localizacaoRef != null && String(localizacaoRef).trim() !== ''
       ? buildRelationWriteVariants('localizacao', localizacaoRef)
       : [{}]
 
+  const extraKeys = Object.keys(extraRelations).filter(
+    (key) => extraRelations[key] != null && String(extraRelations[key]).trim() !== '',
+  )
+  const extraVariantLists = extraKeys.map((key) =>
+    buildRelationWriteVariants(key, extraRelations[key]),
+  )
+
+  /** @type {object[]} */
+  let relationCombos = [{}]
+  for (const variants of extraVariantLists) {
+    const next = []
+    for (const base of relationCombos) {
+      for (const variant of variants.length ? variants : [{}]) {
+        next.push({ ...base, ...variant })
+      }
+    }
+    relationCombos = next.length ? next : relationCombos
+  }
+
   const payloads = []
   const seen = new Set()
 
   for (const clientePart of clienteVariants.length ? clienteVariants : [{}]) {
     for (const locPart of locVariants) {
-      const data = { ...core, ...clientePart, ...locPart }
-      const key = JSON.stringify(data)
-      if (seen.has(key)) continue
-      seen.add(key)
-      payloads.push(data)
+      for (const extraPart of relationCombos) {
+        const data = { ...core, ...clientePart, ...locPart, ...extraPart }
+        const key = JSON.stringify(data)
+        if (seen.has(key)) continue
+        seen.add(key)
+        payloads.push(data)
+      }
     }
   }
 
   if (localizacaoRef) {
     for (const clientePart of clienteVariants.length ? clienteVariants : [{}]) {
-      const data = { ...core, ...clientePart }
-      const key = JSON.stringify(data)
-      if (!seen.has(key)) {
-        seen.add(key)
-        payloads.push(data)
+      for (const extraPart of relationCombos) {
+        const data = { ...core, ...clientePart, ...extraPart }
+        const key = JSON.stringify(data)
+        if (!seen.has(key)) {
+          seen.add(key)
+          payloads.push(data)
+        }
       }
     }
   }
@@ -597,12 +633,18 @@ function buildTicketCreatePayloadsForUserKey(core, userRelKey, clienteRef, local
  * @param {string|number|null} clienteRef
  * @param {string|number|null|undefined} localizacaoRef
  */
-function buildTicketCreatePayloads(core, clienteRef, localizacaoRef) {
+function buildTicketCreatePayloads(core, clienteRef, localizacaoRef, extraRelations = {}) {
   const payloads = []
   const seen = new Set()
 
   for (const relKey of TICKET_USER_RELATION_KEYS) {
-    for (const data of buildTicketCreatePayloadsForUserKey(core, relKey, clienteRef, localizacaoRef)) {
+    for (const data of buildTicketCreatePayloadsForUserKey(
+      core,
+      relKey,
+      clienteRef,
+      localizacaoRef,
+      extraRelations,
+    )) {
       const key = JSON.stringify(data)
       if (seen.has(key)) continue
       seen.add(key)
@@ -877,6 +919,100 @@ export async function createStrapiTicket(payload) {
           allPayloads.push(withoutCliente)
         }
       }
+    }
+  }
+
+  const url = ticketsUrl(base)
+  let lastError = 'Não foi possível criar o ticket.'
+
+  for (const data of allPayloads) {
+    const res = await postTicket(url, data)
+    if (res.ok) {
+      const json = await res.json()
+      let item = coerceTicketRow(json.data ?? json)
+      if (!item) throw new Error('Ticket criado mas resposta da API inválida.')
+
+      const detail = await fetchStrapiTicketDetail(item.id)
+      if (detail) {
+        item = {
+          ...item,
+          ...detail,
+          ref: pickTicketDisplayRef(detail.ref, nextRef) ?? nextRef,
+        }
+      } else {
+        item = { ...item, ref: nextRef }
+      }
+
+      return item
+    }
+    lastError = await parseTicketApiError(res, lastError)
+  }
+
+  throw new Error(lastError)
+}
+
+/**
+ * Cria ticket em nome de um cliente (ex.: notificação automática na recolha).
+ * @param {{ assunto: string, mensagem: string, clienteId: string, localizacaoId?: string|null, contentorId?: string|null, prioridade?: string }} payload
+ * @returns {Promise<TicketItem>}
+ */
+export async function createStrapiTicketForCliente(payload) {
+  const base = strapiBaseUrl()
+  if (!base) throw new Error('Serviço indisponível. Tenta mais tarde.')
+
+  const clienteRef = pickString(payload.clienteId)
+  if (!clienteRef) throw new Error('Cliente em falta.')
+
+  const assunto = pickString(payload.assunto)
+  const mensagem = pickString(payload.mensagem)
+  if (!assunto) throw new Error('O assunto é obrigatório.')
+  if (!mensagem) throw new Error('A mensagem é obrigatória.')
+
+  const prioridade = pickString(payload.prioridade) ?? 'alta'
+  const locId = payload.localizacaoId
+  const contentorId = payload.contentorId
+  const dataAbertura = new Date().toISOString()
+  const nextRef = await resolveNextTicketRef()
+
+  const coreVariants = [
+    {
+      ref: nextRef,
+      assunto,
+      mensagem,
+      estado: 'aberto',
+      prioridade,
+      dataAbertura,
+    },
+    {
+      ref: nextRef,
+      assunto,
+      mensagem,
+      dataAbertura,
+    },
+    {
+      assunto,
+      mensagem,
+      estado: 'aberto',
+      prioridade,
+      dataAbertura,
+    },
+    {
+      assunto,
+      mensagem,
+      dataAbertura,
+    },
+  ]
+
+  const extraRelations = contentorId ? { contentor: contentorId } : {}
+  const allPayloads = []
+  const seenPayloads = new Set()
+
+  for (const core of coreVariants) {
+    for (const data of buildTicketCreatePayloads(core, clienteRef, locId, extraRelations)) {
+      const key = JSON.stringify(data)
+      if (seenPayloads.has(key)) continue
+      seenPayloads.add(key)
+      allPayloads.push(data)
     }
   }
 

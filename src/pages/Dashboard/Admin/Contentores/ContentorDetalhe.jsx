@@ -25,6 +25,7 @@ const ESTADO_LABEL = {
   agendado: 'Agendado',
   pedido: 'Pedido',
   rejeitado: 'Rejeitado',
+  cancelamento: 'Cancelamento pendente',
 }
 
 function movimentoCardStatus(item) {
@@ -235,6 +236,14 @@ export default function ContentorDetalhe({ contentorId, onBack, onEdit }) {
               <div className="contentor-detalhe__meta-row">
                 <dt>Situação:</dt>
                 <dd>{contentor.situacaoLabel || '—'}</dd>
+              </div>
+              <div className="contentor-detalhe__meta-row">
+                <dt>Estado físico:</dt>
+                <dd>{contentor.estadoFisicoLabel || contentor.estadoLabel || '—'}</dd>
+              </div>
+              <div className="contentor-detalhe__meta-row">
+                <dt>Estado resíduo:</dt>
+                <dd>{contentor.estadoResiduoLabel || '—'}</dd>
               </div>
               <div className="contentor-detalhe__meta-row">
                 <dt>Data registo:</dt>

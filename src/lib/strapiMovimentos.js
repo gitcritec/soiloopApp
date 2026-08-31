@@ -14,11 +14,35 @@ import {
   reserveStrapiContentorParaEntrega,
   updateStrapiContentorSituacao,
 } from './strapiContentores.js'
+import {
+  buildCodigosLerRelationWrite,
+  coerceCodigosLerRelation,
+} from './strapiCodigoLer.js'
+import {
+  buildEstadoAuxRelationWrite,
+  coerceEstadoAuxRelation,
+  fetchStrapiEstadosResiduo,
+  isEstadoResiduoContaminado,
+} from './strapiEstadosAuxiliares.js'
+import { createStrapiTicketForCliente } from './strapiTickets.js'
+import {
+  alignDateToWeekday,
+  computeRecorrenciaHorizonEndIso,
+  createStrapiRecorrencia,
+  deactivateStrapiRecorrencia,
+  fetchStrapiRecorrenciasAtivas,
+  generateWeeklyDatesAfter,
+  generateWeeklyOccurrenceDates,
+  pickRecorrenciaIdFromRelation,
+  RECORRENCIA_HORIZONTE_SEMANAS,
+  todayIsoLocal,
+} from './strapiRecorrencias.js'
 import { normalizePeriodoForStrapi } from './movimentoPeriodo.js'
 
 const MOVIMENTO_ESTADO_AGENDADO = 'agendado'
 const MOVIMENTO_ESTADO_PEDIDO = 'pedido'
 const MOVIMENTO_ESTADO_CONCLUIDO = 'concluido'
+const MOVIMENTO_ESTADO_CANCELAMENTO = 'cancelamento'
 const MOVIMENTO_TIPO_RECOLHA = 'recolha'
 const MOVIMENTO_TIPO_ENTREGA = 'entrega'
 
@@ -531,6 +555,14 @@ export function pedidoAdminBadgeLabel(pedido) {
 }
 
 /** @param {object} pedido */
+export function cancelamentoAdminBadgeLabel(pedido) {
+  if (pedidoHasTroca(pedido)) return 'Cancelamento · Troca'
+  if (pedidoIsEntregaSimples(pedido)) return 'Cancelamento · Entrega'
+  if (pedido?.taskType === 'entregar') return 'Cancelamento · Entrega'
+  return 'Cancelamento · Recolha'
+}
+
+/** @param {object} pedido */
 export function pickPedidoClienteId(pedido) {
   if (!pedido) return null
   const direct = pickString(pedido.clienteId)
@@ -694,6 +726,84 @@ export function collapseMovimentosPedidoCards(rows) {
     return siblings[0]
   })
 }
+
+/**
+ * Séries semanais: um card por recorrência (próxima ocorrência), estilo calendário.
+ * @param {Array<object>} rows
+ */
+export function collapseRecorrenciaSeriesCards(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return []
+
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+  const todayMs = todayStart.getTime()
+
+  /** @type {Map<string, object>} */
+  const seriesNext = new Map()
+  /** @type {string[]} */
+  const seriesOrder = []
+  /** @type {object[]} */
+  const standalone = []
+
+  for (const row of rows) {
+    const rid = pickString(row.recorrenciaId)
+    const isSeriesEstado =
+      row.estadoKey === MOVIMENTO_ESTADO_AGENDADO ||
+      row.estadoKey === MOVIMENTO_ESTADO_CANCELAMENTO
+    if (!rid || !isSeriesEstado) {
+      standalone.push(row)
+      continue
+    }
+
+    const existing = seriesNext.get(rid)
+    if (!existing) {
+      seriesNext.set(rid, row)
+      seriesOrder.push(rid)
+      continue
+    }
+
+    const rowDate = Number(row.dateSortValue) || 0
+    const exDate = Number(existing.dateSortValue) || 0
+    const rowUpcoming = rowDate >= todayMs
+    const exUpcoming = exDate >= todayMs
+    if (rowUpcoming && !exUpcoming) {
+      seriesNext.set(rid, row)
+    } else if (rowUpcoming === exUpcoming && rowDate < exDate) {
+      seriesNext.set(rid, row)
+    }
+  }
+
+  const seriesCards = seriesOrder
+    .map((rid) => {
+      const item = seriesNext.get(rid)
+      if (!item) return null
+      const isCancelamento = item.estadoKey === MOVIMENTO_ESTADO_CANCELAMENTO
+      return {
+        ...item,
+        recorrenciaSemanal: true,
+        badgeLabel: isCancelamento ? 'Cancelamento pendente' : 'Semanal',
+      }
+    })
+    .filter(Boolean)
+
+  return [...standalone, ...seriesCards].sort((a, b) => {
+    const aCancel = a.estadoKey === MOVIMENTO_ESTADO_CANCELAMENTO ? 0 : 1
+    const bCancel = b.estadoKey === MOVIMENTO_ESTADO_CANCELAMENTO ? 0 : 1
+    if (aCancel !== bCancel) return aCancel - bCancel
+    const aPedido = a.estadoKey === MOVIMENTO_ESTADO_PEDIDO ? 0 : 1
+    const bPedido = b.estadoKey === MOVIMENTO_ESTADO_PEDIDO ? 0 : 1
+    if (aPedido !== bPedido) return aPedido - bPedido
+    return (a.dateSortValue ?? 0) - (b.dateSortValue ?? 0)
+  })
+}
+
+/**
+ * Listagem cliente/admin: agrupa trocas + colapsa séries semanais.
+ * @param {Array<object>} rows
+ */
+export function collapseMovimentosListagemCards(rows) {
+  return collapseRecorrenciaSeriesCards(collapseMovimentosPedidoCards(rows))
+}
 function formatDate(value) {
   const raw = pickString(value)
   if (!raw) return ''
@@ -791,8 +901,12 @@ function isEstadoPedido(value) {
   return normalizeText(value) === MOVIMENTO_ESTADO_PEDIDO
 }
 
+function isEstadoCancelamento(value) {
+  return normalizeText(value) === MOVIMENTO_ESTADO_CANCELAMENTO
+}
+
 function isEstadoPedidoVisivel(value) {
-  return isEstadoAgendado(value) || isEstadoPedido(value)
+  return isEstadoAgendado(value) || isEstadoPedido(value) || isEstadoCancelamento(value)
 }
 
 function isEstadoConcluido(value) {
@@ -809,6 +923,7 @@ function normalizeEstadoKey(value) {
   if (isEstadoPedido(value)) return MOVIMENTO_ESTADO_PEDIDO
   if (isEstadoAgendado(value)) return MOVIMENTO_ESTADO_AGENDADO
   if (isEstadoConcluido(value)) return MOVIMENTO_ESTADO_CONCLUIDO
+  if (isEstadoCancelamento(value)) return MOVIMENTO_ESTADO_CANCELAMENTO
   return normalizeText(value)
 }
 
@@ -1008,12 +1123,14 @@ export function isMovimentoDateAfterToday(dateSortValue) {
 
 export function canDeleteMovimentoCliente(item) {
   if (!item) return false
+  if (item.estadoKey === MOVIMENTO_ESTADO_CANCELAMENTO) return false
   if (item.estadoKey === MOVIMENTO_ESTADO_PEDIDO) return true
   return isMovimentoDateAfterToday(item.dateSortValue)
 }
 
 export function canEditMovimentoCliente(item) {
   if (!item) return false
+  if (item.estadoKey === MOVIMENTO_ESTADO_CANCELAMENTO) return false
   return item.estadoKey === MOVIMENTO_ESTADO_PEDIDO || item.estadoKey === MOVIMENTO_ESTADO_AGENDADO
 }
 
@@ -1113,15 +1230,26 @@ function coerceMovimentoRow(row, fallback = {}) {
     egar: pickString(attrs.egar) ?? fallback.egar ?? '',
     peso: formatMovimentoPeso(attrs.peso ?? fallback.peso),
     pesoRaw: attrs.peso ?? fallback.peso ?? null,
+    codigosLer: coerceCodigosLerRelation(attrs.codigosLer ?? row.codigosLer ?? fallback.codigosLer),
+    recorrenciaId:
+      pickRecorrenciaIdFromRelation(attrs.recorrencia ?? row.recorrencia) ??
+      fallback.recorrenciaId ??
+      null,
     estadoContentor: pickString(attrs.estadoContentor) ?? fallback.estadoContentor ?? '',
     estadoContentorLabel:
       formatEstadoContentorLabel(attrs.estadoContentor) ||
       fallback.estadoContentorLabel ||
       '',
+    estadoPedidoId: coerceEstadoAuxRelation(attrs.estadoPedido ?? row.estadoPedido)?.id ?? '',
+    estadoPedidoLabel:
+      coerceEstadoAuxRelation(attrs.estadoPedido ?? row.estadoPedido)?.nome ??
+      fallback.estadoPedidoLabel ??
+      '',
     observacaoOperador:
       pickString(attrs.observacaoOperador) ?? fallback.observacaoOperador ?? '',
     observacoesCliente:
       pickString(attrs.observacoesCliente) ?? fallback.observacoesCliente ?? '',
+    notas: pickString(attrs.notas) ?? fallback.notas ?? '',
     periodoLabel: formatPeriodoLabel(periodo) || formatPeriodoLabel(fallback.periodo),
     fotografias: fotografias.length > 0 ? fotografias : fallback.fotografias ?? [],
     estado,
@@ -1246,7 +1374,7 @@ async function fetchMovimentosRows(base, params) {
 
 function addMovimentosCommonParams(params) {
   params.set('sort', 'data:asc')
-  params.set('pagination[pageSize]', '100')
+  params.set('pagination[pageSize]', '200')
   return params
 }
 
@@ -1254,8 +1382,12 @@ function addMovimentoRelationsPopulate(params) {
   params.set('populate[cliente]', 'true')
   params.set('populate[operador]', 'true')
   params.set('populate[localizacao]', 'true')
+  params.set('populate[recorrencia]', 'true')
+  params.set('populate[estadoPedido]', 'true')
   params.set('populate[contentor][populate][clienteAtual]', 'true')
   params.set('populate[contentor][populate][localizacaoAtual]', 'true')
+  params.set('populate[contentor][populate][estadoFisico]', 'true')
+  params.set('populate[contentor][populate][estadoResiduo]', 'true')
 }
 
 function createEstadoMovimentosParams(estado, withPopulate = true) {
@@ -1267,12 +1399,16 @@ function createEstadoMovimentosParams(estado, withPopulate = true) {
 
 function addMovimentosDeepPopulateParams(params) {
   params.set('populate[contentor][populate][capacidade]', 'true')
-  params.set('populate[capacidade]', 'true')
   params.set('populate[localizacao][populate][user]', 'true')
   params.set('populate[localizacao]', 'true')
   params.set('populate[cliente]', 'true')
   params.set('populate[operador]', 'true')
   params.set('populate[fotografias]', 'true')
+  params.set('populate[codigosLer]', 'true')
+  params.set('populate[recorrencia]', 'true')
+  params.set('populate[estadoPedido]', 'true')
+  params.set('populate[contentor][populate][estadoFisico]', 'true')
+  params.set('populate[contentor][populate][estadoResiduo]', 'true')
   return params
 }
 
@@ -1325,7 +1461,7 @@ function formatMovimentoPeso(value) {
   if (value == null || value === '') return ''
   const n = Number(value)
   if (!Number.isFinite(n)) return String(value)
-  return `${n} kg`
+  return `${n}%`
 }
 
 function formatPeriodoLabel(value) {
@@ -1465,6 +1601,8 @@ export async function fetchStrapiClienteMovimentosAgendados(fallbackRows = []) {
   const base = strapiBaseUrl()
   if (!base) return []
 
+  await ensureStrapiRecorrenciasHorizon().catch(() => {})
+
   const clienteRefs = await ensureStoredStrapiUserRefs()
 
   /** @type {URLSearchParams[]} */
@@ -1472,7 +1610,16 @@ export async function fetchStrapiClienteMovimentosAgendados(fallbackRows = []) {
 
   for (const ref of clienteRefs) {
     for (const refKey of ['id', 'documentId']) {
-      for (const estado of ['agendado', 'pedido', 'Agendado', 'Pedido', 'agendada', 'Agendada']) {
+      for (const estado of [
+        'agendado',
+        'pedido',
+        'cancelamento',
+        'Agendado',
+        'Pedido',
+        'Cancelamento',
+        'agendada',
+        'Agendada',
+      ]) {
         const params = new URLSearchParams()
         params.set('filters[estado][$eq]', estado)
         params.set(`filters[cliente][${refKey}][$eq]`, ref)
@@ -1492,8 +1639,10 @@ export async function fetchStrapiClienteMovimentosAgendados(fallbackRows = []) {
   attempts.push(
     createEstadoMovimentosParams('agendado', true),
     createEstadoMovimentosParams('pedido', true),
+    createEstadoMovimentosParams('cancelamento', true),
     createEstadoMovimentosParams('agendado', false),
     createEstadoMovimentosParams('pedido', false),
+    createEstadoMovimentosParams('cancelamento', false),
     createAllMovimentosParams(true),
     createAllMovimentosParams(false),
   )
@@ -1571,6 +1720,52 @@ export async function fetchStrapiAdminMovimentosPedido() {
           .filter((item) => item && item.estadoKey === MOVIMENTO_ESTADO_PEDIDO),
       )
       return pickAdminPedidoListRows(pedidos).map((row) => enrichPedidoTrocaMeta(row, pedidos))
+    } catch (err) {
+      lastError = err
+    }
+  }
+
+  if (lastError) throw lastError
+  return []
+}
+
+/**
+ * Lista movimentos com estado "cancelamento" (admin — aprovar/recusar cancelamento).
+ */
+export async function fetchStrapiAdminMovimentosCancelamento() {
+  const rows = await fetchStrapiAdminMovimentosCancelamentoRaw()
+  const list = pickAdminPedidoListRows(rows).map((row) => {
+    const enriched = enrichPedidoTrocaMeta(row, rows)
+    return {
+      ...enriched,
+      badgeLabel: cancelamentoAdminBadgeLabel(enriched),
+    }
+  })
+  return collapseRecorrenciaSeriesCards(list)
+}
+
+async function fetchStrapiAdminMovimentosCancelamentoRaw() {
+  const base = strapiBaseUrl()
+  if (!base) return []
+
+  const attempts = [
+    createAdminPedidoMovimentosParams('cancelamento'),
+    createAdminPedidoMovimentosParams('Cancelamento'),
+    createEstadoMovimentosParams('cancelamento', true),
+    createEstadoMovimentosParams('Cancelamento', true),
+    createEstadoMovimentosParams('cancelamento', false),
+    createEstadoMovimentosParams('Cancelamento', false),
+  ]
+
+  let lastError = null
+  for (const params of attempts) {
+    try {
+      const rows = await fetchMovimentosRows(base, params)
+      return enrichMovimentosPedidoGroups(
+        rows
+          .map((row) => coerceMovimentoRow(row))
+          .filter((item) => item && item.estadoKey === MOVIMENTO_ESTADO_CANCELAMENTO),
+      )
     } catch (err) {
       lastError = err
     }
@@ -2045,8 +2240,22 @@ function buildMovimentoCreatePayload(scalars, localizacaoId, contentorId, withCo
 
   const clienteRef = pickString(clienteId)
   if (clienteRef) {
-    const cliente = buildContentRelationConnect(clienteRef)
-    if (cliente) payload.cliente = cliente
+    const clienteRel = buildContentRelationConnect(clienteRef)
+    if (clienteRel) payload.cliente = clienteRel
+  }
+
+  const operadorId = pickString(scalars.operadorId)
+  if (operadorId) {
+    const operador = buildContentRelationConnect(operadorId)
+    if (operador) payload.operador = operador
+    delete payload.operadorId
+  }
+
+  const recorrenciaId = pickString(scalars.recorrenciaId)
+  if (recorrenciaId) {
+    const recorrencia = buildContentRelationConnect(recorrenciaId)
+    if (recorrencia) payload.recorrencia = recorrencia
+    delete payload.recorrenciaId
   }
 
   return payload
@@ -2080,11 +2289,16 @@ function appendCapacidadeObservacoes(observacoes, capacidadeLabel) {
 function toDirectRelationPayload(payload) {
   /** @type {Record<string, unknown>} */
   const next = { ...payload }
-  for (const field of ['localizacao', 'contentor', 'cliente']) {
+  for (const field of ['localizacao', 'contentor', 'cliente', 'operador', 'recorrencia']) {
     const value = next[field]
     if (value && typeof value === 'object' && Array.isArray(value.connect) && value.connect.length > 0) {
       next[field] = value.connect[0]
     }
+  }
+  const codigosLer = next.codigosLer
+  if (codigosLer && typeof codigosLer === 'object') {
+    if (Array.isArray(codigosLer.set)) next.codigosLer = codigosLer.set
+    else if (Array.isArray(codigosLer.connect)) next.codigosLer = codigosLer.connect
   }
   return next
 }
@@ -2192,9 +2406,10 @@ async function postStrapiMovimentoCreate(data) {
 
 /**
  * @typedef {object} CreateClienteSolicitacaoRecolhaPayload
- * @property {string} contentorId CID do contentor (ex.: CNT-001)
- * @property {string} [localizacaoId] ID/documentId da relação Localização
- * @property {string} localizacao
+ * @property {string} [contentorId] CID do contentor (ex.: CNT-001)
+ * @property {string[]} [contentorIds] Vários CIDs (pedido em lote)
+ * @property {string} [localizacaoId] ID/documentId da relação Localização (só 1 contentor)
+ * @property {string} [localizacao]
  * @property {string} data Data no formato YYYY-MM-DD
  * @property {string} periodo
  * @property {string} [observacoes]
@@ -2202,14 +2417,18 @@ async function postStrapiMovimentoCreate(data) {
  */
 
 /**
- * Regista pedido(s) no Strapi (estado `pedido`).
- * Sempre cria `tipoMovimento: recolha` com contentor; se Trocar Contentor = Sim,
- * cria também `tipoMovimento: entrega` sem contentor associado.
+ * Regista pedido(s) no Strapi (estado `pedido`) para um ou vários contentores.
+ * Por contentor: cria `recolha`; se Trocar Contentor = Sim, cria também `entrega`.
  * @param {CreateClienteSolicitacaoRecolhaPayload} payload
+ * @returns {Promise<{ created: number, contentorIds: string[] }>}
  */
 export async function createStrapiClienteSolicitacaoRecolha(payload) {
-  const contentorCid = pickString(payload.contentorId)
-  if (!contentorCid) throw new Error('Contentor em falta.')
+  const fromList = Array.isArray(payload.contentorIds)
+    ? payload.contentorIds.map((id) => pickString(id)).filter(Boolean)
+    : []
+  const single = pickString(payload.contentorId)
+  const contentorIds = [...new Set(fromList.length > 0 ? fromList : single ? [single] : [])]
+  if (contentorIds.length === 0) throw new Error('Seleciona pelo menos um contentor.')
 
   const data = pickString(payload.data)
   if (!data) throw new Error('Data em falta.')
@@ -2218,48 +2437,79 @@ export async function createStrapiClienteSolicitacaoRecolha(payload) {
   if (!periodo) throw new Error('Período em falta.')
 
   const observacoes = pickString(payload.observacoes)
+  const trocar = isTrocarContentorSim(payload.trocarContentor)
 
-  const contentor = await fetchStrapiContentorByCid(contentorCid)
-  if (!contentor?.id) throw new Error('Contentor não encontrado.')
+  /** @type {string[]} */
+  const created = []
+  /** @type {Array<{ contentorId: string, message: string }>} */
+  const failures = []
 
-  const localizacaoId =
-    pickString(payload.localizacaoId) ?? pickString(contentor.localizacaoAtualId)
+  for (const contentorCid of contentorIds) {
+    try {
+      const contentor = await fetchStrapiContentorByCid(contentorCid)
+      if (!contentor?.id) throw new Error('Contentor não encontrado.')
 
-  if (!localizacaoId) {
-    throw new Error('Localização do contentor em falta. Não foi possível associar o pedido.')
+      const localizacaoId =
+        (contentorIds.length === 1 ? pickString(payload.localizacaoId) : null) ??
+        pickString(contentor.localizacaoAtualId)
+
+      if (!localizacaoId) {
+        throw new Error('Localização do contentor em falta.')
+      }
+
+      const clienteRef = await resolveClienteRefForMovimentoCreate(contentor)
+
+      /** @type {Record<string, unknown>} */
+      const scalars = {
+        estado: MOVIMENTO_ESTADO_PEDIDO,
+        data,
+        periodo,
+        ...(observacoes ? { observacoesCliente: observacoes } : {}),
+      }
+
+      await postStrapiMovimentoCreate(
+        buildMovimentoCreatePayload(
+          { ...scalars, tipoMovimento: MOVIMENTO_TIPO_RECOLHA },
+          localizacaoId,
+          contentor.id,
+          true,
+          clienteRef,
+        ),
+      )
+
+      if (trocar) {
+        await postStrapiMovimentoCreate(
+          buildMovimentoCreatePayload(
+            { ...scalars, tipoMovimento: MOVIMENTO_TIPO_ENTREGA },
+            localizacaoId,
+            null,
+            false,
+            clienteRef,
+          ),
+        )
+      }
+
+      created.push(contentorCid)
+    } catch (err) {
+      failures.push({
+        contentorId: contentorCid,
+        message: err instanceof Error ? err.message : 'Falha ao criar pedido.',
+      })
+    }
   }
 
-  const clienteRef = await resolveClienteRefForMovimentoCreate(contentor)
-
-  /** @type {Record<string, unknown>} */
-  const scalars = {
-    estado: MOVIMENTO_ESTADO_PEDIDO,
-    data,
-    periodo,
-    ...(observacoes ? { observacoesCliente: observacoes } : {}),
+  if (created.length === 0) {
+    throw new Error(failures[0]?.message ?? 'Não foi possível solicitar a recolha.')
   }
 
-  await postStrapiMovimentoCreate(
-    buildMovimentoCreatePayload(
-      { ...scalars, tipoMovimento: MOVIMENTO_TIPO_RECOLHA },
-      localizacaoId,
-      contentor.id,
-      true,
-      clienteRef,
-    ),
-  )
-
-  if (isTrocarContentorSim(payload.trocarContentor)) {
-    await postStrapiMovimentoCreate(
-      buildMovimentoCreatePayload(
-        { ...scalars, tipoMovimento: MOVIMENTO_TIPO_ENTREGA },
-        localizacaoId,
-        null,
-        false,
-        clienteRef,
-      ),
+  if (failures.length > 0) {
+    const detail = failures.map((item) => `${item.contentorId}: ${item.message}`).join(' · ')
+    throw new Error(
+      `Pedidos criados para ${created.length} de ${contentorIds.length} contentores. Falhas: ${detail}`,
     )
   }
+
+  return { created: created.length, contentorIds: created }
 }
 
 export async function fetchStrapiMovimentoByKey(movimentoKey) {
@@ -2397,8 +2647,594 @@ export async function createStrapiClienteSolicitacaoContentor(payload) {
 }
 
 /**
+ * Cria serviço admin (recolha / entrega / troca), one-shot ou série semanal (estilo calendário).
+ * Gera ocorrências já em estado `agendado`.
+ * @param {object} payload
+ * @param {'recolha'|'entrega'|'troca'} payload.tipo
+ * @param {string} payload.clienteId
+ * @param {string} payload.localizacaoId
+ * @param {string} payload.data YYYY-MM-DD (1ª ocorrência)
+ * @param {string} payload.periodo
+ * @param {string} [payload.operadorId]
+ * @param {string} [payload.contentorCid] obrigatório em recolha/troca
+ * @param {string} [payload.capacidadeId]
+ * @param {string} [payload.capacidadeLabel]
+ * @param {string} [payload.observacoes]
+ * @param {boolean} [payload.repetirSemanalmente]
+ * @param {number} [payload.diaSemana] 0–6; se omitido usa o dia de `data`
+ * @param {number} [payload.horizonteSemanas]
+ */
+export async function createStrapiAdminServico(payload) {
+  const tipo = pickString(payload.tipo)
+  if (tipo !== 'recolha' && tipo !== 'entrega' && tipo !== 'troca') {
+    throw new Error('Tipo de serviço inválido.')
+  }
+
+  const clienteId = pickString(payload.clienteId)
+  if (!clienteId) throw new Error('Cliente em falta.')
+
+  const localizacaoId = pickString(payload.localizacaoId)
+  if (!localizacaoId) throw new Error('Localização em falta.')
+
+  const dataInicial = pickString(payload.data)
+  if (!dataInicial) throw new Error('Data em falta.')
+
+  const periodo = normalizePeriodoForStrapi(payload.periodo)
+  if (!periodo) throw new Error('Período em falta.')
+
+  const operadorId = pickString(payload.operadorId)
+  const observacoes = pickString(payload.observacoes)
+  const repetir = Boolean(payload.repetirSemanalmente)
+
+  let contentorStrapiId = null
+  if (tipo === 'recolha' || tipo === 'troca') {
+    const contentorCid = pickString(payload.contentorCid)
+    if (!contentorCid) throw new Error('Contentor em falta.')
+    const contentor = await fetchStrapiContentorByCid(contentorCid)
+    if (!contentor?.id) throw new Error('Contentor não encontrado.')
+    contentorStrapiId = contentor.id
+  }
+
+  const capacidadeLabel =
+    pickString(payload.capacidadeLabel) ??
+    (pickString(payload.capacidadeId) ? `Capacidade ID ${pickString(payload.capacidadeId)}` : null)
+
+  const observacoesFinais =
+    tipo === 'entrega' || tipo === 'troca'
+      ? appendCapacidadeObservacoes(observacoes, capacidadeLabel)
+      : observacoes ?? ''
+
+  let dates = [dataInicial]
+  let recorrenciaId = null
+
+  if (repetir) {
+    const startDate = parseIsoDateParts(dataInicial)
+    const diaSemana =
+      payload.diaSemana != null && Number.isFinite(Number(payload.diaSemana))
+        ? Number(payload.diaSemana)
+        : startDate
+          ? startDate.getDay()
+          : 5
+    const dataInicio = alignDateToWeekday(dataInicial, diaSemana)
+    dates = generateWeeklyOccurrenceDates(
+      dataInicio,
+      payload.horizonteSemanas ?? RECORRENCIA_HORIZONTE_SEMANAS,
+    )
+
+    const created = await createStrapiRecorrencia({
+      tipo,
+      clienteId,
+      localizacaoId,
+      contentorId: contentorStrapiId,
+      operadorId,
+      diaSemana,
+      periodo,
+      dataInicio,
+      // Sem dataFim: série aberta; o horizonte é prolongado automaticamente.
+      capacidadeLabel,
+      observacoes: observacoesFinais,
+      ativo: true,
+    })
+    recorrenciaId = created.id
+  }
+
+  for (const data of dates) {
+    await createMovimentosForServicoOcorrencia({
+      tipo,
+      data,
+      periodo,
+      operadorId,
+      recorrenciaId,
+      observacoesFinais,
+      localizacaoId,
+      contentorStrapiId,
+      clienteId,
+    })
+  }
+
+  return {
+    ocorrencias: dates.length,
+    recorrenciaId,
+    repetirSemanalmente: repetir,
+  }
+}
+
+/**
+ * @param {{
+ *   tipo: string,
+ *   data: string,
+ *   periodo: string,
+ *   operadorId?: string|null,
+ *   recorrenciaId?: string|null,
+ *   observacoesFinais?: string|null,
+ *   localizacaoId: string,
+ *   contentorStrapiId?: string|null,
+ *   clienteId: string,
+ * }} opts
+ */
+async function createMovimentosForServicoOcorrencia(opts) {
+  const tipo = opts.tipo
+  const localizacaoId = opts.localizacaoId
+  const contentorStrapiId = opts.contentorStrapiId ?? null
+  const clienteId = opts.clienteId
+  const observacoesFinais = pickString(opts.observacoesFinais)
+
+  /** @type {Record<string, unknown>} */
+  const baseScalars = {
+    estado: MOVIMENTO_ESTADO_AGENDADO,
+    data: opts.data,
+    periodo: opts.periodo,
+    ...(opts.operadorId ? { operadorId: opts.operadorId } : {}),
+    ...(opts.recorrenciaId ? { recorrenciaId: opts.recorrenciaId } : {}),
+    ...(observacoesFinais ? { observacoesCliente: observacoesFinais } : {}),
+  }
+
+  if (tipo === 'recolha' || tipo === 'troca') {
+    await postStrapiMovimentoCreate(
+      buildMovimentoCreatePayload(
+        { ...baseScalars, tipoMovimento: MOVIMENTO_TIPO_RECOLHA },
+        localizacaoId,
+        contentorStrapiId,
+        true,
+        clienteId,
+      ),
+    )
+  }
+
+  if (tipo === 'entrega' || tipo === 'troca') {
+    await postStrapiMovimentoCreate(
+      buildMovimentoCreatePayload(
+        { ...baseScalars, tipoMovimento: MOVIMENTO_TIPO_ENTREGA },
+        localizacaoId,
+        null,
+        false,
+        clienteId,
+      ),
+    )
+  }
+}
+
+function parseIsoDateParts(iso) {
+  const s = pickString(iso)
+  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return null
+  const [y, m, d] = s.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+/**
+ * Lista movimentos agendados (admin) — próximos serviços.
+ * Prolongá séries ativas e devolve lista (ainda completa; a UI colapsa).
+ */
+export async function fetchStrapiAdminMovimentosAgendados() {
+  await ensureStrapiRecorrenciasHorizon().catch(() => {})
+  return fetchStrapiAdminMovimentosAgendadosRaw()
+}
+
+async function fetchStrapiAdminMovimentosAgendadosRaw() {
+  const base = strapiBaseUrl()
+  if (!base) return []
+
+  const baseAttempts = [
+    createEstadoMovimentosParams('agendado', true),
+    createEstadoMovimentosParams('Agendado', true),
+    createEstadoMovimentosParams('agendado', false),
+  ]
+
+  let lastError = null
+  for (const baseParams of baseAttempts) {
+    for (const withDeepPopulate of [true, false]) {
+      try {
+        const params = new URLSearchParams(baseParams)
+        if (withDeepPopulate) addMovimentosDeepPopulateParams(params)
+        params.set('sort', 'data:asc')
+        params.set('pagination[pageSize]', '200')
+        const rows = await fetchMovimentosRows(base, params)
+        return enrichMovimentosPedidoGroups(
+          rows
+            .map((row) => coerceMovimentoRow(row))
+            .filter((item) => item && item.estadoKey === MOVIMENTO_ESTADO_AGENDADO),
+        ).sort((a, b) => (a.dateSortValue ?? 0) - (b.dateSortValue ?? 0))
+      } catch (err) {
+        lastError = err
+      }
+    }
+  }
+
+  if (lastError) throw lastError
+  return []
+}
+
+let ensureRecorrenciasPromise = null
+let ensureRecorrenciasLastAt = 0
+
+/**
+ * Garante que cada série ativa tem movimentos até ~26 semanas à frente.
+ * Throttle de 5 min para não repetir em cada navegação.
+ */
+export async function ensureStrapiRecorrenciasHorizon() {
+  const now = Date.now()
+  if (ensureRecorrenciasPromise) return ensureRecorrenciasPromise
+  if (now - ensureRecorrenciasLastAt < 5 * 60 * 1000) return { extended: 0 }
+
+  ensureRecorrenciasPromise = (async () => {
+    const recorrencias = await fetchStrapiRecorrenciasAtivas()
+    if (recorrencias.length === 0) return { extended: 0 }
+
+    const agendados = await fetchStrapiAdminMovimentosAgendadosRaw()
+    const today = todayIsoLocal()
+    let extended = 0
+
+    for (const rec of recorrencias) {
+      if (!rec?.id || !rec.localizacaoId || !rec.clienteId) continue
+      if (!Number.isFinite(rec.diaSemana)) continue
+
+      const seriesDates = agendados
+        .filter((item) => pickString(item.recorrenciaId) === rec.id)
+        .map((item) => pickString(item.dataIso))
+        .filter(Boolean)
+        .sort()
+
+      // Séries ativas são abertas: dataFim legado não encerra. Só `ativo: false` para.
+      if (rec.dataFim && rec.dataFim < today && !seriesDates.some((d) => d >= today)) continue
+
+      const lastDate = seriesDates.length > 0 ? seriesDates[seriesDates.length - 1] : null
+      const horizonEnd = computeRecorrenciaHorizonEndIso(rec.diaSemana, RECORRENCIA_HORIZONTE_SEMANAS)
+
+      if (lastDate && lastDate >= horizonEnd) continue
+
+      const dates = lastDate
+        ? generateWeeklyDatesAfter(lastDate, rec.diaSemana, horizonEnd)
+        : generateWeeklyOccurrenceDates(
+            alignDateToWeekday(rec.dataInicio || today, rec.diaSemana),
+            RECORRENCIA_HORIZONTE_SEMANAS,
+          ).filter((d) => d <= horizonEnd)
+
+      if (dates.length === 0) continue
+
+      const periodo = normalizePeriodoForStrapi(rec.periodo) ?? 'indiferente'
+      for (const data of dates) {
+        await createMovimentosForServicoOcorrencia({
+          tipo: rec.tipo,
+          data,
+          periodo,
+          operadorId: rec.operadorId,
+          recorrenciaId: rec.id,
+          observacoesFinais: rec.observacoes,
+          localizacaoId: rec.localizacaoId,
+          contentorStrapiId: rec.contentorId,
+          clienteId: rec.clienteId,
+        })
+        extended += 1
+      }
+    }
+
+    return { extended }
+  })()
+    .catch((err) => {
+      throw err
+    })
+    .finally(() => {
+      ensureRecorrenciasLastAt = Date.now()
+      ensureRecorrenciasPromise = null
+    })
+
+  return ensureRecorrenciasPromise
+}
+
+/**
+ * Resolve chaves de movimento para ação em série (só esta vs esta e futuras).
+ * @param {string} movimentoKey
+ * @param {{ mode?: 'single'|'future', recorrenciaId?: string|null, dataIso?: string|null }} [options]
+ * @returns {Promise<{ keys: string[], recorrenciaId: string|null, dataIso: string|null, mode: 'single'|'future' }>}
+ */
+async function resolveSerieMovimentoKeys(movimentoKey, options = {}) {
+  const key = pickString(movimentoKey)
+  if (!key) throw new Error('Movimento em falta.')
+
+  const mode = options.mode === 'future' ? 'future' : 'single'
+  const movimento = await fetchStrapiMovimentoByKey(key)
+  const recorrenciaId = pickString(options.recorrenciaId) ?? pickString(movimento?.recorrenciaId)
+  const dataIso = pickString(options.dataIso) ?? pickString(movimento?.dataIso)
+
+  if (mode === 'single' || !recorrenciaId) {
+    if (!movimento) return { keys: [key], recorrenciaId, dataIso, mode: 'single' }
+    const pairKeys = await findTrocaSiblingKeys(movimento)
+    return {
+      keys: [...new Set([key, ...pairKeys])],
+      recorrenciaId,
+      dataIso,
+      mode: 'single',
+    }
+  }
+
+  const all = await fetchStrapiAdminMovimentosAgendadosRaw()
+  const toTouch = all.filter((item) => {
+    if (pickString(item.recorrenciaId) !== recorrenciaId) return false
+    if (!dataIso) return true
+    const itemDate = pickString(item.dataIso)
+    if (!itemDate) return false
+    return itemDate >= dataIso
+  })
+
+  const keys = [
+    ...new Set(
+      toTouch
+        .map((item) => pickString(item.movimentoKey))
+        .filter(Boolean),
+    ),
+  ]
+  if (keys.length === 0) {
+    return { keys: [key], recorrenciaId, dataIso, mode: 'future' }
+  }
+  return { keys, recorrenciaId, dataIso, mode: 'future' }
+}
+
+/**
+ * Apaga um movimento (e o par troca do mesmo dia/cliente/local se existir).
+ * @param {string} movimentoKey
+ * @param {{ mode?: 'single'|'future', recorrenciaId?: string|null, dataIso?: string|null }} [options]
+ */
+export async function deleteStrapiAdminMovimentoComSerie(movimentoKey, options = {}) {
+  const key = pickString(movimentoKey)
+  if (!key) throw new Error('Movimento em falta.')
+
+  const resolved = await resolveSerieMovimentoKeys(key, options)
+  if (resolved.keys.length === 0) {
+    await deleteStrapiMovimento(key)
+    return { deleted: 1 }
+  }
+
+  await deleteStrapiMovimentosBatch(resolved.keys)
+  if (resolved.mode === 'future' && resolved.recorrenciaId) {
+    let dataFim = null
+    if (resolved.dataIso) {
+      const d = parseIsoDateParts(resolved.dataIso)
+      if (d) {
+        d.setDate(d.getDate() - 1)
+        dataFim = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      }
+    }
+    await deactivateStrapiRecorrencia(resolved.recorrenciaId, dataFim)
+  }
+  return { deleted: resolved.keys.length }
+}
+
+/**
+ * Cliente pede cancelamento: marca movimentos como `cancelamento` (sem DELETE).
+ * @param {object} card
+ * @param {{ mode?: 'single'|'future' }} [options]
+ */
+export async function requestStrapiClienteCancelamento(card, options = {}) {
+  if (!card) throw new Error('Pedido em falta.')
+  const mode = options.mode === 'future' ? 'future' : 'single'
+  const primaryKey =
+    pickString(card.movimentoKey) ?? getPedidoGroupMovimentoKeys(card)[0] ?? null
+  if (!primaryKey) throw new Error('Movimento em falta.')
+
+  const groupKeys = getPedidoGroupMovimentoKeys(card)
+  let keys = []
+
+  if (mode === 'future' && pickString(card.recorrenciaId)) {
+    const resolved = await resolveSerieMovimentoKeys(primaryKey, {
+      mode: 'future',
+      recorrenciaId: card.recorrenciaId,
+      dataIso: card.dataIso,
+    })
+    keys = [...new Set([...resolved.keys, ...groupKeys, primaryKey])]
+  } else if (groupKeys.length > 0) {
+    keys = groupKeys
+  } else {
+    const resolved = await resolveSerieMovimentoKeys(primaryKey, {
+      mode: 'single',
+      recorrenciaId: card.recorrenciaId,
+      dataIso: card.dataIso,
+    })
+    keys = resolved.keys
+  }
+
+  await updateStrapiMovimentosBatch(keys, { estado: MOVIMENTO_ESTADO_CANCELAMENTO })
+  return { updated: keys.length, movimentoKeys: keys }
+}
+
+/**
+ * Chaves de cancelamento a tratar no admin (grupo + série a partir da data).
+ * @param {object} card
+ */
+async function resolveCancelamentoKeysForAdminAction(card) {
+  const groupKeys = getPedidoGroupMovimentoKeys(card)
+  const primaryKey = pickString(card?.movimentoKey) ?? groupKeys[0] ?? null
+  const recorrenciaId = pickString(card?.recorrenciaId)
+  const dataIso = pickString(card?.dataIso)
+
+  if (!recorrenciaId) {
+    if (groupKeys.length > 0) return { keys: groupKeys, recorrenciaId: null, dataIso, multiDate: false }
+    if (primaryKey) return { keys: [primaryKey], recorrenciaId: null, dataIso, multiDate: false }
+    throw new Error('Movimento em falta.')
+  }
+
+  const allCancel = await fetchStrapiAdminMovimentosCancelamentoRaw()
+  const fromSerie = allCancel.filter((item) => {
+    if (pickString(item.recorrenciaId) !== recorrenciaId) return false
+    if (!dataIso) return true
+    const itemDate = pickString(item.dataIso)
+    if (!itemDate) return false
+    return itemDate >= dataIso
+  })
+  const keys = [
+    ...new Set(
+      [
+        ...fromSerie.map((item) => pickString(item.movimentoKey)),
+        ...groupKeys,
+        primaryKey,
+      ].filter(Boolean),
+    ),
+  ]
+  const dates = new Set(
+    fromSerie.map((item) => pickString(item.dataIso)).filter(Boolean),
+  )
+  return {
+    keys,
+    recorrenciaId,
+    dataIso,
+    multiDate: dates.size > 1,
+  }
+}
+
+/**
+ * Admin aprova cancelamento: apaga os movimentos (e encerra série se não restarem ocorrências).
+ * @param {object} card
+ */
+export async function approveStrapiAdminCancelamento(card) {
+  const resolved = await resolveCancelamentoKeysForAdminAction(card)
+  if (resolved.keys.length === 0) throw new Error('Movimento em falta.')
+
+  await deleteStrapiMovimentosBatch(resolved.keys)
+
+  if (resolved.recorrenciaId && resolved.dataIso) {
+    const restantes = (await fetchStrapiAdminMovimentosAgendadosRaw()).filter((item) => {
+      if (pickString(item.recorrenciaId) !== resolved.recorrenciaId) return false
+      const itemDate = pickString(item.dataIso)
+      if (!itemDate) return false
+      return itemDate >= resolved.dataIso
+    })
+    if (restantes.length === 0) {
+      let dataFim = null
+      const d = parseIsoDateParts(resolved.dataIso)
+      if (d) {
+        d.setDate(d.getDate() - 1)
+        dataFim = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      }
+      await deactivateStrapiRecorrencia(resolved.recorrenciaId, dataFim)
+    }
+  }
+
+  return { deleted: resolved.keys.length }
+}
+
+/**
+ * Admin recusa cancelamento: restaura `agendado` (se tinha operador) ou `pedido`.
+ * @param {object} card
+ */
+export async function rejectStrapiAdminCancelamento(card) {
+  const resolved = await resolveCancelamentoKeysForAdminAction(card)
+  if (resolved.keys.length === 0) throw new Error('Movimento em falta.')
+
+  await Promise.all(
+    resolved.keys.map(async (key) => {
+      const movimento = await fetchStrapiMovimentoByKey(key)
+      const estado =
+        pickString(movimento?.operadorId) || pickString(movimento?.operadorDocumentId)
+          ? MOVIMENTO_ESTADO_AGENDADO
+          : MOVIMENTO_ESTADO_PEDIDO
+      await updateStrapiMovimento(key, { estado })
+    }),
+  )
+
+  return { restored: resolved.keys.length }
+}
+
+async function findTrocaSiblingKeys(movimento) {
+  if (!movimento) return []
+  const clienteId = pickString(movimento.clienteId) ?? pickString(movimento.clienteDocumentId)
+  const localizacaoId = pickString(movimento.localizacaoId)
+  const dataIso = pickString(movimento.dataIso)
+  const periodo = normalizePeriodoForStrapi(movimento.periodo)
+  const otherType = movimento.taskType === 'recolher' ? 'entregar' : 'recolher'
+  if (!clienteId || !localizacaoId || !dataIso) return []
+
+  const all = await fetchStrapiAdminMovimentosAgendadosRaw()
+  return all
+    .filter((item) => {
+      if (pickString(item.movimentoKey) === pickString(movimento.movimentoKey)) return false
+      if (item.taskType !== otherType) return false
+      if (pickString(item.dataIso) !== dataIso) return false
+      if (normalizePeriodoForStrapi(item.periodo) !== periodo) return false
+      const itemCliente = pickString(item.clienteId) ?? pickString(item.clienteDocumentId)
+      if (itemCliente !== clienteId) return false
+      return pickString(item.localizacaoId) === localizacaoId
+    })
+    .map((item) => pickString(item.movimentoKey))
+    .filter(Boolean)
+}
+
+/**
+ * Chaves de movimento de um cartão do operador (inclui par troca se existir no card).
+ * @param {object} card
+ * @returns {string[]}
+ */
+export function getOperadorServicoMovimentoKeys(card) {
+  if (!card) return []
+  const fromGroup = Array.isArray(card.pedidoGroupMovimentoKeys)
+    ? card.pedidoGroupMovimentoKeys.map((key) => pickString(key)).filter(Boolean)
+    : []
+  if (fromGroup.length > 0) return [...new Set(fromGroup)]
+
+  const fromLines = Array.isArray(card.taskLines)
+    ? card.taskLines.map((line) => pickString(line?.movimentoKey)).filter(Boolean)
+    : []
+  if (fromLines.length > 0) return [...new Set(fromLines)]
+
+  const single = pickString(card.movimentoKey)
+  return single ? [single] : []
+}
+
+/**
+ * Altera data/período (e opcionalmente notas) de um serviço do operador.
+ * Se for troca (recolha+entrega associadas), atualiza os dois movimentos.
+ * @param {object} card Cartão do dashboard ou objeto com movimentoKey
+ * @param {{ data: string, periodo?: string, notas?: string }} payload
+ */
+export async function rescheduleStrapiOperadorServico(card, payload) {
+  const data = pickString(payload?.data)
+  if (!data) throw new Error('Data em falta.')
+
+  let keys = getOperadorServicoMovimentoKeys(card)
+  if (keys.length === 0) throw new Error('Movimento em falta.')
+
+  if (keys.length === 1) {
+    const movimento = await fetchStrapiMovimentoByKey(keys[0])
+    if (movimento) {
+      const siblings = await findTrocaSiblingKeys(movimento)
+      keys = [...new Set([...keys, ...siblings])]
+    }
+  }
+
+  /** @type {{ data: string, periodo?: string, notas?: string }} */
+  const update = { data }
+  const periodo = normalizePeriodoForStrapi(payload?.periodo)
+  if (periodo) update.periodo = periodo
+  if (Object.prototype.hasOwnProperty.call(payload ?? {}, 'notas')) {
+    update.notas = pickString(payload.notas) ?? ''
+  }
+
+  await updateStrapiMovimentosBatch(keys, update)
+  return { updated: keys.length, movimentoKeys: keys }
+}
+
+/**
  * @param {string} movimentoKey documentId ou id do movimento
- * @param {{ data?: string, periodo?: string, estado?: string, operadorId?: string, ordemOperador?: number, contentorId?: string }} payload
+ * @param {{ data?: string, periodo?: string, estado?: string, operadorId?: string, ordemOperador?: number, contentorId?: string, notas?: string }} payload
  */
 export async function updateStrapiMovimento(movimentoKey, payload) {
   const key = pickString(movimentoKey)
@@ -2419,6 +3255,9 @@ export async function updateStrapiMovimento(movimentoKey, payload) {
   if (nextData) data.data = nextData
   if (nextPeriodo) data.periodo = nextPeriodo
   if (nextEstado) data.estado = nextEstado
+  if (Object.prototype.hasOwnProperty.call(payload, 'notas')) {
+    data.notas = pickString(payload.notas) ?? ''
+  }
   if (operadorId) {
     const relation = buildContentRelationConnect(operadorId)
     if (relation) data.operador = relation
@@ -2790,55 +3629,155 @@ export async function completeStrapiOperadorEntrega(payload) {
 }
 
 /**
- * Conclui recolha do operador e devolve o contentor ao armazém.
- * @param {{ movimentoKey?: string, contentorId: string, observacoes?: string, estado?: string, peso?: string, numeroEgar?: string, fotografias?: File[] }} payload
+ * Conclui uma ou mais recolhas do operador com os mesmos dados de formulário.
+ * @param {{
+ *   movimentoKey?: string,
+ *   contentorId: string,
+ *   observacoes?: string,
+ *   estado?: string,
+ *   estadoFisicoId?: string,
+ *   estadoResiduoId?: string,
+ *   estadoPedidoId?: string,
+ *   peso?: string,
+ *   numeroEgar?: string,
+ *   codigoLerIds?: string[],
+ *   codigoLerLabels?: string[],
+ *   fotografias?: File[],
+ *   extraItems?: Array<{ movimentoKey?: string, contentorId: string }>
+ * }} payload
  */
 export async function completeStrapiOperadorRecolha(payload) {
-  const contentorId = pickString(payload.contentorId)
-  if (!contentorId) throw new Error('ID do contentor em falta.')
+  const primaryContentorId = pickString(payload.contentorId)
+  if (!primaryContentorId) throw new Error('ID do contentor em falta.')
 
-  const movimentoKey = await resolveStrapiOperadorRecolhaMovimentoKey({
+  const primaryMovimentoKey = await resolveStrapiOperadorRecolhaMovimentoKey({
     movimentoKey: payload.movimentoKey,
-    contentorId,
+    contentorId: primaryContentorId,
   })
-  if (!movimentoKey) throw new Error('Movimento de recolha em falta.')
+  if (!primaryMovimentoKey) throw new Error('Movimento de recolha em falta.')
 
-  const contentor = await fetchStrapiContentorByCid(contentorId)
-  if (!contentor) throw new Error('Contentor não encontrado.')
+  const pesoRaw = pickString(payload.peso)
+  const pesoNum = pesoRaw != null ? Number(pesoRaw) : NaN
+  const pesoLabel = Number.isFinite(pesoNum) ? `${pesoNum}%` : pesoRaw
+  const codigosLerRel = buildCodigosLerRelationWrite(payload.codigoLerIds ?? [])
+  const codigoLerText = (payload.codigoLerLabels ?? [])
+    .map((value) => pickString(value))
+    .filter(Boolean)
+    .join(', ')
 
   const observacaoParts = [
     pickString(payload.observacoes),
-    pickString(payload.peso) ? `Peso: ${pickString(payload.peso)}` : null,
+    pesoLabel ? `Peso: ${pesoLabel}` : null,
     pickString(payload.numeroEgar) ? `EGAR: ${pickString(payload.numeroEgar)}` : null,
+    codigoLerText ? `Códigos LER: ${codigoLerText}` : null,
   ].filter(Boolean)
+  const observacaoOperador = observacaoParts.join('\n')
+  const egar = pickString(payload.numeroEgar)
+  const estadoPedidoRel = buildEstadoAuxRelationWrite(payload.estadoPedidoId)
 
   const fotoRefs = await uploadStrapiMovimentoFiles(payload.fotografias ?? [])
 
-  /** @type {Record<string, unknown>} */
-  const base = {
-    estado: MOVIMENTO_ESTADO_CONCLUIDO,
-    observacaoOperador: observacaoParts.join('\n'),
-    contentor: buildContentRelationConnect(contentor.id),
+  /** @type {Array<{ movimentoKey: string, contentorId: string }>} */
+  const queue = [{ movimentoKey: primaryMovimentoKey, contentorId: primaryContentorId }]
+  for (const extra of payload.extraItems ?? []) {
+    const contentorId = pickString(extra?.contentorId)
+    if (!contentorId) continue
+    let movimentoKey = pickString(extra?.movimentoKey)
+    if (!movimentoKey) {
+      movimentoKey = await resolveStrapiOperadorRecolhaMovimentoKey({ contentorId })
+    }
+    if (!movimentoKey) continue
+    if (queue.some((item) => item.movimentoKey === movimentoKey || item.contentorId === contentorId)) {
+      continue
+    }
+    queue.push({ movimentoKey, contentorId })
   }
 
-  const fotoVariants = buildFotografiasWriteVariants(fotoRefs)
-  const attempts = fotoVariants.length > 0 ? fotoVariants.map((fotos) => ({ ...base, ...fotos })) : [base]
+  const results = []
+  const failures = []
 
-  let lastError = null
-  for (const data of attempts) {
+  const estadosResiduo = await fetchStrapiEstadosResiduo()
+  const residuoContaminado = isEstadoResiduoContaminado(payload.estadoResiduoId, estadosResiduo)
+
+  for (const item of queue) {
     try {
-      const updated = await putStrapiMovimentoUpdate(movimentoKey, data)
+      const contentor = await fetchStrapiContentorByCid(item.contentorId)
+      if (!contentor) throw new Error(`Contentor ${item.contentorId} não encontrado.`)
+
+      const movimento = await fetchStrapiMovimentoByKey(item.movimentoKey)
+      const clienteId = pickMovimentoClienteRef(movimento, contentor)
+      const localizacaoId = pickString(movimento?.localizacaoId)
+
+      /** @type {Record<string, unknown>} */
+      const base = {
+        estado: MOVIMENTO_ESTADO_CONCLUIDO,
+        observacaoOperador,
+        contentor: buildContentRelationConnect(contentor.id),
+      }
+      if (Number.isFinite(pesoNum)) base.peso = pesoNum
+      if (egar) base.egar = egar
+      if (codigosLerRel) base.codigosLer = codigosLerRel
+      if (estadoPedidoRel) base.estadoPedido = estadoPedidoRel
+
+      const fotoVariants = buildFotografiasWriteVariants(fotoRefs)
+      const attempts = fotoVariants.length > 0 ? fotoVariants.map((fotos) => ({ ...base, ...fotos })) : [base]
+
+      let updated = null
+      let lastError = null
+      for (const data of attempts) {
+        try {
+          updated = await putStrapiMovimentoUpdate(item.movimentoKey, data)
+          break
+        } catch (err) {
+          lastError = err instanceof Error ? err : new Error('Não foi possível concluir a recolha.')
+        }
+      }
+      if (!updated) {
+        throw lastError ?? new Error('Não foi possível concluir a recolha.')
+      }
+
       await applyStrapiContentorAfterRecolha(contentor.id, {
-        estado: pickString(payload.estado) ?? undefined,
+        estadoFisicoId: pickString(payload.estadoFisicoId) ?? undefined,
+        estadoResiduoId: pickString(payload.estadoResiduoId) ?? undefined,
         localizacao: contentor.localizacao ?? undefined,
       })
-      return updated
+
+      if (residuoContaminado && clienteId) {
+        try {
+          await createStrapiTicketForCliente({
+            assunto: `Contentor contaminado — ${item.contentorId}`,
+            mensagem: `[Sistema] Foi detetada contaminação no contentor ${item.contentorId} durante a recolha. A equipa Soiloop irá analisar a situação.`,
+            clienteId,
+            localizacaoId,
+            contentorId: contentor.id,
+            prioridade: 'alta',
+          })
+        } catch {
+          /* Recolha concluída; falha ao notificar cliente não bloqueia o fluxo. */
+        }
+      }
+
+      results.push(updated)
     } catch (err) {
-      lastError = err instanceof Error ? err : new Error('Não foi possível concluir a recolha.')
+      failures.push({
+        contentorId: item.contentorId,
+        message: err instanceof Error ? err.message : 'Falha ao concluir a recolha.',
+      })
     }
   }
 
-  throw lastError ?? new Error('Não foi possível concluir a recolha.')
+  if (results.length === 0) {
+    throw new Error(failures[0]?.message ?? 'Não foi possível concluir a recolha.')
+  }
+
+  if (failures.length > 0) {
+    const detail = failures.map((item) => `${item.contentorId}: ${item.message}`).join(' · ')
+    throw new Error(
+      `Concluídas ${results.length} de ${queue.length} recolhas. Falhas: ${detail}`,
+    )
+  }
+
+  return results.length === 1 ? results[0] : results
 }
 
 /**
@@ -2991,22 +3930,138 @@ function buildOperadorCardTaskLines(item) {
 
 /** @param {ReturnType<typeof coerceMovimentoRow>} item */
 export function mapMovimentoToOperadorCard(item) {
+  const pedidoGroupMovimentoKeys = Array.isArray(item.pedidoGroupMovimentoKeys)
+    ? item.pedidoGroupMovimentoKeys.filter(Boolean)
+    : item.movimentoKey
+      ? [item.movimentoKey]
+      : []
+
   return {
     id: item.movimentoKey ?? item.id,
-    collectionId: item.contentorId ?? item.id,
-    clienteLabel: item.clienteLabel ?? '',
+    collectionId: item.pedidoGroupContentorId ?? item.contentorId ?? item.id,
+    clienteLabel: item.clienteLabel ?? item.clientName ?? '',
+    clientName: item.clientName ?? item.clienteLabel ?? '',
+    clienteId: item.clienteId ?? null,
+    clienteDocumentId: item.clienteDocumentId ?? null,
+    clienteIdAliases: item.clienteIdAliases ?? [],
+    localizacaoId: item.localizacaoId ?? null,
     locationDetail: item.locationDetail ?? item.location ?? '',
+    location: item.location ?? item.locationDetail ?? '',
+    locationPrefix: item.locationPrefix ?? null,
     status: item.status,
     scheduledAt: item.scheduledAt,
     taskLines: buildOperadorCardTaskLines(item),
     dateSortValue: item.dateSortValue,
+    dataIso: item.dataIso ?? '',
+    periodo: item.periodo ?? '',
+    notas: item.notas ?? '',
     movimentoKey: item.movimentoKey,
     contentorId: item.contentorId,
     qrCode: item.qrCode,
     taskType: item.taskType,
+    pedidoDisplayMode: item.pedidoDisplayMode ?? null,
+    pedidoGroupMovimentoKeys,
+    pedidoGroupTasks: item.pedidoGroupTasks ?? [],
+    pedidoGroupContentorId: item.pedidoGroupContentorId ?? item.contentorId ?? item.id,
+    hasTroca: Boolean(item.hasTroca) || item.pedidoDisplayMode === 'trocar',
     lat: item.lat ?? null,
     lng: item.lng ?? null,
   }
+}
+
+/**
+ * Extrai candidatas de recolha (1 por movimento/contentor) a partir dos cartões do dashboard.
+ * @param {Array<object>} cards
+ * @returns {Array<{ movimentoKey: string, contentorId: string, clienteId: string|null, clienteDocumentId: string|null, clienteIdAliases: string[], localizacaoId: string|null, locationDetail: string, clienteLabel: string }>}
+ */
+export function collectOperadorRecolhaCandidatesFromCards(cards = []) {
+  /** @type {Map<string, object>} */
+  const byKey = new Map()
+
+  for (const card of cards) {
+    if (!card) continue
+    const clienteMeta = {
+      clienteId: pickString(card.clienteId),
+      clienteDocumentId: pickString(card.clienteDocumentId),
+      clienteIdAliases: Array.isArray(card.clienteIdAliases) ? card.clienteIdAliases : [],
+      localizacaoId: pickString(card.localizacaoId),
+      locationDetail: pickString(card.locationDetail ?? card.location) ?? '',
+      clienteLabel: pickString(card.clienteLabel ?? card.clientName) ?? '',
+    }
+
+    const lines = Array.isArray(card.taskLines)
+      ? card.taskLines.filter((line) => line?.type === 'recolher')
+      : []
+
+    if (lines.length > 0) {
+      for (const line of lines) {
+        const movimentoKey = pickString(line.movimentoKey) ?? pickString(card.movimentoKey)
+        const contentorId = pickString(line.collectionId) ?? pickString(card.contentorId)
+        if (!movimentoKey || !contentorId || contentorId === 'Não definido') continue
+        byKey.set(movimentoKey, { movimentoKey, contentorId, ...clienteMeta })
+      }
+      continue
+    }
+
+    if (card.taskType === 'recolher') {
+      const movimentoKey = pickString(card.movimentoKey)
+      const contentorId = pickString(card.contentorId) ?? pickString(card.collectionId)
+      if (!movimentoKey || !contentorId || contentorId === 'Não definido') continue
+      byKey.set(movimentoKey, { movimentoKey, contentorId, ...clienteMeta })
+    }
+  }
+
+  return [...byKey.values()].sort((a, b) =>
+    String(a.contentorId).localeCompare(String(b.contentorId), 'pt'),
+  )
+}
+
+function clienteRefsFromRecolhaCandidate(item) {
+  const refs = new Set()
+  for (const value of [item?.clienteId, item?.clienteDocumentId, ...(item?.clienteIdAliases ?? [])]) {
+    const ref = pickString(value)
+    if (ref) refs.add(ref)
+  }
+  return refs
+}
+
+/**
+ * Outras recolhas agendadas da mesma empresa (cliente) que a recolha actual.
+ * @param {Array<object>} cards
+ * @param {{ movimentoKey?: string, contentorId?: string, clienteId?: string|null, clienteDocumentId?: string|null, clienteIdAliases?: string[] }} current
+ */
+export function findOperadorRecolhaSiblingsForCliente(cards = [], current = {}) {
+  const candidates = collectOperadorRecolhaCandidatesFromCards(cards)
+  const currentKey = pickString(current.movimentoKey)
+  const currentCid = pickString(current.contentorId)
+
+  let currentCandidate =
+    candidates.find((item) => currentKey && item.movimentoKey === currentKey) ??
+    candidates.find((item) => currentCid && item.contentorId === currentCid) ??
+    null
+
+  if (!currentCandidate && (currentKey || currentCid)) {
+    currentCandidate = {
+      movimentoKey: currentKey ?? '',
+      contentorId: currentCid ?? '',
+      clienteId: pickString(current.clienteId),
+      clienteDocumentId: pickString(current.clienteDocumentId),
+      clienteIdAliases: Array.isArray(current.clienteIdAliases) ? current.clienteIdAliases : [],
+    }
+  }
+
+  const currentRefs = clienteRefsFromRecolhaCandidate(currentCandidate)
+  if (currentRefs.size === 0) return []
+
+  return candidates.filter((item) => {
+    if (currentKey && item.movimentoKey === currentKey) return false
+    if (currentCid && item.contentorId === currentCid) return false
+    const itemRefs = clienteRefsFromRecolhaCandidate(item)
+    for (const ref of itemRefs) {
+      if (currentRefs.has(ref)) return true
+    }
+    return false
+  })
 }
 
 /**

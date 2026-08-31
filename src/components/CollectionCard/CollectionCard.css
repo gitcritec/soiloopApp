@@ -16,6 +16,11 @@
   opacity: 0.58;
 }
 
+.collection-card--request-cancelamento {
+  outline: 1px solid rgba(180, 83, 9, 0.35);
+  background: #fff8f1;
+}
+
 .collection-card--no-actions {
   grid-template-columns: 28px 1fr;
   padding-right: 16px;

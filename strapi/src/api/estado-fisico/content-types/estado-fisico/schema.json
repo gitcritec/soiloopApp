@@ -1,0 +1,30 @@
+{
+  "kind": "collectionType",
+  "collectionName": "estado_fisicos",
+  "info": {
+    "singularName": "estado-fisico",
+    "pluralName": "estado-fisicos",
+    "displayName": "Estado Físico"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "nome": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "ordem": {
+      "type": "integer",
+      "default": 0
+    },
+    "contentores": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::contentor.contentor",
+      "mappedBy": "estadoFisico"
+    }
+  }
+}

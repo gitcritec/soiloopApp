@@ -9,6 +9,7 @@ const ESTADO_LABEL = {
   agendado: 'Agendado',
   pedido: 'Pedido',
   rejeitado: 'Rejeitado',
+  cancelamento: 'Cancelamento pendente',
 }
 
 const TASK_LABEL = {
@@ -116,6 +117,14 @@ export default function MovimentoDetalheModal({
               <MetaRow label="Período:" value={item.periodoLabel} />
               <MetaRow label="e-GAR:" value={item.egar} />
               <MetaRow label="Peso:" value={item.peso} />
+              <MetaRow
+                label="Códigos LER:"
+                value={
+                  item.codigosLer?.length
+                    ? item.codigosLer.map((ler) => ler.label ?? ler.codigo).join(', ')
+                    : null
+                }
+              />
               <MetaRow label="Estado do contentor:" value={item.estadoContentorLabel} />
             </dl>
 

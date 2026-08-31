@@ -4,29 +4,35 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import {
   fetchStrapiContentorByCid,
 } from '../../../../lib/strapiContentores.js'
+import { fetchStrapiCodigosLer } from '../../../../lib/strapiCodigoLer.js'
+import {
+  fetchStrapiEstadosFisicos,
+  fetchStrapiEstadosPedido,
+  fetchStrapiEstadosResiduo,
+} from '../../../../lib/strapiEstadosAuxiliares.js'
 import { parseContentorQr } from '../../../../lib/parseContentorQr.js'
 import { resolveStrapiOperadorRecolhaMovimentoKey } from '../../../../lib/strapiMovimentos.js'
 import './MovimentosRecolha.css'
 
-const RECOLHA_ESTADOS = ['Usado', 'Danificado']
+/** Enchimento do contentor: 0% a 100%, de 5 em 5. */
+const PESO_PERCENT_OPTIONS = Array.from({ length: 21 }, (_, i) => String(i * 5))
 
-function resolveRecolhaEstadoInicial(contentorEstadoLabel) {
-  const normalized = (contentorEstadoLabel ?? '').trim().toLowerCase()
-  if (normalized === 'danificado') return 'Danificado'
-  return 'Usado'
-}
-
-function emptyForm(estado = RECOLHA_ESTADOS[0]) {
+function emptyForm(defaults = {}) {
   return {
-    estado,
+    estadoFisicoId: defaults.estadoFisicoId ?? '',
+    estadoResiduoId: defaults.estadoResiduoId ?? '',
+    estadoPedidoId: defaults.estadoPedidoId ?? '',
     peso: '',
     numeroEgar: '',
+    codigoLerIds: [],
     observacoes: '',
   }
 }
 
 /**
  * Formulário de recolha do operador (Figma SOLO-URBANO-App_v3, nó 228:8816).
+ * @param {object} props
+ * @param {Array<{ movimentoKey: string, contentorId: string, locationDetail?: string, clienteLabel?: string }>} [props.siblingCandidates]
  */
 export default function MovimentosRecolha({
   isOpen,
@@ -35,6 +41,7 @@ export default function MovimentosRecolha({
   contentorIdLocked = false,
   contentorIdAutoValidateKey = 0,
   movimentoKey = '',
+  siblingCandidates = [],
   qrError = null,
   onDismissQrError,
   onProcessarRecolha,
@@ -50,18 +57,67 @@ export default function MovimentosRecolha({
   const [idValidationError, setIdValidationError] = useState('')
   const [loadingContext, setLoadingContext] = useState(false)
   const [contextError, setContextError] = useState('')
+  const [codigosLerOptions, setCodigosLerOptions] = useState([])
+  const [codigosLerLoading, setCodigosLerLoading] = useState(false)
+  const [codigosLerError, setCodigosLerError] = useState('')
+  const [estadosFisicos, setEstadosFisicos] = useState([])
+  const [estadosResiduo, setEstadosResiduo] = useState([])
+  const [estadosPedido, setEstadosPedido] = useState([])
+  const [estadosError, setEstadosError] = useState('')
+  const [lerMenuOpen, setLerMenuOpen] = useState(false)
+  const [groupedMovimentoKeys, setGroupedMovimentoKeys] = useState([])
   /** @type {[{ id: string, file: File, previewUrl: string, name: string }]} */
   const [photos, setPhotos] = useState([])
   const photoInputRef = useRef(null)
+  const lerMenuRef = useRef(null)
   const lastAutoValidateKeyRef = useRef(0)
 
   const cid = contentorId?.trim() ?? ''
 
+  const siblingOptions = useMemo(() => {
+    const currentKey = String(movimentoKey ?? '').trim()
+    return (siblingCandidates ?? []).filter((item) => {
+      if (!item?.movimentoKey || !item?.contentorId) return false
+      if (currentKey && item.movimentoKey === currentKey) return false
+      if (cid && item.contentorId === cid) return false
+      return true
+    })
+  }, [siblingCandidates, movimentoKey, cid])
+
   const canSubmit = useMemo(() => {
     if (submitting || validatingId || loadingContext) return false
     if (!cid || !idValidated || idValidationError) return false
-    return Boolean(form.estado?.trim()) && Boolean(form.peso.trim())
-  }, [submitting, validatingId, loadingContext, cid, idValidated, idValidationError, form.estado, form.peso])
+    return (
+      Boolean(form.estadoFisicoId) &&
+      Boolean(form.estadoResiduoId) &&
+      Boolean(form.estadoPedidoId) &&
+      Boolean(form.peso.trim())
+    )
+  }, [
+    submitting,
+    validatingId,
+    loadingContext,
+    cid,
+    idValidated,
+    idValidationError,
+    form.estadoFisicoId,
+    form.estadoResiduoId,
+    form.estadoPedidoId,
+    form.peso,
+  ])
+
+  const selectedCodigosLer = useMemo(() => {
+    const selected = new Set(form.codigoLerIds ?? [])
+    return codigosLerOptions.filter((item) => selected.has(item.id))
+  }, [codigosLerOptions, form.codigoLerIds])
+
+  const lerSummaryLabel = useMemo(() => {
+    if (selectedCodigosLer.length === 0) return 'Selecionar'
+    if (selectedCodigosLer.length <= 2) {
+      return selectedCodigosLer.map((item) => item.codigo).join(', ')
+    }
+    return `${selectedCodigosLer.length} selecionados`
+  }, [selectedCodigosLer])
 
   const applyMovimentoContext = useCallback(async (code, explicitMovimentoKey = '') => {
     setLoadingContext(true)
@@ -83,7 +139,10 @@ export default function MovimentosRecolha({
       }
 
       setForm((prev) => ({
-        ...emptyForm(resolveRecolhaEstadoInicial(contentor.estadoLabel)),
+        ...emptyForm({
+          estadoFisicoId: contentor.estadoFisicoId ?? '',
+          estadoResiduoId: contentor.estadoResiduoId ?? '',
+        }),
         numeroEgar: contentor.numeroEgar ?? '',
         observacoes: prev.observacoes,
       }))
@@ -151,6 +210,9 @@ export default function MovimentosRecolha({
       setIdValidationError('')
       setLoadingContext(false)
       setContextError('')
+      setCodigosLerError('')
+      setLerMenuOpen(false)
+      setGroupedMovimentoKeys([])
       setForm(emptyForm())
       setPhotos((current) => {
         current.forEach((photo) => URL.revokeObjectURL(photo.previewUrl))
@@ -158,6 +220,61 @@ export default function MovimentosRecolha({
       })
       if (photoInputRef.current) photoInputRef.current.value = ''
       lastAutoValidateKeyRef.current = 0
+    }
+  }, [isOpen])
+
+  useEffect(() => {
+    const valid = new Set(siblingOptions.map((item) => item.movimentoKey))
+    setGroupedMovimentoKeys((prev) => prev.filter((key) => valid.has(key)))
+  }, [siblingOptions])
+
+  useEffect(() => {
+    if (!lerMenuOpen) return undefined
+    function onPointerDown(event) {
+      if (!lerMenuRef.current?.contains(event.target)) {
+        setLerMenuOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [lerMenuOpen])
+
+  useEffect(() => {
+    if (!isOpen) return undefined
+    let cancelled = false
+    setCodigosLerLoading(true)
+    setCodigosLerError('')
+    setEstadosError('')
+    Promise.all([
+      fetchStrapiCodigosLer(),
+      fetchStrapiEstadosFisicos().catch(() => []),
+      fetchStrapiEstadosResiduo().catch(() => []),
+      fetchStrapiEstadosPedido().catch(() => []),
+    ])
+      .then(([lerRows, fisicoRows, residuoRows, pedidoRows]) => {
+        if (cancelled) return
+        setCodigosLerOptions(lerRows)
+        setEstadosFisicos(fisicoRows)
+        setEstadosResiduo(residuoRows)
+        setEstadosPedido(pedidoRows)
+        if (fisicoRows.length === 0 || residuoRows.length === 0 || pedidoRows.length === 0) {
+          setEstadosError(
+            'Faltam estados auxiliares em Definições (físico, resíduo e pedido).',
+          )
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setCodigosLerOptions([])
+        setCodigosLerError(
+          err instanceof Error ? err.message : 'Não foi possível carregar os códigos LER.',
+        )
+      })
+      .finally(() => {
+        if (!cancelled) setCodigosLerLoading(false)
+      })
+    return () => {
+      cancelled = true
     }
   }, [isOpen])
 
@@ -196,6 +313,36 @@ export default function MovimentosRecolha({
 
   function updateField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
+    setFormError('')
+  }
+
+  function toggleCodigoLer(id) {
+    const key = String(id)
+    setForm((prev) => {
+      const selected = prev.codigoLerIds ?? []
+      const next = selected.includes(key)
+        ? selected.filter((value) => value !== key)
+        : [...selected, key]
+      return { ...prev, codigoLerIds: next }
+    })
+    setFormError('')
+  }
+
+  function toggleGroupedSibling(movimentoKeyValue) {
+    const key = String(movimentoKeyValue)
+    setGroupedMovimentoKeys((prev) =>
+      prev.includes(key) ? prev.filter((value) => value !== key) : [...prev, key],
+    )
+    setFormError('')
+  }
+
+  function selectAllGroupedSiblings() {
+    setGroupedMovimentoKeys(siblingOptions.map((item) => item.movimentoKey))
+    setFormError('')
+  }
+
+  function clearGroupedSiblings() {
+    setGroupedMovimentoKeys([])
     setFormError('')
   }
 
@@ -238,11 +385,23 @@ export default function MovimentosRecolha({
         modo: mode,
         contentorId: cid,
         movimentoKey,
-        estado: form.estado.trim(),
+        estadoFisicoId: form.estadoFisicoId,
+        estadoResiduoId: form.estadoResiduoId,
+        estadoPedidoId: form.estadoPedidoId,
         peso: form.peso.trim(),
         numeroEgar: form.numeroEgar.trim(),
+        codigoLerIds: form.codigoLerIds ?? [],
+        codigoLerLabels: (form.codigoLerIds ?? [])
+          .map((id) => codigosLerOptions.find((item) => item.id === id)?.label ?? id)
+          .filter(Boolean),
         observacoes: form.observacoes.trim(),
         fotografias: photos.map((photo) => photo.file),
+        extraItems: siblingOptions
+          .filter((item) => groupedMovimentoKeys.includes(item.movimentoKey))
+          .map((item) => ({
+            movimentoKey: item.movimentoKey,
+            contentorId: item.contentorId,
+          })),
       })
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Não foi possível registar a recolha.')
@@ -360,21 +519,100 @@ export default function MovimentosRecolha({
                 ) : null}
               </label>
 
+              {idValidated && siblingOptions.length > 0 ? (
+                <div className="recolha-form-screen__group">
+                  <div className="recolha-form-screen__group-head">
+                    <p className="recolha-form-screen__label">Agrupar recolhas da empresa</p>
+                    <div className="recolha-form-screen__group-actions">
+                      <button
+                        type="button"
+                        className="recolha-form-screen__group-link"
+                        disabled={!idValidated || loadingContext || submitting}
+                        tabIndex={isOpen ? 0 : -1}
+                        onClick={selectAllGroupedSiblings}
+                      >
+                        Todos
+                      </button>
+                      <button
+                        type="button"
+                        className="recolha-form-screen__group-link"
+                        disabled={
+                          !idValidated ||
+                          loadingContext ||
+                          submitting ||
+                          groupedMovimentoKeys.length === 0
+                        }
+                        tabIndex={isOpen ? 0 : -1}
+                        onClick={clearGroupedSiblings}
+                      >
+                        Limpar
+                      </button>
+                    </div>
+                  </div>
+                  <p className="recolha-form-screen__field-hint">
+                    Há mais contentores para recolher nesta empresa. Seleciona os que queres
+                    registar com os mesmos dados.
+                  </p>
+                  <ul className="recolha-form-screen__group-list">
+                    {siblingOptions.map((item) => {
+                      const selected = groupedMovimentoKeys.includes(item.movimentoKey)
+                      return (
+                        <li key={item.movimentoKey}>
+                          <button
+                            type="button"
+                            className={`recolha-form-screen__group-item${selected ? ' recolha-form-screen__group-item--selected' : ''}`}
+                            aria-pressed={selected}
+                            disabled={!idValidated || loadingContext || submitting}
+                            tabIndex={isOpen ? 0 : -1}
+                            onClick={() => toggleGroupedSibling(item.movimentoKey)}
+                          >
+                            <span className="recolha-form-screen__group-check" aria-hidden>
+                              {selected ? '✓' : ''}
+                            </span>
+                            <span className="recolha-form-screen__group-main">
+                              <span className="recolha-form-screen__group-cid">{item.contentorId}</span>
+                              {item.locationDetail ? (
+                                <span className="recolha-form-screen__group-loc">{item.locationDetail}</span>
+                              ) : null}
+                            </span>
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                  {groupedMovimentoKeys.length > 0 ? (
+                    <p className="recolha-form-screen__field-ok" role="status">
+                      +{groupedMovimentoKeys.length} contentor
+                      {groupedMovimentoKeys.length === 1 ? '' : 'es'} no mesmo registo
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {estadosError ? (
+                <p className="recolha-form-screen__field-error" role="alert">
+                  {estadosError}
+                </p>
+              ) : null}
+
               <label className="recolha-form-screen__field">
-                <span className="recolha-form-screen__label">Estado*</span>
+                <span className="recolha-form-screen__label">Estado físico*</span>
                 <span className="recolha-form-screen__select-wrap">
                   <select
-                    className="recolha-form-screen__select"
-                    value={form.estado}
-                    onChange={(e) => updateField('estado', e.target.value)}
+                    className={`recolha-form-screen__select${form.estadoFisicoId ? '' : ' recolha-form-screen__select--empty'}`}
+                    value={form.estadoFisicoId}
+                    onChange={(e) => updateField('estadoFisicoId', e.target.value)}
                     disabled={!idValidated || loadingContext}
                     required
                     tabIndex={isOpen ? 0 : -1}
-                    aria-label="Estado"
+                    aria-label="Estado físico"
                   >
-                    {RECOLHA_ESTADOS.map((estado) => (
-                      <option key={estado} value={estado}>
-                        {estado}
+                    <option value="" disabled>
+                      Selecionar
+                    </option>
+                    {estadosFisicos.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.nome}
                       </option>
                     ))}
                   </select>
@@ -383,18 +621,79 @@ export default function MovimentosRecolha({
               </label>
 
               <label className="recolha-form-screen__field">
-                <span className="recolha-form-screen__label">Peso*</span>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  className="recolha-form-screen__input"
-                  name="peso"
-                  value={form.peso}
-                  onChange={(e) => updateField('peso', e.target.value)}
-                  disabled={!idValidated || loadingContext}
-                  required
-                  tabIndex={isOpen ? 0 : -1}
-                />
+                <span className="recolha-form-screen__label">Estado do resíduo*</span>
+                <span className="recolha-form-screen__select-wrap">
+                  <select
+                    className={`recolha-form-screen__select${form.estadoResiduoId ? '' : ' recolha-form-screen__select--empty'}`}
+                    value={form.estadoResiduoId}
+                    onChange={(e) => updateField('estadoResiduoId', e.target.value)}
+                    disabled={!idValidated || loadingContext}
+                    required
+                    tabIndex={isOpen ? 0 : -1}
+                    aria-label="Estado do resíduo"
+                  >
+                    <option value="" disabled>
+                      Selecionar
+                    </option>
+                    {estadosResiduo.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <FontAwesomeIcon icon={faChevronDown} className="recolha-form-screen__select-icon" aria-hidden />
+                </span>
+              </label>
+
+              <label className="recolha-form-screen__field">
+                <span className="recolha-form-screen__label">Estado pedido*</span>
+                <span className="recolha-form-screen__select-wrap">
+                  <select
+                    className={`recolha-form-screen__select${form.estadoPedidoId ? '' : ' recolha-form-screen__select--empty'}`}
+                    value={form.estadoPedidoId}
+                    onChange={(e) => updateField('estadoPedidoId', e.target.value)}
+                    disabled={!idValidated || loadingContext}
+                    required
+                    tabIndex={isOpen ? 0 : -1}
+                    aria-label="Estado pedido"
+                  >
+                    <option value="" disabled>
+                      Selecionar
+                    </option>
+                    {estadosPedido.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <FontAwesomeIcon icon={faChevronDown} className="recolha-form-screen__select-icon" aria-hidden />
+                </span>
+              </label>
+
+              <label className="recolha-form-screen__field">
+                <span className="recolha-form-screen__label">Peso (%)*</span>
+                <span className="recolha-form-screen__select-wrap">
+                  <select
+                    className={`recolha-form-screen__select${form.peso ? '' : ' recolha-form-screen__select--empty'}`}
+                    name="peso"
+                    value={form.peso}
+                    onChange={(e) => updateField('peso', e.target.value)}
+                    disabled={!idValidated || loadingContext}
+                    required
+                    tabIndex={isOpen ? 0 : -1}
+                    aria-label="Peso em percentagem"
+                  >
+                    <option value="" disabled>
+                      Selecionar
+                    </option>
+                    {PESO_PERCENT_OPTIONS.map((value) => (
+                      <option key={value} value={value}>
+                        {value}%
+                      </option>
+                    ))}
+                  </select>
+                  <FontAwesomeIcon icon={faChevronDown} className="recolha-form-screen__select-icon" aria-hidden />
+                </span>
               </label>
 
               <label className="recolha-form-screen__field">
@@ -409,6 +708,68 @@ export default function MovimentosRecolha({
                   tabIndex={isOpen ? 0 : -1}
                 />
               </label>
+
+              <div className="recolha-form-screen__field recolha-form-screen__field--ler">
+                <span className="recolha-form-screen__label">Códigos LER</span>
+                {codigosLerLoading ? (
+                  <p className="recolha-form-screen__field-hint" role="status">
+                    A carregar códigos LER…
+                  </p>
+                ) : null}
+                {!codigosLerLoading && codigosLerError ? (
+                  <p className="recolha-form-screen__field-error" role="alert">
+                    {codigosLerError}
+                  </p>
+                ) : null}
+                {!codigosLerLoading && !codigosLerError && codigosLerOptions.length === 0 ? (
+                  <p className="recolha-form-screen__field-hint">
+                    Sem códigos LER. O admin pode adicioná-los em Definições.
+                  </p>
+                ) : null}
+                {!codigosLerLoading && codigosLerOptions.length > 0 ? (
+                  <div className="recolha-form-screen__ler-select" ref={lerMenuRef}>
+                    <button
+                      type="button"
+                      className={`recolha-form-screen__ler-trigger${selectedCodigosLer.length === 0 ? ' recolha-form-screen__ler-trigger--empty' : ''}`}
+                      aria-haspopup="listbox"
+                      aria-expanded={lerMenuOpen}
+                      aria-label="Códigos LER"
+                      disabled={!idValidated || loadingContext}
+                      tabIndex={isOpen ? 0 : -1}
+                      onClick={() => setLerMenuOpen((open) => !open)}
+                    >
+                      <span className="recolha-form-screen__ler-trigger-text">{lerSummaryLabel}</span>
+                      <FontAwesomeIcon icon={faChevronDown} className="recolha-form-screen__select-icon" aria-hidden />
+                    </button>
+                    {lerMenuOpen ? (
+                      <ul className="recolha-form-screen__ler-menu" role="listbox" aria-multiselectable="true">
+                        {codigosLerOptions.map((item) => {
+                          const selected = (form.codigoLerIds ?? []).includes(item.id)
+                          return (
+                            <li key={item.id} role="option" aria-selected={selected}>
+                              <button
+                                type="button"
+                                className={`recolha-form-screen__ler-option${selected ? ' recolha-form-screen__ler-option--selected' : ''}`}
+                                onClick={() => toggleCodigoLer(item.id)}
+                              >
+                                <span className="recolha-form-screen__ler-option-check" aria-hidden>
+                                  {selected ? '✓' : ''}
+                                </span>
+                                <span className="recolha-form-screen__ler-option-main">
+                                  <span className="recolha-form-screen__ler-option-code">{item.codigo}</span>
+                                  {item.descricao ? (
+                                    <span className="recolha-form-screen__ler-option-desc">{item.descricao}</span>
+                                  ) : null}
+                                </span>
+                              </button>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
 
               <label className="recolha-form-screen__field">
                 <span className="recolha-form-screen__label">Observações</span>
@@ -476,7 +837,11 @@ export default function MovimentosRecolha({
                 disabled={!canSubmit}
                 tabIndex={isOpen ? 0 : -1}
               >
-                {submitting ? 'A registar…' : 'Confirmar Registo'}
+                {submitting
+                  ? 'A registar…'
+                  : groupedMovimentoKeys.length > 0
+                    ? `Confirmar ${groupedMovimentoKeys.length + 1} recolhas`
+                    : 'Confirmar Registo'}
               </button>
               <button
                 type="button"

@@ -5,9 +5,13 @@
 
 import { createContentorQrcodePngBlob } from './contentorQrcodeImage.js'
 import { getStoredStrapiUserRefs, STRAPI_JWT_STORAGE_KEY } from './strapiAuth.js'
+import {
+  buildEstadoAuxRelationWrite,
+  coerceEstadoAuxRelation,
+} from './strapiEstadosAuxiliares.js'
 
-/** Valores do enum `estado` no Strapi. */
-export const CONTENTOR_ESTADOS = ['Novo', 'Usado', 'Danificado']
+/** Fallback de labels (a fonte de verdade são as tabelas auxiliares). */
+export const CONTENTOR_ESTADOS = ['Bom', 'Danificado', 'Inativo']
 
 /** Valores do enum `situacao` no Strapi (onde está o contentor: armazém, cliente, ou em trânsito). */
 export const CONTENTOR_SITUACOES = ['Armazem', 'Cliente', 'EmTransito']
@@ -182,10 +186,14 @@ export function normalizeContentorEstado(estado) {
   const known = {
     novo: 'novo',
     usado: 'usado',
+    bom: 'bom',
     danificado: 'danificado',
+    inativo: 'inativo',
     'em transito': 'em-transito',
     cliente: 'cliente',
     infetado: 'infetado',
+    contaminado: 'contaminado',
+    'nao contaminado': 'nao-contaminado',
     armazem: 'armazem',
     reutilizavel: 'reutilizavel',
   }
@@ -506,7 +514,11 @@ function coerceContentorRow(row) {
   const numeroEgar = pickString(attrs.numero_egar ?? row.numero_egar)
   const qrcodeMedia = attrs.qrcode ?? row.qrcode
   const qrcodeUrl = pickMediaUrl(qrcodeMedia, base)
-  const estadoRaw = pickString(attrs.estado ?? row.estado)
+  const estadoFisicoRel = coerceEstadoAuxRelation(attrs.estadoFisico ?? row.estadoFisico)
+  const estadoResiduoRel = coerceEstadoAuxRelation(attrs.estadoResiduo ?? row.estadoResiduo)
+  const estadoRaw =
+    pickString(estadoFisicoRel?.nome) ??
+    pickString(attrs.estado ?? row.estado)
   const estado = normalizeContentorEstado(estadoRaw)
   const situacaoRaw = pickString(attrs.situacao ?? row.situacao)
   const situacao = normalizeContentorSituacao(situacaoRaw)
@@ -559,6 +571,10 @@ function coerceContentorRow(row) {
     qrcodeUrl: qrcodeUrl ?? '',
     estado,
     estadoLabel: estadoRaw ?? '—',
+    estadoFisicoId: estadoFisicoRel?.id ?? '',
+    estadoFisicoLabel: estadoFisicoRel?.nome ?? estadoRaw ?? '',
+    estadoResiduoId: estadoResiduoRel?.id ?? '',
+    estadoResiduoLabel: estadoResiduoRel?.nome ?? '',
     data: formatContentorDate(dataRaw),
     dataIso: toIsoDateOnly(dataRaw),
     capacidadeId,
@@ -603,6 +619,8 @@ function appendContentorPopulateParams(params) {
   params.set('populate[qrcode]', 'true')
   params.set('populate[clienteAtual]', 'true')
   params.set('populate[localizacaoAtual]', 'true')
+  params.set('populate[estadoFisico]', 'true')
+  params.set('populate[estadoResiduo]', 'true')
   return params
 }
 
@@ -1057,7 +1075,9 @@ async function uploadContentorQrcodeMedia(cid) {
  * @property {string} [cid] Gerado automaticamente (CNT-001, …) se omitido
  * @property {string} capacidadeId
  * @property {string} localizacao
- * @property {string} estado
+ * @property {string} [estado] legado — preferir estadoFisicoId
+ * @property {string} [estadoFisicoId]
+ * @property {string} [estadoResiduoId]
  * @property {string} data
  */
 
@@ -1077,17 +1097,22 @@ export async function createStrapiContentor(payload) {
     ? Number(payload.capacidadeId)
     : payload.capacidadeId
 
-  const body = {
-    data: {
-      CID: cid,
-      localizacao: payload.localizacao.trim(),
-      estado: payload.estado,
-      data: payload.data,
-      capacidade: capacidadeRef,
-      qrcode: qrcodeRef,
-      situacao: CONTENTOR_SITUACAO_ARMAZEM,
-    },
+  /** @type {Record<string, unknown>} */
+  const data = {
+    CID: cid,
+    localizacao: payload.localizacao.trim(),
+    data: payload.data,
+    capacidade: capacidadeRef,
+    qrcode: qrcodeRef,
+    situacao: CONTENTOR_SITUACAO_ARMAZEM,
   }
+
+  const estadoFisico = buildEstadoAuxRelationWrite(payload.estadoFisicoId)
+  if (estadoFisico) data.estadoFisico = estadoFisico
+  const estadoResiduo = buildEstadoAuxRelationWrite(payload.estadoResiduoId)
+  if (estadoResiduo) data.estadoResiduo = estadoResiduo
+
+  const body = { data }
 
   const res = await fetch(`${base}/api/contentores`, {
     method: 'POST',
@@ -1141,7 +1166,9 @@ export async function createStrapiContentor(payload) {
  * @typedef {object} UpdateContentorPayload
  * @property {string} capacidadeId
  * @property {string} localizacao
- * @property {string} estado
+ * @property {string} [estado] legado
+ * @property {string} [estadoFisicoId]
+ * @property {string} [estadoResiduoId]
  * @property {string} data
  */
 
@@ -1159,14 +1186,18 @@ export async function updateStrapiContentor(documentId, payload) {
     ? Number(payload.capacidadeId)
     : payload.capacidadeId
 
-  const body = {
-    data: {
-      localizacao: payload.localizacao.trim(),
-      estado: payload.estado,
-      data: payload.data,
-      capacidade: capacidadeRef,
-    },
+  /** @type {Record<string, unknown>} */
+  const data = {
+    localizacao: payload.localizacao.trim(),
+    data: payload.data,
+    capacidade: capacidadeRef,
   }
+  const estadoFisico = buildEstadoAuxRelationWrite(payload.estadoFisicoId)
+  if (estadoFisico) data.estadoFisico = estadoFisico
+  const estadoResiduo = buildEstadoAuxRelationWrite(payload.estadoResiduoId)
+  if (estadoResiduo) data.estadoResiduo = estadoResiduo
+
+  const body = { data }
 
   const res = await fetch(`${base}/api/contentores/${encodeURIComponent(documentId)}`, {
     method: 'PUT',
@@ -1454,20 +1485,23 @@ export async function reserveStrapiContentorParaEntrega(contentorId, payload = {
 }
 
 /**
- * @param {{ localizacaoAtualId?: string|null, clienteAtualId?: string|null, estado?: string|null, localizacao?: string|null }} fields
+ * @param {{ localizacaoAtualId?: string|null, clienteAtualId?: string|null, estado?: string|null, estadoFisicoId?: string|null, estadoResiduoId?: string|null, localizacao?: string|null }} fields
  */
 function buildContentorEntregaUpdateVariants(fields) {
   const loc = resolveContentorRelationRef(fields.localizacaoAtualId)
   const cli = resolveContentorRelationRef(fields.clienteAtualId)
-  const estado = pickString(fields.estado)
   const localizacao = pickString(fields.localizacao)
+  const estadoFisico = buildEstadoAuxRelationWrite(fields.estadoFisicoId)
+  const estadoResiduo = buildEstadoAuxRelationWrite(fields.estadoResiduoId)
 
   /** @type {Record<string, unknown>[]} */
   const variants = []
 
+  /** @type {Record<string, unknown>} */
   const scalar = { situacao: 'Cliente' }
-  if (estado) scalar.estado = estado
   if (localizacao) scalar.localizacao = localizacao
+  if (estadoFisico) scalar.estadoFisico = estadoFisico
+  if (estadoResiduo) scalar.estadoResiduo = estadoResiduo
 
   if (loc && cli) {
     variants.push({
@@ -1492,15 +1526,18 @@ function buildContentorEntregaUpdateVariants(fields) {
 }
 
 /**
- * @param {{ estado?: string|null, localizacao?: string|null }} [fields]
+ * @param {{ estado?: string|null, estadoFisicoId?: string|null, estadoResiduoId?: string|null, localizacao?: string|null }} [fields]
  */
 function buildContentorRecolhaUpdateVariants(fields = {}) {
-  const estado = pickString(fields.estado)
   const localizacao = pickString(fields.localizacao)
+  const estadoFisico = buildEstadoAuxRelationWrite(fields.estadoFisicoId)
+  const estadoResiduo = buildEstadoAuxRelationWrite(fields.estadoResiduoId)
 
+  /** @type {Record<string, unknown>} */
   const scalar = { situacao: 'Armazem' }
-  if (estado) scalar.estado = estado
   if (localizacao) scalar.localizacao = localizacao
+  if (estadoFisico) scalar.estadoFisico = estadoFisico
+  if (estadoResiduo) scalar.estadoResiduo = estadoResiduo
 
   return [
     { ...scalar, localizacaoAtual: null, clienteAtual: null },
@@ -1538,7 +1575,7 @@ export async function applyStrapiContentorAfterEntrega(documentId, payload) {
 /**
  * Atualiza situação do contentor após recolha (volta ao armazém).
  * @param {string} documentId
- * @param {{ estado?: string, localizacao?: string }} [payload]
+ * @param {{ estado?: string, estadoFisicoId?: string, estadoResiduoId?: string, localizacao?: string }} [payload]
  */
 export async function applyStrapiContentorAfterRecolha(documentId, payload = {}) {
   const key = pickString(documentId)

@@ -26,11 +26,6 @@
       "relation": "oneToOne",
       "target": "api::contentor.contentor"
     },
-    "capacidade": {
-      "type": "relation",
-      "relation": "oneToOne",
-      "target": "api::capacidade.capacidade"
-    },
     "data": {
       "type": "date"
     },
@@ -52,10 +47,14 @@
         "pedido",
         "agendado",
         "concluido",
-        "rejeitado"
+        "rejeitado",
+        "cancelamento"
       ]
     },
     "observacaoOperador": {
+      "type": "text"
+    },
+    "notas": {
       "type": "text"
     },
     "egar": {
@@ -71,6 +70,12 @@
         "danificado",
         "infetado"
       ]
+    },
+    "estadoPedido": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::estado-pedido.estado-pedido",
+      "inversedBy": "movimentos"
     },
     "fotografias": {
       "type": "media",
@@ -103,6 +108,18 @@
       "type": "integer",
       "default": 0,
       "min": 0
+    },
+    "recorrencia": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::recorrencia.recorrencia",
+      "inversedBy": "movimentos"
+    },
+    "codigosLer": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::codigo-ler.codigo-ler",
+      "mappedBy": "movimentos"
     }
   }
 }

@@ -24,48 +24,86 @@ function formatLocalizacao(item) {
   return [item.locationPrefix, item.locationDetail].filter(Boolean).join(', ')
 }
 
+function contentorKey(item) {
+  return String(item?.id ?? item?.contentorId ?? '').trim()
+}
+
+function isContentorDisponivelParaRecolha(item) {
+  if (!item || !contentorKey(item)) return false
+  if (item.canRequestPickup === false) return false
+  if (item.emRecolha === true) return false
+  return true
+}
+
 /**
  * Formulário cliente — solicitar nova recolha (Figma SOLO-URBANO-App_v3, nó 166:4503).
+ * Permite selecionar vários contentores no mesmo pedido.
  */
 export default function SolicitarRecolha({
   isOpen,
   containerItem = null,
+  availableContainers = [],
   onClose,
   onSubmit,
 }) {
   const [form, setForm] = useState(() => emptyForm())
+  const [selectedIds, setSelectedIds] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
   const dateInputRef = useRef(null)
 
-  const contentorId = containerItem?.id ?? containerItem?.contentorId ?? ''
-  const localizacao = formatLocalizacao(containerItem)
-  const hasContainer = Boolean(contentorId)
+  const selectableContainers = useMemo(() => {
+    const byId = new Map()
+    for (const item of availableContainers ?? []) {
+      if (!isContentorDisponivelParaRecolha(item)) continue
+      const key = contentorKey(item)
+      if (key) byId.set(key, item)
+    }
+    const initialKey = contentorKey(containerItem)
+    if (initialKey && containerItem && !byId.has(initialKey) && isContentorDisponivelParaRecolha(containerItem)) {
+      byId.set(initialKey, containerItem)
+    }
+    return [...byId.values()]
+  }, [availableContainers, containerItem])
+
+  const selectedContainers = useMemo(
+    () => selectableContainers.filter((item) => selectedIds.includes(contentorKey(item))),
+    [selectableContainers, selectedIds],
+  )
+
+  const hasSelection = selectedContainers.length > 0
+  const allSelected =
+    selectableContainers.length > 0 && selectedIds.length === selectableContainers.length
 
   const canSubmit = useMemo(() => {
-    if (!hasContainer || submitting) return false
+    if (!hasSelection || submitting) return false
     return Boolean(form.data.trim()) && Boolean(form.periodo.trim()) && Boolean(form.trocarContentor.trim())
-  }, [hasContainer, submitting, form.data, form.periodo, form.trocarContentor])
+  }, [hasSelection, submitting, form.data, form.periodo, form.trocarContentor])
 
   const canDiscard = useMemo(() => {
     return Boolean(
       form.data.trim() ||
         form.periodo.trim() ||
         form.observacoes.trim() ||
-        form.trocarContentor.trim(),
+        form.trocarContentor.trim() ||
+        selectedIds.length > 1 ||
+        (selectedIds.length === 1 && selectedIds[0] !== contentorKey(containerItem)),
     )
-  }, [form.data, form.periodo, form.observacoes, form.trocarContentor])
+  }, [form.data, form.periodo, form.observacoes, form.trocarContentor, selectedIds, containerItem])
 
   useEffect(() => {
     if (!isOpen) {
       setForm(emptyForm())
+      setSelectedIds([])
       setSubmitting(false)
       setFormError('')
       return
     }
     setForm(emptyForm())
     setFormError('')
-  }, [isOpen, contentorId])
+    const initialKey = contentorKey(containerItem)
+    setSelectedIds(initialKey ? [initialKey] : [])
+  }, [isOpen, containerItem])
 
   useEffect(() => {
     if (!isOpen) return
@@ -101,8 +139,27 @@ export default function SolicitarRecolha({
     setFormError('')
   }
 
+  function toggleContentor(id) {
+    const key = String(id ?? '').trim()
+    if (!key) return
+    setSelectedIds((prev) => (prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]))
+    setFormError('')
+  }
+
+  function selectAllContentores() {
+    setSelectedIds(selectableContainers.map((item) => contentorKey(item)).filter(Boolean))
+    setFormError('')
+  }
+
+  function clearContentores() {
+    setSelectedIds([])
+    setFormError('')
+  }
+
   function handleDiscard() {
     setForm(emptyForm())
+    const initialKey = contentorKey(containerItem)
+    setSelectedIds(initialKey ? [initialKey] : [])
     setFormError('')
   }
 
@@ -113,9 +170,14 @@ export default function SolicitarRecolha({
     setSubmitting(true)
     try {
       await onSubmit?.({
-        contentorId,
-        localizacaoId: containerItem?.localizacaoId ?? '',
-        localizacao,
+        contentorIds: selectedIds,
+        contentorId: selectedIds[0] ?? '',
+        localizacaoId:
+          selectedContainers.length === 1 ? selectedContainers[0]?.localizacaoId ?? '' : '',
+        localizacao:
+          selectedContainers.length === 1
+            ? formatLocalizacao(selectedContainers[0])
+            : `${selectedContainers.length} contentores`,
         data: form.data.trim(),
         periodo: form.periodo.trim(),
         observacoes: form.observacoes.trim(),
@@ -166,14 +228,75 @@ export default function SolicitarRecolha({
               ) : null}
 
               <div className="solicitar-recolha__fields">
-                <div className="solicitar-recolha__field solicitar-recolha__field--locked">
-                  <span className="solicitar-recolha__locked-value">{localizacao || '—'}</span>
-                  <FontAwesomeIcon icon={faChevronDown} className="solicitar-recolha__locked-icon" aria-hidden />
-                </div>
+                <div className="solicitar-recolha__group">
+                  <div className="solicitar-recolha__group-head">
+                    <span className="solicitar-recolha__group-label">Contentores*</span>
+                    {selectableContainers.length > 1 ? (
+                      <div className="solicitar-recolha__group-actions">
+                        <button
+                          type="button"
+                          className="solicitar-recolha__group-link"
+                          tabIndex={isOpen ? 0 : -1}
+                          disabled={allSelected || submitting}
+                          onClick={selectAllContentores}
+                        >
+                          Todos
+                        </button>
+                        <button
+                          type="button"
+                          className="solicitar-recolha__group-link"
+                          tabIndex={isOpen ? 0 : -1}
+                          disabled={selectedIds.length === 0 || submitting}
+                          onClick={clearContentores}
+                        >
+                          Limpar
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
 
-                <div className="solicitar-recolha__field solicitar-recolha__field--locked">
-                  <span className="solicitar-recolha__locked-value">{contentorId || '—'}</span>
-                  <FontAwesomeIcon icon={faChevronDown} className="solicitar-recolha__locked-icon" aria-hidden />
+                  {selectableContainers.length === 0 ? (
+                    <p className="solicitar-recolha__group-empty">
+                      Não há contentores disponíveis para recolha.
+                    </p>
+                  ) : (
+                    <ul className="solicitar-recolha__group-list">
+                      {selectableContainers.map((item) => {
+                        const id = contentorKey(item)
+                        const selected = selectedIds.includes(id)
+                        const loc = formatLocalizacao(item)
+                        return (
+                          <li key={id}>
+                            <button
+                              type="button"
+                              className={`solicitar-recolha__group-item${selected ? ' solicitar-recolha__group-item--selected' : ''}`}
+                              tabIndex={isOpen ? 0 : -1}
+                              disabled={submitting}
+                              aria-pressed={selected}
+                              onClick={() => toggleContentor(id)}
+                            >
+                              <span className="solicitar-recolha__group-check" aria-hidden>
+                                {selected ? '✓' : ''}
+                              </span>
+                              <span className="solicitar-recolha__group-main">
+                                <span className="solicitar-recolha__group-cid">{id}</span>
+                                {loc ? (
+                                  <span className="solicitar-recolha__group-loc">{loc}</span>
+                                ) : null}
+                              </span>
+                            </button>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+
+                  {selectedIds.length > 0 ? (
+                    <p className="solicitar-recolha__group-status" role="status">
+                      {selectedIds.length} contentor{selectedIds.length === 1 ? '' : 'es'} selecionado
+                      {selectedIds.length === 1 ? '' : 's'}
+                    </p>
+                  ) : null}
                 </div>
 
                 <label
@@ -187,7 +310,7 @@ export default function SolicitarRecolha({
                     name="data"
                     value={form.data}
                     onChange={(e) => updateField('data', e.target.value)}
-                    disabled={!hasContainer}
+                    disabled={!hasSelection}
                     required
                     tabIndex={isOpen ? 0 : -1}
                     aria-label="Data"
@@ -203,7 +326,7 @@ export default function SolicitarRecolha({
                       className={`solicitar-recolha__select${form.periodo ? '' : ' solicitar-recolha__select--empty'}`}
                       value={form.periodo}
                       onChange={(e) => updateField('periodo', e.target.value)}
-                      disabled={!hasContainer}
+                      disabled={!hasSelection}
                       required
                       tabIndex={isOpen ? 0 : -1}
                       aria-label="Preferência de horário"
@@ -228,7 +351,7 @@ export default function SolicitarRecolha({
                     name="observacoes"
                     value={form.observacoes}
                     onChange={(e) => updateField('observacoes', e.target.value)}
-                    disabled={!hasContainer}
+                    disabled={!hasSelection}
                     tabIndex={isOpen ? 0 : -1}
                     aria-label="Observações"
                   />
@@ -243,7 +366,7 @@ export default function SolicitarRecolha({
                       className={`solicitar-recolha__select${form.trocarContentor ? '' : ' solicitar-recolha__select--empty'}`}
                       value={form.trocarContentor}
                       onChange={(e) => updateField('trocarContentor', e.target.value)}
-                      disabled={!hasContainer}
+                      disabled={!hasSelection}
                       required
                       tabIndex={isOpen ? 0 : -1}
                       aria-label="Trocar Contentor"
@@ -270,7 +393,11 @@ export default function SolicitarRecolha({
                 disabled={!canSubmit}
                 tabIndex={isOpen ? 0 : -1}
               >
-                {submitting ? 'A registar…' : 'Confirmar Registo'}
+                {submitting
+                  ? 'A registar…'
+                  : selectedIds.length > 1
+                    ? `Confirmar (${selectedIds.length})`
+                    : 'Confirmar Registo'}
               </button>
               <button
                 type="button"

@@ -30,14 +30,13 @@ import { formatLocationQuery } from '../../../lib/locationQuery.js'
 import {
   canDeleteMovimentoCliente,
   canEditMovimentoCliente,
-  collapseMovimentosPedidoCards,
+  collapseMovimentosListagemCards,
   createStrapiClienteSolicitacaoRecolha,
   createStrapiClienteSolicitacaoContentor,
-  deleteStrapiMovimentosBatch,
   fetchStrapiClienteContentoresInstalados,
   fetchStrapiClienteMovimentosAgendados,
   fetchStrapiClienteMovimentosHistorico,
-  getPedidoGroupMovimentoKeys,
+  requestStrapiClienteCancelamento,
   updateStrapiMovimentosBatch,
 } from '../../../lib/strapiMovimentos.js'
 import SolicitarRecolha from './SolicitarRecolha/SolicitarRecolha.jsx'
@@ -171,6 +170,11 @@ export default function Cliente({
 
   const selectNav = useCallback((id) => {
     setShowPerfil(false)
+    setRecolhaContext(null)
+    setSolicitarContentorOpen(false)
+    setEditPedidoContext(null)
+    setDeletePedidoContext(null)
+    setMenuOpen(false)
     setNavActiveId(id)
     setAppHash('cliente', id)
   }, [])
@@ -181,6 +185,11 @@ export default function Cliente({
     else if (actionId === 'recolhas') selectNav('recolhas')
     else if (actionId === 'dashboard') selectNav('dashboard')
     else if (actionId === 'perfil') {
+      setRecolhaContext(null)
+      setSolicitarContentorOpen(false)
+      setEditPedidoContext(null)
+      setDeletePedidoContext(null)
+      setMenuOpen(false)
       setShowPerfil(true)
       setAppHash('cliente', 'perfil')
       setShowCriarTicket(false)
@@ -188,6 +197,10 @@ export default function Cliente({
   }
 
   function openCriarTicket() {
+    setRecolhaContext(null)
+    setSolicitarContentorOpen(false)
+    setEditPedidoContext(null)
+    setDeletePedidoContext(null)
     setNavActiveId('tickets')
     setAppHash('cliente', 'tickets', 'criar')
   }
@@ -254,10 +267,11 @@ export default function Cliente({
   }
 
   async function handleEditPedidoSubmit(payload) {
-    /** @type {{ data: string, periodo?: string, estado?: string }} */
+    /** @type {{ data: string, periodo?: string, estado?: string, notas?: string }} */
     const updatePayload = {
       data: payload.data,
       periodo: payload.periodo,
+      notas: payload.notas ?? '',
     }
     if (payload.resetToApproval) {
       updatePayload.estado = 'pedido'
@@ -268,10 +282,11 @@ export default function Cliente({
     reloadClientDashboardData()
   }
 
-  async function handleDeletePedidoConfirm() {
+  async function handleDeletePedidoConfirm(mode = 'single') {
     if (!deletePedidoContext) return
-    const keys = getPedidoGroupMovimentoKeys(deletePedidoContext)
-    await deleteStrapiMovimentosBatch(keys)
+    await requestStrapiClienteCancelamento(deletePedidoContext, {
+      mode: mode === 'future' ? 'future' : 'single',
+    })
     closeDeletePedido()
     reloadClientDashboardData()
   }
@@ -308,7 +323,7 @@ export default function Cliente({
 
   const shouldShowRequests = navActiveId === 'dashboard'
   const displayClientRequests = useMemo(
-    () => collapseMovimentosPedidoCards(clientRequests),
+    () => collapseMovimentosListagemCards(clientRequests),
     [clientRequests],
   )
   const clientStats = useMemo(() => {
@@ -319,12 +334,12 @@ export default function Cliente({
     const todayStartMs = todayStart.getTime()
     const todayEndMs = todayEnd.getTime()
 
-    // Espelha a lógica do operador, mas para o cliente autenticado:
+    // Listagem colapsada (1 card por série semanal):
     // - hoje: movimentos do dia (exclui só «pedido»)
-    // - agendadas: todos os «agendado»
+    // - agendadas: cards «agendado» (séries contam como 1)
     // - recolhidos: todos os «concluido» (histórico)
-    const semPedido = clientRequests.filter((item) => item?.estadoKey !== 'pedido')
-    const agendados = clientRequests.filter((item) => item?.estadoKey === 'agendado')
+    const semPedido = displayClientRequests.filter((item) => item?.estadoKey !== 'pedido')
+    const agendados = displayClientRequests.filter((item) => item?.estadoKey === 'agendado')
     const hoje = semPedido.filter((item) => {
       const v = item?.dateSortValue
       return Number.isFinite(v) && v >= todayStartMs && v <= todayEndMs
@@ -336,7 +351,7 @@ export default function Cliente({
       contentoresRecolhidos: clientHistoricoCount,
       kmPercorridos: MOCK_CLIENT_STATS.kmPercorridos,
     }
-  }, [clientRequests, clientHistoricoCount])
+  }, [displayClientRequests, clientHistoricoCount])
 
   function renderMain() {
     if (showPerfil) {
@@ -397,9 +412,11 @@ export default function Cliente({
                 ? displayClientRequests.map((item) => (
                     <CollectionCard
                       key={
-                        item.pedidoDisplayMode === 'trocar'
-                          ? `trocar-${item.pedidoGroupKey}`
-                          : item.movimentoKey ?? `${item.id}-${item.taskType}-${item.scheduledAt}`
+                        item.recorrenciaId
+                          ? `serie-${item.recorrenciaId}`
+                          : item.pedidoDisplayMode === 'trocar'
+                            ? `trocar-${item.pedidoGroupKey}`
+                            : item.movimentoKey ?? `${item.id}-${item.taskType}-${item.scheduledAt}`
                       }
                       collectionId={item.pedidoGroupContentorId ?? item.id}
                       location={item.locationDetail || item.location || ''}
@@ -408,6 +425,11 @@ export default function Cliente({
                       binNumber={item.binNumber}
                       taskType={item.taskType}
                       requestState={item.estadoKey}
+                      badgeLabel={
+                        item.estadoKey === 'cancelamento'
+                          ? item.badgeLabel ?? 'Cancelamento pendente'
+                          : item.badgeLabel ?? (item.recorrenciaId ? 'Semanal' : undefined)
+                      }
                       showEdit={canEditMovimentoCliente(item)}
                       showDelete={canDeleteMovimentoCliente(item)}
                       onEditClick={() => openEditPedido(item)}
@@ -498,6 +520,7 @@ export default function Cliente({
       <SolicitarRecolha
         isOpen={Boolean(recolhaContext)}
         containerItem={recolhaContext}
+        availableContainers={clientContainers}
         onClose={closeSolicitarRecolha}
         onSubmit={handleSolicitarRecolhaSubmit}
       />

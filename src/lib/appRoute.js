@@ -86,6 +86,15 @@ export function readAdminNavId() {
   return 'dashboard'
 }
 
+/** @returns {'list'|'create'} */
+export function readAdminRecolhasView() {
+  const parsed = parseAppHash()
+  if (parsed?.profile === 'admin' && parsed.section === 'recolhas') {
+    if (parsed.sub === 'criar') return 'create'
+  }
+  return 'list'
+}
+
 /** @returns {'list'|'create'|'edit'} */
 export function readAdminAdminsView() {
   const parsed = parseAppHash()
@@ -228,6 +237,7 @@ export function readAdminShowProcessarButton() {
   if (parsed?.profile !== 'admin') return false
 
   const section = parsed.section
+  if (section === 'recolhas') return readAdminRecolhasView() === 'list'
   if (section === 'contentores') return readAdminContentoresView() === 'list'
   if (section === 'clientes') return readAdminClientesView() === 'list'
   if (section === 'tickets') return readAdminTicketsView() === 'list'

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faBarcodeRead,
@@ -27,13 +27,14 @@ import OperatorDrawerMenu from '../../../components/OperatorDrawerMenu/OperatorD
 import LocationMapModal from '../../../components/LocationMapModal/LocationMapModal.jsx'
 import { formatLocationQuery } from '../../../lib/locationQuery.js'
 import { parseContentorQr } from '../../../lib/parseContentorQr.js'
-import { fetchStrapiOperadorDashboardMovimentos, completeStrapiOperadorEntrega, completeStrapiOperadorRecolha, resolveOperadorEntregaContentorIdFromCard, resolveOperadorEntregaMovimentoKeyFromCard, resolveOperadorRecolhaContentorIdFromCard, resolveOperadorRecolhaMovimentoKeyFromCard } from '../../../lib/strapiMovimentos.js'
+import { fetchStrapiOperadorDashboardMovimentos, completeStrapiOperadorEntrega, completeStrapiOperadorRecolha, findOperadorRecolhaSiblingsForCliente, getOperadorServicoMovimentoKeys, rescheduleStrapiOperadorServico, resolveOperadorEntregaContentorIdFromCard, resolveOperadorEntregaMovimentoKeyFromCard, resolveOperadorRecolhaContentorIdFromCard, resolveOperadorRecolhaMovimentoKeyFromCard } from '../../../lib/strapiMovimentos.js'
 import MovimentosRecolha from './MovimentosRecolha/MovimentosRecolha.jsx'
 import MovimentosEntrega from './MovimentosEntrega/MovimentosEntrega.jsx'
 import Processar from './Processar/Processar.jsx'
 import QrScanner from './QrScanner/QrScanner.jsx'
 import Historico from './Historico/Historico.jsx'
 import Perfil from '../../Perfil/Perfil.jsx'
+import EditarPedido from '../Cliente/EditarPedido/EditarPedido.jsx'
 import { readIsProfileSection, readOperadorNavId, readOperadorShowProcessarButton, readOperadorScreen, setAppHash } from '../../../lib/appRoute.js'
 import {
   MOCK_DAY_COLLECTIONS,
@@ -76,6 +77,7 @@ export default function Operador({ onLogout }) {
   const [dashboardError, setDashboardError] = useState(false)
   const [operatorStats, setOperatorStats] = useState(MOCK_OPERATOR_STATS)
   const [showPerfil, setShowPerfil] = useState(() => readIsProfileSection('operador'))
+  const [editServicoContext, setEditServicoContext] = useState(null)
 
   const syncOperadorRouteFromHash = useCallback(() => {
     setNavActiveId(readOperadorNavId())
@@ -266,14 +268,27 @@ export default function Operador({ onLogout }) {
       movimentoKey: payload.movimentoKey ?? recolhaForm?.movimentoKey,
       contentorId: payload.contentorId,
       observacoes: payload.observacoes,
-      estado: payload.estado,
+      estadoFisicoId: payload.estadoFisicoId,
+      estadoResiduoId: payload.estadoResiduoId,
+      estadoPedidoId: payload.estadoPedidoId,
       peso: payload.peso,
       numeroEgar: payload.numeroEgar,
+      codigoLerIds: payload.codigoLerIds,
+      codigoLerLabels: payload.codigoLerLabels,
       fotografias: payload.fotografias,
+      extraItems: payload.extraItems,
     })
     closeMovimentosRecolha()
     await reloadDashboard()
   }
+
+  const recolhaSiblingCandidates = useMemo(() => {
+    if (!recolhaForm) return []
+    return findOperadorRecolhaSiblingsForCliente([...dayCollections, ...upcomingCollections], {
+      movimentoKey: recolhaForm.movimentoKey,
+      contentorId: recolhaForm.contentorId,
+    })
+  }, [recolhaForm, dayCollections, upcomingCollections])
 
   function openCollectionLocation(item) {
     const locationLabel = item.locationDetail || item.location || ''
@@ -288,6 +303,32 @@ export default function Operador({ onLogout }) {
       title: item.clienteLabel || '',
       subtitle: locationLabel || query,
     })
+  }
+
+  function openEditServico(item) {
+    if (!item) return
+    setEditServicoContext({
+      ...item,
+      id: item.collectionId ?? item.id,
+      pedidoGroupContentorId: item.pedidoGroupContentorId ?? item.collectionId ?? item.id,
+      pedidoGroupMovimentoKeys: getOperadorServicoMovimentoKeys(item),
+      locationDetail: item.locationDetail ?? item.location ?? '',
+    })
+  }
+
+  function closeEditServico() {
+    setEditServicoContext(null)
+  }
+
+  async function handleEditServicoSubmit(payload) {
+    if (!editServicoContext) return
+    await rescheduleStrapiOperadorServico(editServicoContext, {
+      data: payload.data,
+      periodo: payload.periodo,
+      notas: payload.notas ?? '',
+    })
+    closeEditServico()
+    await reloadDashboard()
   }
 
   function openProcessar(card = null) {
@@ -513,6 +554,7 @@ export default function Operador({ onLogout }) {
                   scheduledAt={item.scheduledAt}
                   taskLines={item.taskLines}
                   onLocationClick={() => openCollectionLocation(item)}
+                  onEditClick={() => openEditServico(item)}
                   onProcessClick={() => openServiceFromCard(item)}
                 />
               ))}
@@ -541,6 +583,7 @@ export default function Operador({ onLogout }) {
                   scheduledAt={item.scheduledAt}
                   taskLines={item.taskLines}
                   onLocationClick={() => openCollectionLocation(item)}
+                  onEditClick={() => openEditServico(item)}
                   onProcessClick={() => openServiceFromCard(item)}
                 />
               ))}
@@ -631,6 +674,7 @@ export default function Operador({ onLogout }) {
         contentorIdLocked={Boolean(recolhaForm?.contentorIdFromQr)}
         contentorIdAutoValidateKey={recolhaValidateKey}
         movimentoKey={recolhaForm?.movimentoKey ?? ''}
+        siblingCandidates={recolhaSiblingCandidates}
         qrError={qrError}
         onDismissQrError={() => setQrError(null)}
         onProcessarRecolha={openRecolhaQrScanner}
@@ -647,6 +691,15 @@ export default function Operador({ onLogout }) {
         }
         onClose={closeMovimentosRecolha}
         onSubmit={handleMovimentosRecolhaSubmit}
+      />
+
+      <EditarPedido
+        isOpen={Boolean(editServicoContext)}
+        movimentoItem={editServicoContext}
+        title="Alterar data do serviço"
+        submitLabel="Guardar data"
+        onClose={closeEditServico}
+        onSubmit={handleEditServicoSubmit}
       />
     </div>
   )

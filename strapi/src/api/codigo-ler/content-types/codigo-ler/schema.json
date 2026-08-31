@@ -1,0 +1,29 @@
+{
+  "kind": "collectionType",
+  "collectionName": "codigo_lers",
+  "info": {
+    "singularName": "codigo-ler",
+    "pluralName": "codigo-lers",
+    "displayName": "Código LER"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "codigo": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "descricao": {
+      "type": "string"
+    },
+    "movimentos": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::movimento.movimento",
+      "inversedBy": "codigosLer"
+    }
+  }
+}

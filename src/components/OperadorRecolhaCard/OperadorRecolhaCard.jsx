@@ -1,4 +1,4 @@
-import { faLocationDot, faBarcodeRead } from '@fortawesome/pro-light-svg-icons'
+import { faLocationDot, faBarcodeRead, faPen } from '@fortawesome/pro-light-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { IconCalendarSmall, IconContentor } from '../icons/icons.jsx'
 import './OperadorRecolhaCard.css'
@@ -37,7 +37,9 @@ export default function OperadorRecolhaCard({
   scheduledAt,
   taskLines,
   onLocationClick,
+  onEditClick,
   onProcessClick,
+  showEdit = true,
 }) {
   const statusLabel = STATUS_LABEL[status] ?? status
   const date = pickScheduledDate(scheduledAt)
@@ -90,6 +92,16 @@ export default function OperadorRecolhaCard({
         >
           <FontAwesomeIcon icon={faLocationDot} className="operador-recolha-card__btn-icon" aria-hidden />
         </button>
+        {showEdit && onEditClick ? (
+          <button
+            type="button"
+            className="operador-recolha-card__btn operador-recolha-card__btn--edit"
+            aria-label="Alterar data"
+            onClick={onEditClick}
+          >
+            <FontAwesomeIcon icon={faPen} className="operador-recolha-card__btn-icon" aria-hidden />
+          </button>
+        ) : null}
         <button
           type="button"
           className="operador-recolha-card__btn operador-recolha-card__btn--process"

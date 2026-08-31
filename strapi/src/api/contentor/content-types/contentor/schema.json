@@ -23,13 +23,17 @@
       "relation": "oneToOne",
       "target": "api::capacidade.capacidade"
     },
-    "estado": {
-      "type": "enumeration",
-      "enum": [
-        "Novo",
-        "Usado",
-        "Danificado"
-      ]
+    "estadoFisico": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::estado-fisico.estado-fisico",
+      "inversedBy": "contentores"
+    },
+    "estadoResiduo": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::estado-residuo.estado-residuo",
+      "inversedBy": "contentores"
     },
     "data": {
       "type": "date"

@@ -1,0 +1,30 @@
+{
+  "kind": "collectionType",
+  "collectionName": "estado_pedidos",
+  "info": {
+    "singularName": "estado-pedido",
+    "pluralName": "estado-pedidos",
+    "displayName": "Estado Pedido"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "nome": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "ordem": {
+      "type": "integer",
+      "default": 0
+    },
+    "movimentos": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::movimento.movimento",
+      "mappedBy": "estadoPedido"
+    }
+  }
+}

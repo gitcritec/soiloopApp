@@ -5,6 +5,7 @@ import SectionTitleWithIcon from '../../../../components/SectionTitleWithIcon/Se
 import {
   canDeleteMovimentoCliente,
   canEditMovimentoCliente,
+  collapseMovimentosListagemCards,
   collapseMovimentosPedidoCards,
   fetchStrapiClienteMovimentosHistorico,
 } from '../../../../lib/strapiMovimentos.js'
@@ -49,7 +50,7 @@ export default function Recolhas({
     loadHistorico()
   }, [loadHistorico])
 
-  const displayPedidos = useMemo(() => collapseMovimentosPedidoCards(items), [items])
+  const displayPedidos = useMemo(() => collapseMovimentosListagemCards(items), [items])
   const displayHistorico = useMemo(
     () => collapseMovimentosPedidoCards(historicoItems).slice(0, HISTORICO_PREVIEW_LIMIT),
     [historicoItems],
@@ -59,9 +60,11 @@ export default function Recolhas({
     return (
       <CollectionCard
         key={
-          item.pedidoDisplayMode === 'trocar'
-            ? `trocar-${item.pedidoGroupKey}`
-            : item.movimentoKey ?? `${item.id}-${item.taskType}-${item.scheduledAt}`
+          item.recorrenciaId
+            ? `serie-${item.recorrenciaId}`
+            : item.pedidoDisplayMode === 'trocar'
+              ? `trocar-${item.pedidoGroupKey}`
+              : item.movimentoKey ?? `${item.id}-${item.taskType}-${item.scheduledAt}`
         }
         collectionId={item.pedidoGroupContentorId ?? item.id}
         location={pickLocationLabel(item)}
@@ -70,6 +73,11 @@ export default function Recolhas({
         binNumber={item.binNumber}
         taskType={item.taskType}
         requestState={item.estadoKey}
+        badgeLabel={
+          item.estadoKey === 'cancelamento'
+            ? item.badgeLabel ?? 'Cancelamento pendente'
+            : item.badgeLabel ?? (item.recorrenciaId ? 'Semanal' : undefined)
+        }
         hideTaskType
         showScheduledTime
         showEdit={canEditMovimentoCliente(item)}

@@ -1,0 +1,74 @@
+{
+  "kind": "collectionType",
+  "collectionName": "recorrencias",
+  "info": {
+    "singularName": "recorrencia",
+    "pluralName": "recorrencias",
+    "displayName": "Recorrência"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "tipo": {
+      "type": "enumeration",
+      "enum": ["recolha", "entrega", "troca"],
+      "required": true
+    },
+    "cliente": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "localizacao": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::localizacao.localizacao"
+    },
+    "contentor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::contentor.contentor"
+    },
+    "operador": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "diaSemana": {
+      "type": "integer",
+      "required": true,
+      "min": 0,
+      "max": 6
+    },
+    "periodo": {
+      "type": "enumeration",
+      "enum": ["indiferente", "manha", "tarde"],
+      "default": "indiferente"
+    },
+    "dataInicio": {
+      "type": "date",
+      "required": true
+    },
+    "dataFim": {
+      "type": "date"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": true
+    },
+    "capacidadeLabel": {
+      "type": "string"
+    },
+    "observacoes": {
+      "type": "text"
+    },
+    "movimentos": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::movimento.movimento",
+      "mappedBy": "recorrencia"
+    }
+  }
+}

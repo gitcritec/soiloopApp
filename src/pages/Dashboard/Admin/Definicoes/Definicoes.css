@@ -34,15 +34,13 @@
 
 .definicoes__card {
   display: flex;
-  flex: 1 1 0;
   flex-direction: column;
+  flex-shrink: 0;
   min-width: 0;
-  min-height: 0;
   padding: 12px;
   box-sizing: border-box;
   background: #f9f8f9;
   border-radius: 10px;
-  overflow: hidden;
 }
 
 .definicoes__scroll {
@@ -51,6 +49,10 @@
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 16px;
 }
 
 .definicoes__section-title {
@@ -58,6 +60,13 @@
   font-size: 14px;
   font-weight: 700;
   color: #060e0b;
+}
+
+.definicoes__section-help {
+  margin: -4px 0 12px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #5a6b63;
 }
 
 .definicoes__field {
@@ -124,21 +133,153 @@
   color: #8b6914;
 }
 
-.definicoes__actions {
+.definicoes__ler-list {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.definicoes__ler-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.definicoes__ler-item--editing {
+  outline: 2px solid #15d67f;
+  outline-offset: -2px;
+}
+
+.definicoes__ler-item-main {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.definicoes__ler-codigo {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #060e0b;
+}
+
+.definicoes__ler-desc {
+  margin: 2px 0 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #5a6b63;
+}
+
+.definicoes__ler-item-actions {
+  display: flex;
   flex-shrink: 0;
-  margin-top: auto;
-  padding-top: 16px;
+  gap: 6px;
+}
+
+.definicoes__ler-edit,
+.definicoes__ler-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.definicoes__ler-edit {
+  background: #e5e9e8;
+  color: #40534c;
+}
+
+.definicoes__ler-delete {
+  background: #fbdae0;
+  color: #8b1e1e;
+}
+
+.definicoes__ler-edit:disabled,
+.definicoes__ler-delete:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.definicoes__ler-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e9e8;
+}
+
+.definicoes__ler-form-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #060e0b;
+}
+
+.definicoes__ler-form-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.definicoes__ler-add-btn,
+.definicoes__ler-cancel-btn {
+  display: inline-flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 5px;
+  font-family: 'Rubik', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.definicoes__ler-add-btn {
+  background: #40534c;
+  color: #f9f8f9;
+}
+
+.definicoes__ler-cancel-btn {
+  background: #e5e9e8;
+  color: #40534c;
+}
+
+.definicoes__ler-add-btn:disabled,
+.definicoes__ler-cancel-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.definicoes__ler-status {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #5a6b63;
 }
 
 .definicoes__form-error {
-  margin: 0 0 8px;
+  margin: 10px 0 0;
   font-size: 12px;
   line-height: 1.4;
   color: #8b1e1e;
 }
 
 .definicoes__notice {
-  margin: 0 0 8px;
+  margin: 10px 0 0;
   font-size: 12px;
   line-height: 1.4;
   color: #1e8f2b;
@@ -147,6 +288,7 @@
 .definicoes__submit {
   width: 100%;
   min-height: 48px;
+  margin-top: 14px;
   border: none;
   border-radius: 5px;
   background: #15d67f;
