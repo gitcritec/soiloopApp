@@ -15,9 +15,31 @@ import {
 } from '../../../../lib/appRoute.js'
 import { fetchStrapiContentores } from '../../../../lib/strapiContentores.js'
 import ContentorDetalhe from './ContentorDetalhe.jsx'
-import { formatLocationQuery } from '../../../../lib/locationQuery.js'
 import ContentorRegisto from './ContentorRegisto.jsx'
 import './Contentores.css'
+
+function matchesContentorSearch(item, q) {
+  if (!q) return true
+  const haystack = [
+    item.cid,
+    item.localizacao,
+    item.localizacaoAtualMorada,
+    item.clienteAtualNome,
+    item.clienteAtualLabel,
+    item.estadoLabel,
+    item.situacaoLabel,
+    item.situacao,
+    item.litrosLabel,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+  return haystack.includes(q)
+}
+
+function isEmTransito(item) {
+  return item?.situacao === 'em-transito'
+}
 
 /** Lista e registo de contentores (admin) — Figma 16:793. */
 export default function Contentores() {
@@ -62,15 +84,18 @@ export default function Contentores() {
 
   const filteredItems = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return items
-    return items.filter((item) => {
-      const haystack = [item.cid, item.localizacao, item.clienteAtualNome, item.estadoLabel, item.litrosLabel]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-      return haystack.includes(q)
-    })
+    return items.filter((item) => matchesContentorSearch(item, q))
   }, [items, search])
+
+  const emTransitoItems = useMemo(
+    () => filteredItems.filter(isEmTransito),
+    [filteredItems],
+  )
+
+  const outrosItems = useMemo(
+    () => filteredItems.filter((item) => !isEmTransito(item)),
+    [filteredItems],
+  )
 
   function goToList() {
     setView('list')
@@ -108,6 +133,26 @@ export default function Contentores() {
   function handleRegistoSuccess() {
     goToList()
     loadList()
+  }
+
+  function renderContentorCard(item) {
+    return (
+      <ContentorCard
+        cid={item.cid}
+        litros={item.litros}
+        localizacao={item.localizacaoAtualMorada || item.localizacao}
+        cliente={item.clienteAtualLabel || '—'}
+        estado={item.estado}
+        estadoLabel={item.estadoLabel}
+        situacao={item.situacao}
+        situacaoLabel={item.situacaoLabel}
+        onViewClick={() => openDetail(item)}
+        onEditClick={() => openEdit(item)}
+        onScanClick={() =>
+          setQrPreview({ cid: item.cid, qrcodeImageUrl: item.qrcodeUrl })
+        }
+      />
+    )
   }
 
   if (view === 'detail' && detailId) {
@@ -216,42 +261,36 @@ export default function Contentores() {
         ) : null}
 
         {!loading && filteredItems.length > 0 ? (
-          <ul className="admin-contentores__list">
-            {filteredItems.map((item) => (
-              <li key={item.id}>
-                <ContentorCard
-                  cid={item.cid}
-                  litros={item.litros}
-                  localizacao={item.localizacaoAtualMorada || item.localizacao}
-                  cliente={item.clienteAtualLabel || '—'}
-                  estado={item.estado}
-                  estadoLabel={item.estadoLabel}
-                  onEditClick={() => openEdit(item)}
-                  onLocationClick={() => {
-                    const locationLabel =
-                      item.locationDetail ||
-                      item.localizacaoAtualMorada ||
-                      item.localizacao ||
-                      ''
-                    const query = formatLocationQuery({
-                      location: locationLabel,
-                      lat: item.localizacaoAtualLat,
-                      lng: item.localizacaoAtualLng,
-                    })
-                    if (!query) return
-                    setLocationMap({
-                      query,
-                      title: item.clienteAtualLabel || item.cid,
-                      subtitle: locationLabel || query,
-                    })
-                  }}
-                  onScanClick={() =>
-                    setQrPreview({ cid: item.cid, qrcodeImageUrl: item.qrcodeUrl })
-                  }
-                />
-              </li>
-            ))}
-          </ul>
+          <>
+            <h2 className="admin-contentores__section-title">
+              Em trânsito
+              {emTransitoItems.length > 0 ? ` (${emTransitoItems.length})` : ''}
+            </h2>
+            {emTransitoItems.length === 0 ? (
+              <p className="admin-contentores__status admin-contentores__status--muted">
+                Não existem contentores em trânsito.
+              </p>
+            ) : (
+              <ul className="admin-contentores__list">
+                {emTransitoItems.map((item) => (
+                  <li key={`transito-${item.id}`}>{renderContentorCard(item)}</li>
+                ))}
+              </ul>
+            )}
+
+            <h2 className="admin-contentores__section-title">Todos os contentores</h2>
+            {outrosItems.length === 0 ? (
+              <p className="admin-contentores__status admin-contentores__status--muted">
+                Nenhum outro contentor nesta vista.
+              </p>
+            ) : (
+              <ul className="admin-contentores__list">
+                {outrosItems.map((item) => (
+                  <li key={item.id}>{renderContentorCard(item)}</li>
+                ))}
+              </ul>
+            )}
+          </>
         ) : null}
       </div>
 

@@ -111,6 +111,13 @@
   width: 100%;
 }
 
+.admin-contentores__section-title {
+  margin: 8px 0 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #060e0b;
+}
+
 .admin-contentores__status {
   margin: 4px 0 0;
   padding: 0 2px;

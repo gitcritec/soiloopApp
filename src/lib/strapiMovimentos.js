@@ -4,6 +4,7 @@ import {
   applyStrapiContentorAfterRecolha,
   CONTENTOR_SITUACAO_ARMAZEM,
   CONTENTOR_SITUACAO_CLIENTE,
+  CONTENTOR_SITUACAO_EM_TRANSITO,
   fetchStrapiContentorByCid,
   fetchStrapiClienteContentores,
   fetchStrapiContentores,
@@ -1182,6 +1183,14 @@ function coerceMovimentoRow(row, fallback = {}) {
       ? Number(ordemOperadorRaw)
       : 0
   const { contentorStrapiId, contentorCapacidadeId, contentorLitros } = pickContentorCapacidadeMeta(contentor)
+  const contentorSituacaoRaw = pickString(contentor?.situacao)
+  const contentorSituacao = contentorSituacaoRaw
+    ? normalizeText(contentorSituacaoRaw).includes('transito')
+      ? 'em-transito'
+      : normalizeText(contentorSituacaoRaw) === 'cliente'
+        ? 'cliente'
+        : 'armazem'
+    : null
   const { pedidoCapacidadeId, pedidoCapacidadeLitros, pedidoLitrosLabel } = pickMovimentoCapacidadeMeta(
     attrs,
     { contentorCapacidadeId, contentorLitros },
@@ -1206,6 +1215,8 @@ function coerceMovimentoRow(row, fallback = {}) {
     contentorStrapiId,
     contentorCapacidadeId,
     contentorLitros,
+    contentorSituacao,
+    contentorSituacaoLabel: contentorSituacaoRaw ?? '',
     pedidoCapacidadeId,
     pedidoCapacidadeLitros,
     pedidoLitrosLabel,
@@ -2752,6 +2763,16 @@ export async function createStrapiAdminServico(payload) {
     })
   }
 
+  if (contentorStrapiId) {
+    try {
+      await updateStrapiContentorSituacao(contentorStrapiId, {
+        situacao: CONTENTOR_SITUACAO_EM_TRANSITO,
+      })
+    } catch {
+      /* serviço criado; situação pode falhar sem bloquear */
+    }
+  }
+
   return {
     ocorrencias: dates.length,
     recorrenciaId,
@@ -2829,6 +2850,95 @@ function parseIsoDateParts(iso) {
 export async function fetchStrapiAdminMovimentosAgendados() {
   await ensureStrapiRecorrenciasHorizon().catch(() => {})
   return fetchStrapiAdminMovimentosAgendadosRaw()
+}
+
+/**
+ * Lista movimentos concluídos (admin — histórico).
+ * @returns {Promise<object[]>}
+ */
+export async function fetchStrapiAdminMovimentosHistorico() {
+  const base = strapiBaseUrl()
+  if (!base) return []
+
+  const attempts = [
+    createEstadoMovimentosParamsHistorico('concluido', true),
+    createEstadoMovimentosParamsHistorico('Concluido', true),
+    createEstadoMovimentosParamsHistorico('concluido', false),
+    createEstadoMovimentosParamsHistorico('Concluido', false),
+  ]
+
+  let lastError = null
+  for (const params of attempts) {
+    try {
+      const rows = await fetchMovimentosRows(base, params)
+      return sortMovimentosHistoricoDesc(
+        enrichMovimentosPedidoGroups(
+          rows
+            .map((row) => coerceMovimentoRow(row))
+            .filter((item) => item && isEstadoConcluido(item.estado)),
+        ),
+      )
+    } catch (err) {
+      lastError = err
+    }
+  }
+
+  if (lastError) throw lastError
+  return []
+}
+
+/**
+ * Classifica um movimento para o calendário admin.
+ * @param {object} item
+ * @returns {'agendado'|'em-transito'|'historico'|null}
+ */
+export function classifyAdminCalendarioKind(item) {
+  if (!item) return null
+  if (isEstadoConcluido(item.estado) || item.estadoKey === MOVIMENTO_ESTADO_CONCLUIDO) {
+    return 'historico'
+  }
+  const pedidoLabel = normalizeText(item.estadoPedidoLabel ?? '')
+  const contentorEmTransito =
+    item.contentorSituacao === 'em-transito' ||
+    normalizeText(item.contentorSituacaoLabel ?? '').includes('transito')
+  if (pedidoLabel.includes('transito') || contentorEmTransito) return 'em-transito'
+  if (item.estadoKey === MOVIMENTO_ESTADO_AGENDADO || isEstadoAgendado(item.estado)) {
+    return 'agendado'
+  }
+  return null
+}
+
+/**
+ * Eventos do calendário admin: agendados + em trânsito + histórico.
+ * @returns {Promise<Array<object & { calendarioKind: 'agendado'|'em-transito'|'historico' }>>}
+ */
+export async function fetchStrapiAdminCalendarioRecolhas() {
+  const [agendados, historico] = await Promise.all([
+    fetchStrapiAdminMovimentosAgendados().catch(() => []),
+    fetchStrapiAdminMovimentosHistorico().catch(() => []),
+  ])
+
+  /** @type {Map<string, object>} */
+  const byKey = new Map()
+
+  for (const item of [...agendados, ...historico]) {
+    if (!item) continue
+    const kind = classifyAdminCalendarioKind(item)
+    if (!kind) continue
+    const dataIso = pickString(item.dataIso)
+    if (!dataIso) continue
+    const key =
+      pickString(item.movimentoKey) ??
+      `${item.id ?? 'mov'}|${dataIso}|${item.taskType ?? ''}|${kind}`
+    if (byKey.has(key)) continue
+    byKey.set(key, { ...item, calendarioKind: kind })
+  }
+
+  return [...byKey.values()].sort((a, b) => {
+    const dateDiff = String(a.dataIso).localeCompare(String(b.dataIso))
+    if (dateDiff !== 0) return dateDiff
+    return (a.dateSortValue ?? 0) - (b.dateSortValue ?? 0)
+  })
 }
 
 async function fetchStrapiAdminMovimentosAgendadosRaw() {
@@ -3874,6 +3984,22 @@ export async function scheduleStrapiMovimentoPedido({
   await Promise.all(reorderUpdates)
   await updateStrapiMovimentosBatch(keys, pedidoPayload)
 
+  // Contentores dos movimentos agendados passam a «Em trânsito».
+  await Promise.all(
+    keys.map(async (key) => {
+      try {
+        const movimento = await fetchStrapiMovimentoByKey(key)
+        const contentorId = pickString(movimento?.contentorStrapiId)
+        if (!contentorId) return
+        await updateStrapiContentorSituacao(contentorId, {
+          situacao: CONTENTOR_SITUACAO_EM_TRANSITO,
+        })
+      } catch {
+        /* não bloquear agendamento se a situação do contentor falhar */
+      }
+    }),
+  )
+
   const entregaKey = pickString(entregaMovimentoKey)
   const entregaContentor = pickString(entregaContentorId)
   if (entregaKey && entregaContentor) {
@@ -3896,6 +4022,13 @@ export async function scheduleStrapiMovimentoPedido({
       ...(localizacaoId ? { localizacaoAtualId: localizacaoId } : {}),
       ...(localizacaoLabel ? { localizacaoLabel } : {}),
     })
+    try {
+      await updateStrapiContentorSituacao(entregaContentor, {
+        situacao: CONTENTOR_SITUACAO_EM_TRANSITO,
+      })
+    } catch {
+      /* não bloquear agendamento */
+    }
   }
 }
 

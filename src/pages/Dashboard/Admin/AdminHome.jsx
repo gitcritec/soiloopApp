@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { faComments, faRecycle } from '@fortawesome/pro-light-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import AdminRecolhasCalendario from '../../../components/AdminRecolhasCalendario/AdminRecolhasCalendario.jsx'
 import SectionTitleWithIcon from '../../../components/SectionTitleWithIcon/SectionTitleWithIcon.jsx'
 import CollectionCard from '../../../components/CollectionCard/CollectionCard.jsx'
 import RecolhaAgendarModal from '../../../components/RecolhaAgendarModal/RecolhaAgendarModal.jsx'
@@ -98,6 +99,8 @@ export default function AdminHome() {
 
   return (
     <>
+      <AdminRecolhasCalendario />
+
       <section className="admin-dashboard__section" aria-labelledby="sec-pedidos">
         <div className="admin-dashboard__section-head">
           <SectionTitleWithIcon

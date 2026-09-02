@@ -1,0 +1,284 @@
+.admin-recolhas-cal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 353px;
+  margin: 0 auto;
+  padding: 12px;
+  box-sizing: border-box;
+  background: #f9f8f9;
+  border-radius: 10px;
+}
+
+.admin-recolhas-cal__head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-recolhas-cal__title {
+  margin: 0;
+  font-family: 'Rubik', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #060e0b;
+}
+
+.admin-recolhas-cal__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.admin-recolhas-cal__month {
+  margin: 0;
+  flex: 1;
+  text-align: center;
+  font-family: 'Rubik', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: #40534c;
+}
+
+.admin-recolhas-cal__nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: #e5e9e8;
+  color: #060e0b;
+  cursor: pointer;
+}
+
+.admin-recolhas-cal__legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  font-family: 'Rubik', sans-serif;
+  font-size: 11px;
+  color: #40534c;
+}
+
+.admin-recolhas-cal__legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-recolhas-cal__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.admin-recolhas-cal__dot--agendado {
+  background: #15d67f;
+}
+
+.admin-recolhas-cal__dot--em-transito {
+  background: #e08a1e;
+}
+
+.admin-recolhas-cal__dot--historico {
+  background: #6b7c8a;
+}
+
+.admin-recolhas-cal__weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.admin-recolhas-cal__weekday {
+  text-align: center;
+  font-family: 'Rubik', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: #40534c;
+  padding: 2px 0;
+}
+
+.admin-recolhas-cal__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.admin-recolhas-cal__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 3px;
+  min-height: 40px;
+  padding: 4px 2px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font-family: 'Rubik', sans-serif;
+  color: #060e0b;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.admin-recolhas-cal__cell--empty {
+  pointer-events: none;
+  min-height: 40px;
+}
+
+.admin-recolhas-cal__cell--today {
+  background: rgba(177, 203, 79, 0.22);
+}
+
+.admin-recolhas-cal__cell--selected {
+  outline: 1.5px solid #15d67f;
+  background: #fff;
+}
+
+.admin-recolhas-cal__cell--has-events .admin-recolhas-cal__day-num {
+  font-weight: 700;
+}
+
+.admin-recolhas-cal__day-num {
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.admin-recolhas-cal__dots {
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+  min-height: 8px;
+}
+
+.admin-recolhas-cal__day-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid #e5e9e8;
+}
+
+.admin-recolhas-cal__day-title {
+  margin: 0;
+  font-family: 'Rubik', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #40534c;
+  text-transform: capitalize;
+}
+
+.admin-recolhas-cal__event-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-recolhas-cal__event {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 8px;
+  row-gap: 2px;
+  align-items: start;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fff;
+  border-left: 3px solid transparent;
+}
+
+.admin-recolhas-cal__event--agendado {
+  border-left-color: #15d67f;
+}
+
+.admin-recolhas-cal__event--em-transito {
+  border-left-color: #e08a1e;
+}
+
+.admin-recolhas-cal__event--historico {
+  border-left-color: #6b7c8a;
+}
+
+.admin-recolhas-cal__event-badge {
+  grid-row: 1 / span 2;
+  align-self: center;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-family: 'Rubik', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.admin-recolhas-cal__event-badge--agendado {
+  background: rgba(21, 214, 127, 0.18);
+  color: #0a7a48;
+}
+
+.admin-recolhas-cal__event-badge--em-transito {
+  background: rgba(224, 138, 30, 0.18);
+  color: #8a4f0a;
+}
+
+.admin-recolhas-cal__event-badge--historico {
+  background: rgba(107, 124, 138, 0.18);
+  color: #3d4a54;
+}
+
+.admin-recolhas-cal__event-text {
+  font-family: 'Rubik', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #060e0b;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-recolhas-cal__event-periodo {
+  font-family: 'Rubik', sans-serif;
+  font-size: 11px;
+  color: #40534c;
+}
+
+.admin-recolhas-cal__status {
+  margin: 0;
+  font-family: 'Rubik', sans-serif;
+  font-size: 12px;
+  color: #060e0b;
+}
+
+.admin-recolhas-cal__status--muted {
+  color: #40534c;
+}
+
+.admin-recolhas-cal__status--error {
+  color: #8b1e1e;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
