@@ -1527,11 +1527,14 @@ function buildContentorEntregaUpdateVariants(fields) {
 
 /**
  * @param {{ estado?: string|null, estadoFisicoId?: string|null, estadoResiduoId?: string|null, localizacao?: string|null }} [fields]
+ * @param {{ clearResiduoIfMissing?: boolean }} [options]
  */
-function buildContentorRecolhaUpdateVariants(fields = {}) {
+function buildContentorRecolhaUpdateVariants(fields = {}, options = {}) {
+  const clearResiduoIfMissing = options.clearResiduoIfMissing !== false
   const localizacao = pickString(fields.localizacao)
   const estadoFisico = buildEstadoAuxRelationWrite(fields.estadoFisicoId)
-  const estadoResiduo = buildEstadoAuxRelationWrite(fields.estadoResiduoId)
+  const estadoResiduoId = pickString(fields.estadoResiduoId)
+  const estadoResiduo = estadoResiduoId ? buildEstadoAuxRelationWrite(estadoResiduoId) : undefined
 
   /** @type {Record<string, unknown>} */
   const scalar = { situacao: 'Armazem' }
@@ -1539,11 +1542,32 @@ function buildContentorRecolhaUpdateVariants(fields = {}) {
   if (estadoFisico) scalar.estadoFisico = estadoFisico
   if (estadoResiduo) scalar.estadoResiduo = estadoResiduo
 
-  return [
-    { ...scalar, localizacaoAtual: null, clienteAtual: null },
-    { ...scalar, localizacaoAtual: { disconnect: true }, clienteAtual: { disconnect: true } },
-    { ...scalar, localizacaoAtual: { set: null }, clienteAtual: { set: null } },
+  /** @type {Record<string, unknown>[]} */
+  const relationClears = [
+    { localizacaoAtual: null, clienteAtual: null },
+    { localizacaoAtual: { disconnect: true }, clienteAtual: { disconnect: true } },
+    { localizacaoAtual: { set: null }, clienteAtual: { set: null } },
   ]
+
+  /** Sem avaliação no campo: limpar estadoResiduo para aparecer na lista do armazém. */
+  /** @type {Record<string, unknown>[]} */
+  const residuoClears =
+    estadoResiduo || !clearResiduoIfMissing
+      ? [{}]
+      : [
+          { estadoResiduo: null },
+          { estadoResiduo: { disconnect: true } },
+          { estadoResiduo: { set: null } },
+        ]
+
+  /** @type {Record<string, unknown>[]} */
+  const variants = []
+  for (const rel of relationClears) {
+    for (const residuoClear of residuoClears) {
+      variants.push({ ...scalar, ...rel, ...residuoClear })
+    }
+  }
+  return variants
 }
 
 /**
@@ -1574,6 +1598,7 @@ export async function applyStrapiContentorAfterEntrega(documentId, payload) {
 
 /**
  * Atualiza situação do contentor após recolha (volta ao armazém).
+ * Sem `estadoResiduoId`, tenta limpar a avaliação para o operador poder avaliar no armazém.
  * @param {string} documentId
  * @param {{ estado?: string, estadoFisicoId?: string, estadoResiduoId?: string, localizacao?: string }} [payload]
  */
@@ -1581,14 +1606,47 @@ export async function applyStrapiContentorAfterRecolha(documentId, payload = {})
   const key = pickString(documentId)
   if (!key) throw new Error('Contentor em falta.')
 
-  const variants = buildContentorRecolhaUpdateVariants(payload)
+  const attempts = [buildContentorRecolhaUpdateVariants(payload, { clearResiduoIfMissing: true })]
+  if (!pickString(payload.estadoResiduoId)) {
+    attempts.push(buildContentorRecolhaUpdateVariants(payload, { clearResiduoIfMissing: false }))
+  }
+
   let lastError = null
-  for (const data of variants) {
-    try {
-      return await putStrapiContentorUpdate(key, data)
-    } catch (err) {
-      lastError = err instanceof Error ? err : new Error('Não foi possível atualizar o contentor.')
+  for (const variants of attempts) {
+    for (const data of variants) {
+      try {
+        return await putStrapiContentorUpdate(key, data)
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error('Não foi possível atualizar o contentor.')
+      }
     }
   }
   throw lastError ?? new Error('Não foi possível atualizar o contentor após a recolha.')
+}
+
+/**
+ * Contentores no armazém sem avaliação de resíduo.
+ * @returns {Promise<ContentorItem[]>}
+ */
+export async function fetchStrapiContentoresArmazemSemAvaliacaoResiduo() {
+  const rows = await fetchStrapiContentores()
+  return rows
+    .filter((item) => item.situacao === 'armazem' && !pickString(item.estadoResiduoId))
+    .sort((a, b) => a.cid.localeCompare(b.cid, 'pt'))
+}
+
+/**
+ * Define o estado do resíduo de um contentor (avaliação no armazém).
+ * @param {string} documentId
+ * @param {string} estadoResiduoId
+ * @returns {Promise<ContentorItem>}
+ */
+export async function updateStrapiContentorEstadoResiduo(documentId, estadoResiduoId) {
+  const key = pickString(documentId)
+  if (!key) throw new Error('Contentor em falta.')
+
+  const estadoResiduo = buildEstadoAuxRelationWrite(estadoResiduoId)
+  if (!estadoResiduo) throw new Error('Estado do resíduo em falta.')
+
+  return putStrapiContentorUpdate(key, { estadoResiduo })
 }

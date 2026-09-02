@@ -1,4 +1,5 @@
 import {
+  faClipboardCheck,
   faClock,
   faHouseChimney,
   faPowerOff,
@@ -11,6 +12,7 @@ import './OperatorDrawerMenu.css'
 
 const DEFAULT_PRIMARY_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: faHouseChimney },
+  { id: 'avaliar', label: 'Avaliar resíduos', icon: faClipboardCheck },
   { id: 'historico', label: 'Histórico', icon: faClock },
 ]
 

@@ -12,6 +12,7 @@ import {
   mapContentorToClienteCard,
   normalizeCapacidadeLitros,
   reserveStrapiContentorParaEntrega,
+  updateStrapiContentorEstadoResiduo,
   updateStrapiContentorSituacao,
 } from './strapiContentores.js'
 import {
@@ -3778,6 +3779,53 @@ export async function completeStrapiOperadorRecolha(payload) {
   }
 
   return results.length === 1 ? results[0] : results
+}
+
+/**
+ * Avaliação de resíduo no armazém (depois da recolha de campo).
+ * @param {{ contentorId: string, estadoResiduoId: string }} payload
+ */
+export async function avaliarStrapiOperadorResiduo(payload) {
+  const contentorId = pickString(payload.contentorId)
+  if (!contentorId) throw new Error('Contentor em falta.')
+
+  const estadoResiduoId = pickString(payload.estadoResiduoId)
+  if (!estadoResiduoId) throw new Error('Estado do resíduo em falta.')
+
+  const contentor = await fetchStrapiContentorByCid(contentorId)
+  if (!contentor) throw new Error(`Contentor ${contentorId} não encontrado.`)
+  if (contentor.situacao !== 'armazem') {
+    throw new Error('Só é possível avaliar contentores que estão no armazém.')
+  }
+
+  const updated = await updateStrapiContentorEstadoResiduo(contentor.id, estadoResiduoId)
+
+  const estadosResiduo = await fetchStrapiEstadosResiduo()
+  const residuoContaminado = isEstadoResiduoContaminado(estadoResiduoId, estadosResiduo)
+  if (residuoContaminado) {
+    try {
+      const historico = await fetchStrapiContentorMovimentosHistorico(contentor.id, contentor.cid)
+      const lastRecolha = historico.find(
+        (row) => row.taskType === 'recolher' && isEstadoConcluido(row.estado),
+      )
+      const clienteId = pickMovimentoClienteRef(lastRecolha, contentor)
+      const localizacaoId = pickString(lastRecolha?.localizacaoId)
+      if (clienteId) {
+        await createStrapiTicketForCliente({
+          assunto: `Contentor contaminado — ${contentor.cid}`,
+          mensagem: `[Sistema] Foi detetada contaminação no contentor ${contentor.cid} durante a avaliação no armazém. A equipa Soiloop irá analisar a situação.`,
+          clienteId,
+          localizacaoId,
+          contentorId: contentor.id,
+          prioridade: 'alta',
+        })
+      }
+    } catch {
+      /* Avaliação concluída; falha ao notificar cliente não bloqueia. */
+    }
+  }
+
+  return updated
 }
 
 /**

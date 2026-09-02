@@ -89,7 +89,6 @@ export default function MovimentosRecolha({
     if (!cid || !idValidated || idValidationError) return false
     return (
       Boolean(form.estadoFisicoId) &&
-      Boolean(form.estadoResiduoId) &&
       Boolean(form.estadoPedidoId) &&
       Boolean(form.peso.trim())
     )
@@ -101,7 +100,6 @@ export default function MovimentosRecolha({
     idValidated,
     idValidationError,
     form.estadoFisicoId,
-    form.estadoResiduoId,
     form.estadoPedidoId,
     form.peso,
   ])
@@ -621,20 +619,17 @@ export default function MovimentosRecolha({
               </label>
 
               <label className="recolha-form-screen__field">
-                <span className="recolha-form-screen__label">Estado do resíduo*</span>
+                <span className="recolha-form-screen__label">Estado do resíduo</span>
                 <span className="recolha-form-screen__select-wrap">
                   <select
                     className={`recolha-form-screen__select${form.estadoResiduoId ? '' : ' recolha-form-screen__select--empty'}`}
                     value={form.estadoResiduoId}
                     onChange={(e) => updateField('estadoResiduoId', e.target.value)}
                     disabled={!idValidated || loadingContext}
-                    required
                     tabIndex={isOpen ? 0 : -1}
-                    aria-label="Estado do resíduo"
+                    aria-label="Estado do resíduo (opcional)"
                   >
-                    <option value="" disabled>
-                      Selecionar
-                    </option>
+                    <option value="">Avaliar depois no armazém</option>
                     {estadosResiduo.map((item) => (
                       <option key={item.id} value={item.id}>
                         {item.nome}
@@ -642,6 +637,9 @@ export default function MovimentosRecolha({
                     ))}
                   </select>
                   <FontAwesomeIcon icon={faChevronDown} className="recolha-form-screen__select-icon" aria-hidden />
+                </span>
+                <span className="recolha-form-screen__field-hint">
+                  Opcional — pode avaliar no armazém no mesmo dia ou no dia seguinte.
                 </span>
               </label>
 

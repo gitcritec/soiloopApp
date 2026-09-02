@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'reac
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faBarcodeRead,
+  faClipboardCheck,
   faHouseChimney,
   faRecycle,
 } from '@fortawesome/pro-light-svg-icons'
@@ -33,6 +34,7 @@ import MovimentosEntrega from './MovimentosEntrega/MovimentosEntrega.jsx'
 import Processar from './Processar/Processar.jsx'
 import QrScanner from './QrScanner/QrScanner.jsx'
 import Historico from './Historico/Historico.jsx'
+import AvaliarResiduos from './AvaliarResiduos/AvaliarResiduos.jsx'
 import Perfil from '../../Perfil/Perfil.jsx'
 import EditarPedido from '../Cliente/EditarPedido/EditarPedido.jsx'
 import { readIsProfileSection, readOperadorNavId, readOperadorShowProcessarButton, readOperadorScreen, setAppHash } from '../../../lib/appRoute.js'
@@ -45,6 +47,7 @@ import {
 
 const OPERATOR_BOTTOM_NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: faHouseChimney },
+  { id: 'avaliar', label: 'Avaliar', icon: faClipboardCheck },
   { id: 'historico', label: 'Histórico', icon: faClockSharp },
 ]
 
@@ -461,6 +464,7 @@ export default function Operador({ onLogout }) {
 
   function handleDrawerNavigate(actionId) {
     if (actionId === 'historico') selectNav('historico')
+    else if (actionId === 'avaliar') selectNav('avaliar')
     else if (actionId === 'dashboard') selectNav('dashboard')
     else if (actionId === 'perfil') {
       setShowPerfil(true)
@@ -516,6 +520,8 @@ export default function Operador({ onLogout }) {
           <Perfil profileKind="operador" onUserUpdated={setUserName} />
         ) : navActiveId === 'historico' ? (
           <Historico />
+        ) : navActiveId === 'avaliar' ? (
+          <AvaliarResiduos />
         ) : (
           <>
         <section className="operator-dashboard__section" aria-labelledby="sec-day">
